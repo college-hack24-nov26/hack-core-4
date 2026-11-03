@@ -73,9 +73,12 @@ function ZoneCard({ z, rank }: { z: ZoneRow; rank?: number }) {
                   <span className="text-[15px] font-medium text-sand-50">{c.label}</span>
                   <span className="rounded-full bg-ink-700 px-2.5 py-0.5 text-xs font-medium text-sand-100">{c.strength}</span>
                 </div>
-                <ul className="mt-2 space-y-1 text-sm text-sand-300">
+                <ul className="mt-2 space-y-1.5 text-sm text-sand-200">
                   {c.evidence.map((e, i) => (
-                    <li key={i}>{e}</li>
+                    <li key={i} className="flex gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-500" aria-hidden />
+                      <span>{e.replace(/ \(DEMO source\)/g, '')}</span>
+                    </li>
                   ))}
                 </ul>
               </li>

@@ -37,21 +37,24 @@ export function ZoneCauses() {
       ) : (
         <ul className="space-y-2">
           {causes.map((c) => (
-            <li key={c.key} className="rounded-xl bg-ink-850 p-3 hairline">
+            <li key={c.key} className="rounded-2xl bg-ink-900 p-3.5 shadow-sm hairline">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-sand-50">{c.label}</span>
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${STRENGTH[c.strength]}`}>{c.strength}</span>
               </div>
-              <ul className="mt-1.5 space-y-0.5 text-xs text-sand-300">
+              <ul className="mt-2 space-y-1.5 text-xs leading-snug text-sand-200">
                 {c.evidence.map((e, i) => (
-                  <li key={i}>{e}</li>
+                  <li key={i} className="flex gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-500" aria-hidden />
+                    <span>{e.replace(/ \(DEMO source\)/g, '')}</span>
+                  </li>
                 ))}
               </ul>
             </li>
           ))}
         </ul>
       )}
-      <p className="mt-2 text-[10px] text-sand-500">Indications from mapped roads, industry and the PM2.5/PM10 ratio. Construction, RMC plants and waste burning are not assessed.</p>
+      <p className="mt-2 text-[10px] text-sand-500">Based on nearby roads, industry and the PM2.5/PM10 ratio. Construction and waste burning are not covered.</p>
     </Section>
   );
 }

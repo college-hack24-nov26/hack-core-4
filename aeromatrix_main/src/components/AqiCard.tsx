@@ -1,11 +1,22 @@
 import { Cloud, Droplets, Navigation } from 'lucide-react';
-import { AQI_COLORS, type AqiCategory } from '../services/cpcbAqi';
+import type { AqiCategory } from '../services/cpcbAqi';
+
+/** Card colours for each AQI band: panel, number box, text. */
+const THEME: Record<AqiCategory, { bg: string; box: string; ink: string }> = {
+  Good: { bg: '#c8ecd6', box: '#5cc48a', ink: '#0f3d24' },
+  Satisfactory: { bg: '#e0f0bf', box: '#a6d65a', ink: '#2e4310' },
+  Moderate: { bg: '#fbe9a0', box: '#f0c93a', ink: '#4a3a08' },
+  Poor: { bg: '#fbd0a0', box: '#f59a3a', ink: '#5a2c05' },
+  'Very Poor': { bg: '#f6b4ae', box: '#e45a50', ink: '#5a0f0a' },
+  Severe: { bg: '#d9b0d8', box: '#9b3d96', ink: '#3d0f3b' },
+};
+const NONE = { bg: '#e6ddd2', box: '#bdb0a2', ink: '#3a2c20' };
 
 /** A simple face that shows how the air feels: smiling when clean, neutral when moderate, behind a mask when poor. */
-export function AirFace({ category, size = 64 }: { category: AqiCategory | null; size?: number }) {
+export function AirFace({ category, size = 64, color = '#4a3a12' }: { category: AqiCategory | null; size?: number; color?: string }) {
   const masked = category === 'Poor' || category === 'Very Poor' || category === 'Severe';
   const mood = category === 'Good' || category === 'Satisfactory' ? 'happy' : 'flat';
-  const ink = '#4a3a12';
+  const ink = color;
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={masked ? 'Face wearing a mask' : mood === 'happy' ? 'Smiling face' : 'Neutral face'} fill="none" stroke={ink} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M14 27c0-13 8-19 18-19s18 6 18 19v6c0 11-8 21-18 21S14 44 14 33z" />
@@ -50,26 +61,24 @@ export interface AqiCardProps {
 
 /** The headline air-quality card: AQI, how it feels, the main pollutant and the weather. */
 export function AqiCard({ value, category, mainPollutant, concentration, weather }: AqiCardProps) {
-  const color = category ? AQI_COLORS[category] : '#9a8a80';
-  const tint = `color-mix(in srgb, ${color} 34%, #fffaf0)`;
-  const chip = `color-mix(in srgb, ${color} 70%, #fffaf0)`;
+  const th = category ? THEME[category] : NONE;
   const fmtN = (v: number | null | undefined, d = 0) => (v === null || v === undefined ? '-' : v.toFixed(d));
   return (
     <div className="overflow-hidden rounded-3xl shadow-sm ring-1 ring-black/5" aria-label="Air quality now">
-      <div className="px-4 pb-3 pt-4" style={{ background: tint }}>
+      <div className="px-4 pb-3 pt-4" style={{ background: th.bg, color: th.ink }}>
         <div className="flex items-center gap-3">
-          <div className="flex h-[72px] w-[72px] shrink-0 flex-col items-center justify-center rounded-2xl text-[#3a2c0b]" style={{ background: chip }}>
+          <div className="flex h-[72px] w-[72px] shrink-0 flex-col items-center justify-center rounded-2xl shadow-sm" style={{ background: th.box }}>
             <span className="font-display text-3xl font-bold leading-none">{value ?? '-'}</span>
             <span className="mt-1 text-[10px] font-semibold tracking-wide opacity-80">AQI</span>
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-display text-xl font-bold leading-tight text-[#3a2c0b]">{category ?? 'No reading'}</div>
-            {category && <p className="mt-0.5 text-xs leading-snug text-[#3a2c0b]/75">{ADVICE[category]}</p>}
+            <div className="font-display text-xl font-bold leading-tight">{category ?? 'No reading'}</div>
+            {category && <p className="mt-0.5 text-xs leading-snug opacity-80">{ADVICE[category]}</p>}
           </div>
-          <AirFace category={category} />
+          <AirFace category={category} color={th.ink} />
         </div>
         {mainPollutant && (
-          <div className="mt-3 flex items-baseline justify-between gap-2 border-t border-black/10 pt-3 text-[#3a2c0b]">
+          <div className="mt-3 flex items-baseline justify-between gap-2 border-t border-black/10 pt-3">
             <span className="text-sm">
               Main pollutant: <strong className="text-base">{mainPollutant}</strong>
             </span>
@@ -78,7 +87,7 @@ export function AqiCard({ value, category, mainPollutant, concentration, weather
         )}
       </div>
       {weather && (
-        <div className="grid grid-cols-3 bg-white/90 px-4 py-2.5 text-sm font-semibold text-[#3a2c0b]">
+        <div className="grid grid-cols-3 bg-white/90 px-4 py-2.5 text-sm font-semibold" style={{ color: th.ink }}>
           <span className="flex items-center gap-1.5">
             <Cloud size={18} className="text-slate-400" /> {fmtN(weather.temperature)}°
           </span>
