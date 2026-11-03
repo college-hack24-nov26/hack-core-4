@@ -1,4 +1,4 @@
-import type { BaseState, Pollutant, TimeSeriesPoint } from '../types';
+import type { BaseState, CityGeometry, Pollutant, TimeSeriesPoint } from '../types';
 import { demoDataProvider } from '../data/demo/demoDataProvider';
 
 /**
@@ -8,8 +8,11 @@ import { demoDataProvider } from '../data/demo/demoDataProvider';
 export interface DataProvider {
   id: string;
   label: string;
-  getBaseState(gridSize: number): Promise<BaseState>;
-  /** Hourly series for one cell around `baseValue` (DEMO in V1). */
+  /** Build the city base state for a grid size over the given geometry (defaults to the provider's own). */
+  getBaseState(gridSize: number, geometry?: CityGeometry): Promise<BaseState>;
+  /** The provider's built-in geometry (the demo city for the demo provider). */
+  getDefaultGeometry(): CityGeometry;
+  /** Hourly series for one cell around `baseValue` (DEMO in V1/V2). */
   getTimeSeries(
     cellId: string,
     pollutant: Pollutant,

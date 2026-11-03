@@ -14,8 +14,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@mapbox/vector-tile": "^3.0.0",
     "cesium": "^1.145.0",
     "lucide-react": "^0.468.0",
+    "pbf": "^5.1.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "recharts": "^3.10.0",

@@ -1,6 +1,6 @@
 import type { Pollutant, RiskLevel } from '../types';
 
-type RGB = [number, number, number];
+export type RGB = [number, number, number];
 
 const RAMP: Array<[number, RGB]> = [
   [0, [34, 197, 94]],
@@ -119,4 +119,34 @@ export const SOURCE_LABELS = {
 export function legendGradient(): string {
   const stops = RAMP.map(([t, c]) => `rgb(${c[0]},${c[1]},${c[2]}) ${Math.round(t * 100)}%`);
   return `linear-gradient(to right, ${stops.join(', ')})`;
+}
+
+// ---- V2 additions ----
+
+/** Traffic corridor colours by volume proxy (0-100). */
+export const TRAFFIC_COLORS = {
+  low: '#22c55e',
+  medium: '#facc15',
+  high: '#f97316',
+  severe: '#ef4444',
+} as const;
+
+export function trafficColorKey(volume: number): keyof typeof TRAFFIC_COLORS {
+  if (volume >= 85) return 'severe';
+  if (volume >= 70) return 'high';
+  if (volume >= 55) return 'medium';
+  return 'low';
+}
+
+/** Symmetric scale for the Change (delta) display mode: the largest |delta| rounded up to a tidy number. */
+export function deltaScaleFor(p: Pollutant, values: number[]): number {
+  let max = 0;
+  for (const v of values) max = Math.max(max, Math.abs(v));
+  const [lo, hi] = POLLUTANT_RANGE[p];
+  const floor = (hi - lo) * 0.02;
+  const m = Math.max(max, floor);
+  const mag = Math.pow(10, Math.floor(Math.log10(m)));
+  const n = m / mag;
+  const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+  return step * mag;
 }

@@ -1,26 +1,44 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react';
-import { Eye, ScanSearch, X } from 'lucide-react';
+import { Eye, ListChecks, ScanSearch, SlidersHorizontal, X, type LucideIcon } from 'lucide-react';
 import { LogoMark } from './Brand';
 import { useTwinStore } from '../store/useTwinStore';
+import type { Section } from '../types';
 
-const STEPS = [
+const STEPS: Array<{ icon: LucideIcon; title: string; body: string; section: Section | null }> = [
   {
     icon: Eye,
     title: 'Understand',
     body: 'Read the city zone by zone: pollution, traffic, industry and green cover in 3D.',
+    section: 'overview',
   },
   {
     icon: ScanSearch,
     title: 'Inspect',
     body: 'Switch pollutants, find hotspots and see what drives each one.',
+    section: 'air',
+  },
+  {
+    icon: SlidersHorizontal,
+    title: 'Simulate',
+    body: 'Change traffic, industry, green cover or weather and watch the map respond live.',
+    section: 'simulator',
+  },
+  {
+    icon: ListChecks,
+    title: 'Act',
+    body: 'Rank six reduction actions and compare candidate sites for a new industry.',
+    section: 'actions',
   },
 ];
 
 export function IntroOverlay() {
   const introOpen = useTwinStore((s) => s.introOpen);
   const setIntroOpen = useTwinStore((s) => s.setIntroOpen);
+  const setSection = useTwinStore((s) => s.setSection);
+  const setLeftOpen = useTwinStore((s) => s.setLeftOpen);
   const primaryRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!introOpen) return;
@@ -36,8 +54,8 @@ export function IntroOverlay() {
       e.stopPropagation();
       setIntroOpen(false);
     } else if (e.key === 'Tab') {
-      // Two focusable controls: keep focus inside the dialog.
-      const order = [closeRef.current, primaryRef.current].filter(Boolean) as HTMLElement[];
+      // Keep focus inside the dialog.
+      const order = [...(dialogRef.current?.querySelectorAll<HTMLElement>('button') ?? [])];
       const i = order.indexOf(document.activeElement as HTMLElement);
       const next = e.shiftKey ? (i <= 0 ? order.length - 1 : i - 1) : i === order.length - 1 ? 0 : i + 1;
       e.preventDefault();
@@ -51,6 +69,7 @@ export function IntroOverlay() {
       onKeyDown={onKeyDown}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="intro-title"
@@ -76,11 +95,22 @@ export function IntroOverlay() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {STEPS.map((s) => (
-            <div key={s.title} className="rounded-2xl bg-ink-850 p-4 hairline">
+            <button
+              key={s.title}
+              type="button"
+              onClick={() => {
+                if (s.section) {
+                  setSection(s.section);
+                  setLeftOpen(true);
+                }
+                setIntroOpen(false);
+              }}
+              className="rounded-2xl bg-ink-850 p-4 text-left hairline transition-colors hover:bg-ink-800"
+            >
               <s.icon size={22} className="mb-2 text-accent-500" />
               <h2 className="mb-1 text-sm font-bold text-sand-50">{s.title}</h2>
               <p className="text-xs leading-relaxed text-sand-300">{s.body}</p>
-            </div>
+            </button>
           ))}
         </div>
         <p className="mt-4 rounded-xl bg-ink-850 p-3 text-xs leading-relaxed text-sand-300 hairline">

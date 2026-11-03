@@ -230,3 +230,70 @@ export interface TimeSeriesPoint {
   t: string;
   value: number;
 }
+
+// ---- V2 additions ----
+
+export type LayerId =
+  | 'heatmap'
+  | 'grid'
+  | 'roads'
+  | 'traffic'
+  | 'industries'
+  | 'green'
+  | 'buildings'
+  | 'terrain'
+  | 'satellite'
+  | 'risk'
+  | 'labels'
+  | 'elevationTint'
+  | 'shadows'
+  | 'photoreal'
+  | 'places';
+
+export type DisplayMode = 'baseline' | 'scenario' | 'delta';
+
+export type InteractionMode = 'select' | 'add-industry' | 'select-area' | 'pick-candidate';
+
+export interface PendingIndustry {
+  location: LonLat | null;
+  category: IndustryCategory;
+  /** 0-100 */
+  intensity: number;
+}
+
+export interface CandidateLocation {
+  /** 'A', 'B', 'C', ... */
+  id: string;
+  location: LonLat;
+}
+
+export interface SiteProject {
+  category: IndustryCategory;
+  intensity: number;
+  greenBuffer: boolean;
+}
+
+export interface SavedScenario {
+  id: string;
+  name: string;
+  createdAt: string;
+  params: ScenarioParams;
+  geometrySource: 'demo' | 'osm';
+  gridSize: number;
+  meanDelta: number;
+  meanDeltaPct: number;
+}
+
+export type GeometryStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+export interface GeometryInfo {
+  status: GeometryStatus;
+  source: 'demo' | 'osm';
+  /** where OSM data came from */
+  origin: 'snapshot' | 'live' | 'demo';
+  message: string | null;
+  notice: string | null;
+  attribution: string | null;
+  generated: string | null;
+  counts: { roads: number; roadKm: number; green: number; industrialZones: number; industries: number };
+}

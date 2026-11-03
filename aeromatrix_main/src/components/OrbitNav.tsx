@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { Grid3x3, LayoutDashboard, Wind, type LucideIcon } from 'lucide-react';
+import { Grid3x3, LayoutDashboard, ListChecks, MapPinned, SlidersHorizontal, Wind, type LucideIcon } from 'lucide-react';
 import { LogoMark } from './Brand';
 import { useTwinStore } from '../store/useTwinStore';
 import type { Section } from '../types';
@@ -11,20 +11,23 @@ export const SECTION_LABEL: Record<Section, string> = {
   traffic: 'Traffic',
   industries: 'Industries',
   green: 'Green Cover',
-  simulator: 'Simulator',
+  simulator: 'What-If',
   scenarios: 'Scenarios',
   actions: 'Actions',
-  locations: 'Locations',
+  locations: 'Sites',
   sensors: 'Sensors',
   analytics: 'Analytics',
   data: 'Data',
 };
 
-/** V1 wires only these three sections. */
+/** Launcher order. Industries arrives in V3 and Sensors in V4. Scenarios and Data open by deep link. */
 export const ORBIT_ITEMS: { id: Section; icon: LucideIcon }[] = [
   { id: 'overview', icon: LayoutDashboard },
   { id: 'air', icon: Wind },
   { id: 'zones', icon: Grid3x3 },
+  { id: 'actions', icon: ListChecks },
+  { id: 'simulator', icon: SlidersHorizontal },
+  { id: 'locations', icon: MapPinned },
 ];
 
 const RADIUS = 170;

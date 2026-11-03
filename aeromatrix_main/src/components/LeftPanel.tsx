@@ -16,7 +16,12 @@ import {
 import { POLLUTANTS } from '../services/pollutionModel';
 import { fmt, fmtInt } from '../utils/format';
 import { zoneLabel } from '../utils/zones';
-import type { Pollutant, RiskLevel } from '../types';
+import type { Pollutant, RiskLevel, Section as SectionId } from '../types';
+import { WhatIfPanel } from '../simulator/WhatIfPanel';
+import { ActionsPanel } from '../scenarios/ActionsPanel';
+import { ScenariosPanel } from '../scenarios/ScenariosPanel';
+import { LocationsPanel } from '../locations/LocationsPanel';
+import { DataPanel } from './DataPanel';
 
 const RISKS: RiskLevel[] = ['LOW', 'MODERATE', 'HIGH', 'VERY_HIGH'];
 
@@ -335,7 +340,16 @@ export function LeftPanel() {
   const section = useTwinStore((s) => s.section);
   const base = useTwinStore((s) => s.base);
 
-  const active = section === 'air' || section === 'zones' ? section : 'overview';
+  const active: SectionId =
+    section === 'air' ||
+    section === 'zones' ||
+    section === 'simulator' ||
+    section === 'actions' ||
+    section === 'locations' ||
+    section === 'scenarios' ||
+    section === 'data'
+      ? section
+      : 'overview';
 
   if (!leftOpen) {
     return (
@@ -379,6 +393,11 @@ export function LeftPanel() {
         {active === 'overview' && <Overview />}
         {active === 'air' && <AirQuality />}
         {active === 'zones' && <Zones />}
+        {active === 'simulator' && <WhatIfPanel />}
+        {active === 'actions' && <ActionsPanel />}
+        {active === 'locations' && <LocationsPanel />}
+        {active === 'scenarios' && <ScenariosPanel />}
+        {active === 'data' && <DataPanel />}
       </div>
     </aside>
   );

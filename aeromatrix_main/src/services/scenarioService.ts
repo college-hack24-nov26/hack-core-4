@@ -9,7 +9,15 @@ import type {
   ScenarioParams,
   ScenarioResult,
 } from '../types';
-import { computeCellStates, MODEL_ID, MODEL_VERSION, POLLUTANTS, meanContribution } from './pollutionModel';
+import {
+  COEF,
+  computeCellStates,
+  MODEL_ID,
+  MODEL_VERSION,
+  POLLUTANTS,
+  meanContribution,
+  type Coefficients,
+} from './pollutionModel';
 import { uid } from '../utils/format';
 
 /** A cell counts as affected when PM2.5 changes by at least this much (ug/m3). */
@@ -63,10 +71,34 @@ export function validateParams(p: ScenarioParams): string[] {
   return e;
 }
 
-export function runScenario(base: BaseState, params: ScenarioParams): ScenarioResult {
-  const baseline = computeCellStates(base, defaultParams(base));
-  const scenario = computeCellStates(base, params);
+export function runScenario(base: BaseState, params: ScenarioParams, coef: Coefficients = COEF): ScenarioResult {
+  const baseline = computeCellStates(base, defaultParams(base), coef);
+  const scenario = computeCellStates(base, withDefaultTarget(base, params), coef);
   return buildResult(base, params, baseline, scenario);
+}
+
+/** An empty target area means "the whole city" for the area controls (the engine itself only knows explicit cells). */
+export function withDefaultTarget(base: BaseState, p: ScenarioParams): ScenarioParams {
+  if (p.targetCells.length > 0 || p.areaTrafficMultiplier === 1) return p;
+  return { ...p, targetCells: base.cells.map((c) => c.id) };
+}
+
+/** Drop references that do not exist in this base state (e.g. after the geometry or grid changed). */
+export function sanitizeParams(base: BaseState, p: ScenarioParams): ScenarioParams {
+  const roadIds = new Set(base.roads.map((r) => r.id));
+  const industryIds = new Set(base.industries.map((i) => i.id));
+  const cellIds = new Set(base.cells.map((c) => c.id));
+  const overrides: Record<string, number> = {};
+  for (const [k, v] of Object.entries(p.industryIntensityOverrides)) if (industryIds.has(k)) overrides[k] = v;
+  return {
+    ...p,
+    targetCells: p.targetCells.filter((c) => cellIds.has(c)),
+    roadClosures: p.roadClosures
+      .filter((c) => roadIds.has(c.roadId))
+      .map((c) => (c.divertToRoadId && !roadIds.has(c.divertToRoadId) ? { ...c, divertToRoadId: null } : c)),
+    removedIndustryIds: p.removedIndustryIds.filter((i) => industryIds.has(i)),
+    industryIntensityOverrides: overrides,
+  };
 }
 
 function buildResult(

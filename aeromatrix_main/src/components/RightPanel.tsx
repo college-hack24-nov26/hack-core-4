@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { useTwinStore } from '../store/useTwinStore';
 import { Section, StatusBadge } from './ui';
+import { useCandidateDrawer, useIndustryDrawer, useResultDrawer, useRoadDrawer, type DrawerContent } from './drawers';
 import {
   POLLUTANT_LABEL,
   POLLUTANT_UNIT,
@@ -12,73 +13,49 @@ import {
   SOURCE_LABELS,
 } from '../utils/colors';
 import { POLLUTANTS } from '../services/pollutionModel';
-import { fmt, fmtInt } from '../utils/format';
+import { fmt, fmtInt, fmtSigned } from '../utils/format';
 import { zoneLabel } from '../utils/zones';
+import { displayedStates } from '../map/mapSync';
 import type { SourceContribution } from '../types';
 
 const SOURCES: Array<keyof SourceContribution> = ['traffic', 'industry', 'background', 'other'];
 
-export function RightPanel() {
-  const rightOpen = useTwinStore((s) => s.rightOpen);
+function useCellDrawer(): DrawerContent | null {
   const selectedCellId = useTwinStore((s) => s.selectedCellId);
   const base = useTwinStore((s) => s.base);
   const baseline = useTwinStore((s) => s.baseline);
+  const mode = useTwinStore((s) => s.displayMode);
+  const activeResult = useTwinStore((s) => s.activeResult);
   const names = useTwinStore((s) => s.placeNames);
-  const selectCell = useTwinStore((s) => s.selectCell);
 
   const cell = useMemo(() => base?.cells.find((c) => c.id === selectedCellId), [base, selectedCellId]);
-  const state = useMemo(() => baseline.find((s) => s.cellId === selectedCellId), [baseline, selectedCellId]);
+  const states = useTwinStore((s) => displayedStates(s));
+  const state = useMemo(() => states.find((s) => s.cellId === selectedCellId), [states, selectedCellId]);
+  const baseState = useMemo(() => baseline.find((s) => s.cellId === selectedCellId), [baseline, selectedCellId]);
+  if (!cell || !state || !base) return null;
 
-  useEffect(() => {
-    if (!rightOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') selectCell(null);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [rightOpen, selectCell]);
-
-  if (!rightOpen || !cell || !state) return null;
-
+  const showDelta = mode !== 'baseline' && !!activeResult && !!baseState;
+  const delta = showDelta ? state.pm25 - baseState!.pm25 : 0;
   const donut = SOURCES.map((k) => ({ key: k, name: SOURCE_LABELS[k], value: state.contributionAbs[k] }));
 
-  return (
-    <aside
-      aria-label="Zone details"
-      className="sheet-surface theme-cream hairline animate-slide-in absolute right-3 top-3 bottom-3 z-20 flex w-[344px] flex-col xl:w-[392px] max-md:animate-sheet-up max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:top-auto max-md:h-[60dvh] max-md:w-auto max-md:rounded-b-none"
-    >
-      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-sand-400/15 px-4 py-3">
-        <div className="min-w-0">
-          <h2 className="truncate font-display text-lg font-bold text-sand-50">{zoneLabel(cell, names)}</h2>
-          <p className="text-xs text-sand-400">
-            {cell.id} · {cell.landUse} · {fmtInt(cell.population)} people
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          <StatusBadge status={base?.status ?? 'DEMO'} />
-          <button
-            type="button"
-            onClick={() => selectCell(null)}
-            aria-label="Close zone details"
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-sand-300 hover:bg-ink-800 md:h-9 md:w-9"
-          >
-            <X size={18} />
-          </button>
-        </div>
-      </div>
-
-      <div className="panel-scroll min-h-0 flex-1 px-4 pb-4">
+  return {
+    title: zoneLabel(cell, names),
+    subtitle: `${cell.id} · ${cell.landUse} · ${fmtInt(cell.population)} people`,
+    body: (
+      <>
         <div className="flex items-center justify-between pt-3">
           <div>
-            <div className="text-[11px] font-medium text-sand-400">PM2.5</div>
+            <div className="text-[11px] font-medium text-sand-400">PM2.5{showDelta ? ' (scenario)' : ''}</div>
             <div className="font-display text-3xl font-bold leading-none text-sand-50">
               {fmt(state.pm25)} <span className="text-xs font-medium text-sand-400">ug/m3</span>
             </div>
+            {showDelta && (
+              <div className={`mt-1 text-xs font-bold ${delta < 0 ? 'text-emerald-600' : delta > 0 ? 'text-red-600' : 'text-sand-300'}`}>
+                {fmtSigned(delta, 2)} vs baseline {fmt(baseState!.pm25)}
+              </div>
+            )}
           </div>
-          <span
-            className="rounded-full px-3 py-1 text-xs font-bold text-white"
-            style={{ background: RISK_COLOR[state.risk] }}
-          >
+          <span className="rounded-full px-3 py-1 text-xs font-bold text-white" style={{ background: RISK_COLOR[state.risk] }}>
             {RISK_LABEL[state.risk]} risk
           </span>
         </div>
@@ -100,16 +77,7 @@ export function RightPanel() {
             <div className="h-[132px] w-[132px] shrink-0" aria-label="Source contribution donut chart">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={donut}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius={38}
-                    outerRadius={60}
-                    paddingAngle={2}
-                    stroke="none"
-                    isAnimationActive={false}
-                  >
+                  <Pie data={donut} dataKey="value" nameKey="name" innerRadius={38} outerRadius={60} paddingAngle={2} stroke="none" isAnimationActive={false}>
                     {donut.map((d) => (
                       <Cell key={d.key} fill={SOURCE_COLORS[d.key as keyof typeof SOURCE_COLORS]} />
                     ))}
@@ -149,9 +117,62 @@ export function RightPanel() {
         </Section>
 
         <p className="rounded-xl bg-ink-850 p-3 text-[11px] leading-relaxed text-sand-300 hairline">
-          DEMO values from seeded demo inputs and an uncalibrated rule-based model. Not an observation.
+          {showDelta ? 'MODELED_SCENARIO values' : 'DEMO values'} from seeded inputs and an uncalibrated rule-based model. Not an observation.
         </p>
+      </>
+    ),
+  };
+}
+
+/** The right drawer: its content switches by what is selected (zone, industry, road, site, scenario result). */
+export function RightPanel() {
+  const rightOpen = useTwinStore((s) => s.rightOpen);
+  const mode = useTwinStore((s) => s.displayMode);
+  const baseStatus = useTwinStore((s) => s.base?.status ?? 'DEMO');
+  const clear = useTwinStore((s) => s.selectCell);
+
+  const cell = useCellDrawer();
+  const industry = useIndustryDrawer();
+  const road = useRoadDrawer();
+  const candidate = useCandidateDrawer();
+  const result = useResultDrawer();
+  const content = industry ?? road ?? candidate ?? result ?? cell;
+  const badge = industry || road || candidate || result ? null : mode === 'baseline' ? baseStatus : 'MODELED_SCENARIO';
+
+  useEffect(() => {
+    if (!rightOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') clear(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [rightOpen, clear]);
+
+  if (!rightOpen || !content) return null;
+
+  return (
+    <aside
+      aria-label="Details"
+      className="sheet-surface theme-cream hairline animate-slide-in absolute right-3 top-3 bottom-3 z-20 flex w-[344px] flex-col xl:w-[392px] max-md:animate-sheet-up max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:top-auto max-md:h-[60dvh] max-md:w-auto max-md:rounded-b-none"
+    >
+      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-sand-400/15 px-4 py-3">
+        <div className="min-w-0">
+          <h2 className="truncate font-display text-lg font-bold text-sand-50">{content.title}</h2>
+          <p className="text-xs text-sand-400">{content.subtitle}</p>
+        </div>
+        <div className="flex items-center gap-1">
+          {badge && <StatusBadge status={badge} />}
+          <button
+            type="button"
+            onClick={() => clear(null)}
+            aria-label="Close details"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-sand-300 hover:bg-ink-800 md:h-9 md:w-9"
+          >
+            <X size={18} />
+          </button>
+        </div>
       </div>
+      <div className="panel-scroll min-h-0 flex-1 px-4 pb-4">{content.body}</div>
     </aside>
   );
 }

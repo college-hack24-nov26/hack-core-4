@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PROTOTYPE rule-based pollution model. UNCALIBRATED.
  *
  * This engine is illustrative only: simple, transparent rules (traffic, industry plumes, street
@@ -26,7 +26,20 @@ export const MODEL_VERSION = '0.1.0-demo';
 
 export const POLLUTANTS: Pollutant[] = ['pm25', 'pm10', 'no2', 'so2', 'co', 'o3'];
 
-export const COEF = {
+export interface Coefficients {
+  trafficPmAtFull: number;
+  industryPmAtFull: number;
+  plumeLengthKm: number;
+  regionalBackground: number;
+  dustBase: number;
+  dustPerDensity: number;
+  greenPerPoint: number;
+  greenBufferBoostPts: number;
+  greenBufferEmissionFactor: number;
+  greenBufferRadiusKm: number;
+}
+
+export const COEF: Coefficients = {
   trafficPmAtFull: 42,
   industryPmAtFull: 62,
   plumeLengthKm: 2.0,
@@ -37,7 +50,7 @@ export const COEF = {
   greenBufferBoostPts: 8,
   greenBufferEmissionFactor: 0.85,
   greenBufferRadiusKm: 2.0,
-} as const;
+};
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -51,7 +64,7 @@ export function meteoFactor(w: Weather): number {
 }
 
 /** Plume weight of a source at a receptor: decays with distance, stretched and boosted downwind. */
-export function plumeKernel(src: LonLat, rcp: LonLat, w: Weather): number {
+export function plumeKernel(src: LonLat, rcp: LonLat, w: Weather, coef: Coefficients = COEF): number {
   const d = Math.max(0.35, haversineKm(src, rcp));
   const towards = ((w.windDirection + 180) * Math.PI) / 180;
   const wx = Math.sin(towards);
@@ -60,7 +73,7 @@ export function plumeKernel(src: LonLat, rcp: LonLat, w: Weather): number {
   const norm = Math.hypot(ex, ny);
   const cos = norm === 0 ? 0 : (wx * ex + wy * ny) / norm;
   const ws = Math.min(w.windSpeed, 6) / 6;
-  const length = COEF.plumeLengthKm * (1 + 0.8 * Math.max(0, cos) * (w.windSpeed / 3));
+  const length = coef.plumeLengthKm * (1 + 0.8 * Math.max(0, cos) * (w.windSpeed / 3));
   const directional = cos > 0 ? 1 + 1.1 * cos * ws : Math.max(0.35, 1 + 0.7 * cos * ws);
   return Math.exp(-d / length) * directional;
 }
@@ -77,7 +90,11 @@ function activeIndustries(base: BaseState, p: ScenarioParams): Industry[] {
   return [...kept, ...p.addedIndustries];
 }
 
-export function computeCellStates(base: BaseState, params: ScenarioParams): CellState[] {
+export function computeCellStates(
+  base: BaseState,
+  params: ScenarioParams,
+  coef: Coefficients = COEF,
+): CellState[] {
   const w = params.weather;
   const meteo = meteoFactor(w);
   const localScale = base.calibration?.localScale ?? 1;
@@ -120,40 +137,40 @@ export function computeCellStates(base: BaseState, params: ScenarioParams): Cell
 
     const nearAdded =
       params.greenBuffer &&
-      addedIndustries.some((i) => haversineKm(i.location, cell.center) <= COEF.greenBufferRadiusKm);
+      addedIndustries.some((i) => haversineKm(i.location, cell.center) <= coef.greenBufferRadiusKm);
     const green = clamp(
-      cell.greenCover + params.greenCoverDelta + (nearAdded ? COEF.greenBufferBoostPts : 0),
+      cell.greenCover + params.greenCoverDelta + (nearAdded ? coef.greenBufferBoostPts : 0),
       0,
       95,
     );
     const density = clamp(cell.buildingDensity + params.buildingDensityDelta, 0.02, 0.98);
     const height = cell.avgBuildingHeight * params.buildingHeightMultiplier;
     const canyon = clamp(1 + 0.3 * (density - 0.4) + 0.12 * (height / 25 - 1) * density, 0.8, 1.5);
-    const greenFactor = 1 - COEF.greenPerPoint * green;
+    const greenFactor = 1 - coef.greenPerPoint * green;
     const localMod = canyon * greenFactor * meteo;
 
-    const trafficPM = (traffic / 100) * COEF.trafficPmAtFull * (1 - params.vehicleEmissionControl);
+    const trafficPM = (traffic / 100) * coef.trafficPmAtFull * (1 - params.vehicleEmissionControl);
 
     let industryPM = 0;
     let industrySO2 = 0;
     let industryNO2 = 0;
     for (const ind of industries) {
       const control = 1 - (1 - ind.controlEfficiency) * (1 - params.industrialControl);
-      const buffered = params.greenBuffer && ind.scenarioAdded ? COEF.greenBufferEmissionFactor : 1;
-      const e = (ind.emissionIntensity / 100) * (1 - control) * COEF.industryPmAtFull * buffered;
+      const buffered = params.greenBuffer && ind.scenarioAdded ? coef.greenBufferEmissionFactor : 1;
+      const e = (ind.emissionIntensity / 100) * (1 - control) * coef.industryPmAtFull * buffered;
       const contribution = e * plumeKernel(ind.location, cell.center, w);
       industryPM += contribution;
       industrySO2 += contribution * (ind.mainPollutants.includes('so2') ? 1 : 0.25);
       industryNO2 += contribution * (ind.mainPollutants.includes('no2') ? 1 : 0.3);
     }
 
-    const otherPM = (COEF.dustBase + COEF.dustPerDensity * density) * Math.exp(-0.1 * w.rainfall);
+    const otherPM = (coef.dustBase + coef.dustPerDensity * density) * Math.exp(-0.1 * w.rainfall);
 
     const contributionAbs: SourceContribution = {
       traffic: trafficPM * localMod * localScale,
       industry: industryPM * localMod * localScale,
       other: otherPM * localMod * localScale,
-      background: COEF.regionalBackground * (0.5 + 0.5 * meteo) * backgroundScale,
+      background: coef.regionalBackground * (0.5 + 0.5 * meteo) * backgroundScale,
     };
     const pm25 =
       contributionAbs.traffic + contributionAbs.industry + contributionAbs.other + contributionAbs.background;

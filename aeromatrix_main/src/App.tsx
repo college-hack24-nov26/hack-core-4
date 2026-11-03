@@ -5,9 +5,22 @@ import { LeftPanel } from './components/LeftPanel';
 import { RightPanel } from './components/RightPanel';
 import { OrbitNav } from './components/OrbitNav';
 import { IntroOverlay } from './components/IntroOverlay';
+import { BottomPanel } from './components/BottomPanel';
+import { Toast } from './components/Toast';
 import { CesiumMap } from './map/CesiumMap';
 import { MapLegend } from './map/MapLegend';
 import { useTwinStore } from './store/useTwinStore';
+import { startLiveScenario } from './store/liveScenario';
+import type { Section } from './types';
+
+const SECTIONS: Section[] = [
+  'overview', 'air', 'zones', 'traffic', 'industries', 'green', 'simulator', 'scenarios', 'actions', 'locations', 'sensors', 'analytics', 'data',
+];
+
+function sectionFromHash(): Section | null {
+  const h = window.location.hash.replace(/^#\/?/, '');
+  return (SECTIONS as string[]).includes(h) ? (h as Section) : null;
+}
 
 function LoadingOverlay() {
   return (
@@ -51,7 +64,37 @@ export function App() {
   const init = useTwinStore((s) => s.init);
 
   useEffect(() => {
+    // Deep link: #scenarios, #data, #actions ... open that section.
+    const fromHash = sectionFromHash();
+    if (fromHash) {
+      const s = useTwinStore.getState();
+      s.setSection(fromHash);
+      s.setLeftOpen(true);
+    }
+    const onHash = () => {
+      const sec = sectionFromHash();
+      if (sec && sec !== useTwinStore.getState().section) {
+        useTwinStore.getState().setSection(sec);
+        useTwinStore.getState().setLeftOpen(true);
+      }
+    };
+    window.addEventListener('hashchange', onHash);
+    const unsubSection = useTwinStore.subscribe((s, prev) => {
+      if (s.section !== prev.section && sectionFromHash() !== s.section) {
+        try {
+          window.history.replaceState(null, '', `#${s.section}`);
+        } catch {
+          /* history unavailable: deep links just will not update */
+        }
+      }
+    });
+    const stopLive = startLiveScenario();
     void init();
+    return () => {
+      window.removeEventListener('hashchange', onHash);
+      unsubSection();
+      stopLive();
+    };
   }, [init]);
 
   return (
@@ -67,10 +110,12 @@ export function App() {
             <OrbitNav />
           </>
         )}
+        <Toast />
         <IntroOverlay />
         {loading && !hasBase && <LoadingOverlay />}
         {error && <ErrorOverlay message={error} />}
       </main>
+      <BottomPanel />
     </div>
   );
 }

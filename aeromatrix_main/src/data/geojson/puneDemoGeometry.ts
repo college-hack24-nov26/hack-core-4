@@ -375,3 +375,14 @@ export const URBAN_CENTRES: UrbanCentre[] = [
   { name: 'Katraj', center: [73.86, 18.46], weight: 0.45 },
   { name: 'Wakad', center: [73.76, 18.6], weight: 0.45 },
 ];
+
+import type { CityGeometry } from '../../types';
+
+/** The demo city as a CityGeometry (the fallback when OpenStreetMap geometry is not loaded). */
+export const PUNE_DEMO_GEOMETRY: CityGeometry = {
+  source: 'demo',
+  roads: PUNE_ROADS,
+  greenAreas: PUNE_GREEN_AREAS,
+  industrialAreas: PUNE_INDUSTRIAL_AREAS,
+  industries: PUNE_INDUSTRIES,
+};

@@ -79,3 +79,51 @@ export function cellAreaKm2(b: BBox): number {
   const h = haversineKm([b.west, b.south], [b.west, b.north]);
   return w * h;
 }
+
+// ---- V2 additions ----
+
+export function pathLengthKm(path: LonLat[]): number {
+  let d = 0;
+  for (let i = 1; i < path.length; i++) d += haversineKm(path[i - 1], path[i]);
+  return d;
+}
+
+export function polygonAreaKm2(poly: LonLat[]): number {
+  if (poly.length < 3) return 0;
+  const lat0 = (poly[0][1] * Math.PI) / 180;
+  const kx = 111.32 * Math.cos(lat0);
+  const ky = 110.57;
+  let s = 0;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    s += poly[j][0] * kx * (poly[i][1] * ky) - poly[i][0] * kx * (poly[j][1] * ky);
+  }
+  return Math.abs(s) / 2;
+}
+
+export function polygonCentroid(poly: LonLat[]): LonLat {
+  let x = 0;
+  let y = 0;
+  const n = poly.length > 1 && poly[0][0] === poly[poly.length - 1][0] && poly[0][1] === poly[poly.length - 1][1] ? poly.length - 1 : poly.length;
+  for (let i = 0; i < n; i++) {
+    x += poly[i][0];
+    y += poly[i][1];
+  }
+  return [x / Math.max(1, n), y / Math.max(1, n)];
+}
+
+/** Whether a path's bounding box, grown by marginKm, overlaps a bbox. */
+export function pathNearBBox(path: LonLat[], b: BBox, marginKm: number): boolean {
+  const mLat = marginKm / 110.57;
+  const mLon = marginKm / (111.32 * Math.cos((((b.south + b.north) / 2) * Math.PI) / 180));
+  let west = Infinity;
+  let south = Infinity;
+  let east = -Infinity;
+  let north = -Infinity;
+  for (const [x, y] of path) {
+    if (x < west) west = x;
+    if (x > east) east = x;
+    if (y < south) south = y;
+    if (y > north) north = y;
+  }
+  return !(east < b.west - mLon || west > b.east + mLon || north < b.south - mLat || south > b.north + mLat);
+}

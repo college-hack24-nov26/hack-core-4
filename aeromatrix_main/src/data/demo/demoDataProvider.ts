@@ -1,9 +1,13 @@
 /**
- * DEMO data provider: the ONLY source of demo values in V1.
+ * DEMO data provider: the ONLY source of demo values.
  * Everything here is deterministic (seeded) and approximate. It is labelled DEMO everywhere.
+ *
+ * It builds the grid over whatever CityGeometry it is given: the hand-digitised demo city, or real OpenStreetMap
+ * geometry (only the geometry is real; traffic and emissions stay DEMO assumptions).
  */
 import type {
   BaseState,
+  CityGeometry,
   GridCell,
   LandUse,
   LonLat,
@@ -12,15 +16,15 @@ import type {
   Weather,
 } from '../../types';
 import type { DataProvider } from '../../services/dataProvider';
+import { PUNE, PUNE_DEMO_GEOMETRY, URBAN_CENTRES } from '../geojson/puneDemoGeometry';
 import {
-  PUNE,
-  PUNE_GREEN_AREAS,
-  PUNE_INDUSTRIAL_AREAS,
-  PUNE_INDUSTRIES,
-  PUNE_ROADS,
-  URBAN_CENTRES,
-} from '../geojson/puneDemoGeometry';
-import { cellAreaKm2, distanceToPathKm, haversineKm, pointInPolygon } from '../../utils/geo';
+  bboxOf,
+  cellAreaKm2,
+  distanceToPathKm,
+  haversineKm,
+  pathNearBBox,
+  pointInPolygon,
+} from '../../utils/geo';
 import { hashSeed, mulberry32 } from '../../utils/prng';
 import { clamp } from '../../utils/format';
 
@@ -35,11 +39,30 @@ export const DEMO_WEATHER: Weather = {
 
 export const GRID_SIZES = [5, 10, 20] as const;
 
+interface IndexedPolygon {
+  poly: LonLat[];
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}
+
+function indexPolygons(polys: LonLat[][]): IndexedPolygon[] {
+  return polys.map((poly) => {
+    const b = bboxOf(poly);
+    return { poly, ...b };
+  });
+}
+
 function polygonCoverage(
-  polys: LonLat[][],
+  polys: IndexedPolygon[],
   bounds: { west: number; south: number; east: number; north: number },
   n = 7,
 ): number {
+  const near = polys.filter(
+    (p) => !(p.east < bounds.west || p.west > bounds.east || p.north < bounds.south || p.south > bounds.north),
+  );
+  if (near.length === 0) return 0;
   let hit = 0;
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
@@ -47,18 +70,19 @@ function polygonCoverage(
         bounds.west + ((i + 0.5) / n) * (bounds.east - bounds.west),
         bounds.south + ((j + 0.5) / n) * (bounds.north - bounds.south),
       ];
-      if (polys.some((poly) => pointInPolygon(p, poly))) hit++;
+      if (near.some((q) => p[0] >= q.west && p[0] <= q.east && p[1] >= q.south && p[1] <= q.north && pointInPolygon(p, q.poly))) hit++;
     }
   }
   return hit / (n * n);
 }
 
-function buildCells(gridSize: number): GridCell[] {
+function buildCells(gridSize: number, geometry: CityGeometry): GridCell[] {
   const { bbox } = PUNE;
   const dLon = (bbox.east - bbox.west) / gridSize;
   const dLat = (bbox.north - bbox.south) / gridSize;
-  const greenPolys = PUNE_GREEN_AREAS.map((g) => g.polygon);
-  const indPolys = PUNE_INDUSTRIAL_AREAS.map((g) => g.polygon);
+  const greenPolys = indexPolygons(geometry.greenAreas.map((g) => g.polygon));
+  const indPolys = indexPolygons(geometry.industrialAreas.map((g) => g.polygon));
+  const osm = geometry.source === 'osm';
   const cells: GridCell[] = [];
 
   for (let row = 0; row < gridSize; row++) {
@@ -85,13 +109,40 @@ function buildCells(gridSize: number): GridCell[] {
         }
       }
       const trafficByRoad: Record<string, number> = {};
-      for (const road of PUNE_ROADS) {
-        let dMin = Infinity;
-        for (const path of road.paths) {
-          for (const s of samples) dMin = Math.min(dMin, distanceToPathKm(s, path));
+      if (!osm) {
+        for (const road of geometry.roads) {
+          let dMin = Infinity;
+          for (const path of road.paths) {
+            for (const s of samples) dMin = Math.min(dMin, distanceToPathKm(s, path));
+          }
+          const v = road.volume * 0.6 * Math.exp(-dMin / 0.9);
+          if (v >= 1) trafficByRoad[road.id] = Math.round(v * 10) / 10;
         }
-        const v = road.volume * 0.6 * Math.exp(-dMin / 0.9);
-        if (v >= 1) trafficByRoad[road.id] = Math.round(v * 10) / 10;
+      } else {
+        // Class-weighted road density, squashed so dense cores saturate instead of exploding.
+        const raw: Array<[string, number]> = [];
+        let sum = 0;
+        for (const road of geometry.roads) {
+          let dMin = Infinity;
+          for (const path of road.paths) {
+            if (!pathNearBBox(path, bounds, 3.5)) continue;
+            for (const s of samples) dMin = Math.min(dMin, distanceToPathKm(s, path));
+          }
+          if (!Number.isFinite(dMin)) continue;
+          const r = road.volume * Math.exp(-dMin / 0.7);
+          if (r >= 0.5) {
+            raw.push([road.id, r]);
+            sum += r;
+          }
+        }
+        if (sum > 0) {
+          const total = 100 * (1 - Math.exp(-sum / 140));
+          raw.sort((a, b) => b[1] - a[1]);
+          for (const [rid, r] of raw.slice(0, 14)) {
+            const v = (total * r) / sum;
+            if (v >= 0.5) trafficByRoad[rid] = Math.round(v * 10) / 10;
+          }
+        }
       }
 
       let urban = 0;
@@ -140,23 +191,31 @@ function buildCells(gridSize: number): GridCell[] {
   return cells;
 }
 
+export function buildBaseState(gridSize: number, geometry: CityGeometry): BaseState {
+  return {
+    city: PUNE,
+    gridSize,
+    cells: buildCells(gridSize, geometry),
+    roads: geometry.roads,
+    industries: geometry.industries,
+    greenAreas: geometry.greenAreas,
+    industrialAreas: geometry.industrialAreas,
+    geometrySource: geometry.source,
+    weather: { ...DEMO_WEATHER },
+    status: 'DEMO',
+  };
+}
+
 class DemoDataProvider implements DataProvider {
   id = 'demo';
   label = 'Demo city model (DEMO)';
 
-  async getBaseState(gridSize: number): Promise<BaseState> {
-    return {
-      city: PUNE,
-      gridSize,
-      cells: buildCells(gridSize),
-      roads: PUNE_ROADS,
-      industries: PUNE_INDUSTRIES,
-      greenAreas: PUNE_GREEN_AREAS,
-      industrialAreas: PUNE_INDUSTRIAL_AREAS,
-      geometrySource: 'demo',
-      weather: { ...DEMO_WEATHER },
-      status: 'DEMO',
-    };
+  getDefaultGeometry(): CityGeometry {
+    return PUNE_DEMO_GEOMETRY;
+  }
+
+  async getBaseState(gridSize: number, geometry: CityGeometry = PUNE_DEMO_GEOMETRY): Promise<BaseState> {
+    return buildBaseState(gridSize, geometry);
   }
 
   async getTimeSeries(
