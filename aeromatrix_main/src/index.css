@@ -1,0 +1,213 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Schibsted Grotesk', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Schibsted Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-ink-950: #1c0a10;
+  --color-ink-900: #251017;
+  --color-ink-850: #2d141d;
+  --color-ink-800: #371924;
+  --color-ink-700: #4a2130;
+  --color-ink-600: #612b3d;
+
+  --color-sand-50: #fbf5e9;
+  --color-sand-100: #f4ead7;
+  --color-sand-200: #e8d9bf;
+  --color-sand-300: #d6c2a6;
+  --color-sand-400: #b8a08a;
+  --color-sand-500: #998371;
+  --color-sand-600: #78665b;
+  --color-sand-700: #594a44;
+  --color-sand-800: #3b2f2c;
+  --color-sand-900: #261d1c;
+
+  --color-accent-50: #fbeaec;
+  --color-accent-100: #f5cdd3;
+  --color-accent-200: #eba3af;
+  --color-accent-300: #dd7487;
+  --color-accent-400: #c84a62;
+  --color-accent-500: #a3263f;
+  --color-accent-600: #861d33;
+  --color-accent-700: #6b1729;
+  --color-accent-800: #4f111f;
+  --color-accent-900: #340b14;
+
+  --color-blush-200: #ecd2d2;
+  --color-blush-300: #d9adb1;
+  --color-blush-400: #c08a91;
+  --color-blush-500: #9f6a72;
+
+  --color-emerald-200: #a6e6d2;
+  --color-emerald-300: #63ccac;
+  --color-emerald-400: #2fae8b;
+  --color-emerald-500: #10846e;
+  --color-emerald-600: #0c6a58;
+
+  --color-wine: #4f111f;
+  --color-cream: #fbf5e9;
+
+  --ease-out-soft: cubic-bezier(0.22, 0.8, 0.24, 1);
+
+  --animate-rise: rise 0.45s var(--ease-out-soft) both;
+  --animate-slide-in: slide-in 0.35s var(--ease-out-soft) both;
+  --animate-sheet-up: sheet-up 0.4s var(--ease-out-soft) both;
+  --animate-fade: fade 0.3s ease both;
+  --animate-pulse-ring: pulse-ring 2.2s ease-out infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(-14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  @keyframes sheet-up {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes pulse-ring {
+    0% {
+      box-shadow: 0 0 0 0 rgba(163, 38, 63, 0.45);
+    }
+    70% {
+      box-shadow: 0 0 0 14px rgba(163, 38, 63, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(163, 38, 63, 0);
+    }
+  }
+}
+
+/* Vanilla Cream: re-points the same ramps so components read correctly on either surface. */
+.theme-cream {
+  --color-ink-950: #fbf6ec;
+  --color-ink-900: #f6eedd;
+  --color-ink-850: #f1e6d0;
+  --color-ink-800: #ebdec5;
+  --color-ink-700: #e1d0b4;
+  --color-ink-600: #d5c1a2;
+
+  --color-sand-50: #2a0f17;
+  --color-sand-100: #3a1a23;
+  --color-sand-200: #54323a;
+  --color-sand-300: #6e4a4f;
+  --color-sand-400: #8a6a68;
+  --color-sand-500: #a48a80;
+  --color-sand-600: #bba698;
+  --color-sand-700: #d0bfae;
+  --color-sand-800: #ddd0be;
+  --color-sand-900: #e8dccb;
+
+  color: var(--color-sand-100);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-ink-950);
+  color: var(--color-sand-100);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent-400);
+  outline-offset: 2px;
+}
+
+.hairline {
+  border: 1px solid color-mix(in srgb, var(--color-sand-400) 22%, transparent);
+}
+
+.sheet-surface {
+  background: color-mix(in srgb, var(--color-ink-950) 92%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  backdrop-filter: blur(16px) saturate(1.1);
+  border-radius: 20px;
+  box-shadow:
+    0 18px 50px -12px rgba(28, 10, 16, 0.55),
+    0 2px 8px rgba(28, 10, 16, 0.25);
+}
+
+.panel-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-sand-400) 45%, transparent) transparent;
+}
+.panel-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-sand-400) 45%, transparent);
+  border-radius: 8px;
+}
+
+/* Cesium widget tweaks */
+.cesium-widget-credits {
+  font-size: 10px;
+  padding: 0 8px 2px;
+  pointer-events: auto;
+}
+.cesium-viewer,
+.cesium-viewer-cesiumWidgetContainer,
+.cesium-widget,
+.cesium-widget canvas {
+  width: 100%;
+  height: 100%;
+}
+.cesium-widget canvas {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
