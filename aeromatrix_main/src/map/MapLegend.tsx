@@ -2,13 +2,15 @@
 import { useTwinStore } from '../store/useTwinStore';
 import { POLLUTANT_LABEL, POLLUTANT_RANGE, POLLUTANT_UNIT, deltaScaleFor, legendGradient } from '../utils/colors';
 import { StatusBadge } from '../components/ui';
+import { useMapSource } from './heatSource';
 import { OSM_ATTRIBUTION } from '../services/osmGeometry';
 
 export function MapLegend() {
   const pollutant = useTwinStore((s) => s.pollutant);
   const mode = useTwinStore((s) => s.displayMode);
   const result = useTwinStore((s) => s.activeResult);
-  const status = useTwinStore((s) => s.base?.status ?? 'DEMO');
+  const src = useMapSource();
+  const status = src.status;
   const rightOpen = useTwinStore((s) => s.rightOpen);
   const geometry = useTwinStore((s) => s.geometryInfo);
   const [lo, hi] = POLLUTANT_RANGE[pollutant];
@@ -38,7 +40,7 @@ export function MapLegend() {
         <span className="text-xs font-bold text-sand-50">
           {showDelta ? `Change in ${POLLUTANT_LABEL[pollutant]}` : POLLUTANT_LABEL[pollutant]}
         </span>
-        <StatusBadge status={mode === 'baseline' ? status : 'MODELED_SCENARIO'} />
+        {src.values === null ? <span className="rounded-full bg-ink-700 px-2 py-0.5 text-[10px] font-bold tracking-wider text-sand-300">NO OVERLAY</span> : <StatusBadge status={status} />}
       </div>
       {showDelta ? (
         <>
@@ -63,7 +65,8 @@ export function MapLegend() {
             <span>{hi.toFixed(dp)}+</span>
           </div>
           <div className="mt-1 text-[10px] text-sand-400">
-            {POLLUTANT_UNIT[pollutant]} (colour scale only){mode === 'scenario' ? ', scenario values' : ''}
+            {POLLUTANT_UNIT[pollutant]} (colour scale only)
+            {src.values === null ? '' : `: ${src.label}`}
           </div>
         </>
       )}

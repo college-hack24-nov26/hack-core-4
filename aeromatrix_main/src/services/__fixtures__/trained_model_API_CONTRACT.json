@@ -1,0 +1,804 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AeroMatrix Portable Trained Backend",
+    "description": "Real station observations and 24h forecasts. Historical snapshots are explicitly labelled. No retraining on startup. See RESPONSE_EXAMPLES.json for verified real responses, metadata/model_metrics.json for full evaluation schema, and INTEGRATION_GUIDE.md for status semantics.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions": {
+      "get": {
+        "summary": "Regions",
+        "operationId": "regions_regions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pollution": {
+      "get": {
+        "summary": "Pollution",
+        "operationId": "pollution_pollution_get",
+        "parameters": [
+          {
+            "name": "region",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Region"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/forecast": {
+      "get": {
+        "summary": "Forecast",
+        "operationId": "forecast_forecast_get",
+        "parameters": [
+          {
+            "name": "region",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Region"
+            }
+          },
+          {
+            "name": "pollutant",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pollutant"
+            }
+          },
+          {
+            "name": "allow_historical",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Allow Historical"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Forecast With Observations",
+        "operationId": "forecast_with_observations_forecast_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForecastRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/model/metrics": {
+      "get": {
+        "summary": "Metrics",
+        "operationId": "metrics_model_metrics_get",
+        "parameters": [
+          {
+            "name": "pollutant",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Pollutant"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/location": {
+      "get": {
+        "summary": "Location",
+        "operationId": "location_location_get",
+        "parameters": [
+          {
+            "name": "longitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Longitude"
+            }
+          },
+          {
+            "name": "latitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Latitude"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/boundaries": {
+      "get": {
+        "summary": "Boundaries",
+        "operationId": "boundaries_boundaries_get",
+        "parameters": [
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "pune-electoral-wards_2022.geojson",
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/industry": {
+      "get": {
+        "summary": "Industry",
+        "operationId": "industry_industry_get",
+        "parameters": [
+          {
+            "name": "longitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 180,
+              "minimum": -180,
+              "title": "Longitude"
+            }
+          },
+          {
+            "name": "latitude",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "maximum": 90,
+              "minimum": -90,
+              "title": "Latitude"
+            }
+          },
+          {
+            "name": "radius_km",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "maximum": 30,
+              "exclusiveMinimum": 0,
+              "default": 5,
+              "title": "Radius Km"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/industry/district-emissions": {
+      "get": {
+        "summary": "District Emissions",
+        "operationId": "district_emissions_industry_district_emissions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/aqi/history": {
+      "get": {
+        "summary": "Historical Aqi",
+        "operationId": "historical_aqi_aqi_history_get",
+        "parameters": [
+          {
+            "name": "region",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Region"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ForecastRequest": {
+        "properties": {
+          "region": {
+            "type": "string",
+            "title": "Region"
+          },
+          "pollutants": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pollutants"
+          },
+          "allow_historical": {
+            "type": "boolean",
+            "title": "Allow Historical",
+            "default": false
+          },
+          "units": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Units",
+            "description": "Required for every submitted parameter; exact canonical units from /health"
+          },
+          "observations": {
+            "items": {
+              "$ref": "#/components/schemas/HourlyObservation"
+            },
+            "type": "array",
+            "maxItems": 336,
+            "minItems": 16,
+            "title": "Observations"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "region",
+          "units",
+          "observations"
+        ],
+        "title": "ForecastRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HourlyObservation": {
+        "properties": {
+          "time": {
+            "type": "string",
+            "title": "Time",
+            "description": "ISO timestamp with explicit timezone; already aggregated hourly observations"
+          },
+          "values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Values",
+            "description": "Canonical parameter names. Missing values must be null, not zero."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "time",
+          "values"
+        ],
+        "title": "HourlyObservation"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "Unavailable": {
+        "type": "object",
+        "required": [
+          "status",
+          "reason"
+        ],
+        "properties": {
+          "status": {
+            "const": "UNAVAILABLE"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "Station": {
+        "type": "object",
+        "required": [
+          "station",
+          "station_name",
+          "name",
+          "aliases",
+          "latitude",
+          "longitude",
+          "source_files"
+        ],
+        "properties": {
+          "station": {
+            "type": "string"
+          },
+          "station_name": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "latitude": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "longitude": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "source_files": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "PollutantPrediction": {
+        "type": "object",
+        "required": [
+          "pollutant",
+          "value",
+          "unit",
+          "issued_at",
+          "valid_at",
+          "horizon_hours",
+          "historical",
+          "model",
+          "lower",
+          "upper",
+          "uncertainty",
+          "test_metrics",
+          "reliability_warnings",
+          "imputed_features",
+          "source",
+          "spatial_scope",
+          "status",
+          "generated_at",
+          "observation_window",
+          "prediction_window"
+        ],
+        "properties": {
+          "pollutant": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "issued_at": {
+            "type": "string"
+          },
+          "valid_at": {
+            "type": "string"
+          },
+          "horizon_hours": {
+            "type": "integer"
+          },
+          "historical": {
+            "type": "boolean"
+          },
+          "model": {
+            "type": "object"
+          },
+          "lower": {
+            "type": "number"
+          },
+          "upper": {
+            "type": "number"
+          },
+          "uncertainty": {
+            "type": "object"
+          },
+          "test_metrics": {
+            "type": "object"
+          },
+          "reliability_warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "imputed_features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "spatial_scope": {
+            "type": "string"
+          },
+          "status": {
+            "const": "PREDICTED"
+          },
+          "generated_at": {
+            "type": "string"
+          },
+          "observation_window": {
+            "type": "object",
+            "required": [
+              "start",
+              "end"
+            ],
+            "properties": {
+              "start": {
+                "type": "string"
+              },
+              "end": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "prediction_window": {
+            "type": "object",
+            "required": [
+              "start",
+              "end",
+              "statistic"
+            ],
+            "properties": {
+              "start": {
+                "type": "string"
+              },
+              "end": {
+                "type": "string"
+              },
+              "statistic": {
+                "const": "hourly_mean"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "ForecastResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Unavailable"
+          },
+          {
+            "type": "object",
+            "required": [
+              "status",
+              "region",
+              "pollutants",
+              "aqi",
+              "scenario_note"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "PREDICTED",
+                  "PARTIAL",
+                  "UNAVAILABLE"
+                ]
+              },
+              "region": {
+                "$ref": "#/components/schemas/Station"
+              },
+              "pollutants": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/PollutantPrediction"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Unavailable"
+                    }
+                  ]
+                }
+              },
+              "aqi": {
+                "$ref": "#/components/schemas/Unavailable"
+              },
+              "scenario_note": {
+                "type": "string"
+              },
+              "input_observed_aqi": {
+                "type": "object"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  }
+}

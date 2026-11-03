@@ -1,18 +1,41 @@
 import { useEffect, useRef, useState } from 'react';
-import { CircleHelp, Database } from 'lucide-react';
+import { ArrowLeft, CircleHelp, Database } from 'lucide-react';
 import { LogoMark, Wordmark } from './Brand';
 import { Segmented, StatusBadge, STATUS_STYLE } from './ui';
 import { useTwinStore } from '../store/useTwinStore';
+import { useMapSource } from '../map/heatSource';
+import { isLiveFresh } from '../services/liveData';
 import { POLLUTANT_LABEL } from '../utils/colors';
 import { POLLUTANTS } from '../services/pollutionModel';
 import type { DataStatus, Pollutant } from '../types';
 
+const env = import.meta.env as Record<string, string | undefined>;
+/** "Back to site": only a link in V3. */
+export const LANDING_URL = env.VITE_LANDING_URL || 'http://localhost:3000/';
+
 const STATUS_ORDER: DataStatus[] = ['DEMO', 'MODELED_SCENARIO', 'OBSERVED', 'MODEL_DATA', 'MODEL_PREDICTION'];
+
+function Row({ name, ok, text }: { name: string; ok: boolean | null; text: string }) {
+  return (
+    <li className="flex items-start gap-2 text-xs">
+      <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${ok === true ? 'bg-emerald-500' : ok === false ? 'bg-red-500' : 'bg-sand-500'}`} aria-hidden />
+      <span>
+        <span className="font-semibold text-sand-50">{name}</span> <span className="text-sand-300">{text}</span>
+      </span>
+    </li>
+  );
+}
 
 function DataSourceMenu() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const src = useMapSource();
+  const svc = useTwinStore((s) => s.modelService);
+  const live = useTwinStore((s) => s.live);
+  const obs = useTwinStore((s) => s.observations);
+  const industry = useTwinStore((s) => s.industry);
+  const mode = useTwinStore((s) => s.displayMode);
 
   useEffect(() => {
     if (!open) return;
@@ -33,6 +56,8 @@ function DataSourceMenu() {
     };
   }, [open]);
 
+  const liveOn = isLiveFresh(live);
+
   return (
     <div ref={wrapRef} className="relative">
       <button
@@ -41,23 +66,36 @@ function DataSourceMenu() {
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-11 w-11 items-center justify-center gap-1.5 rounded-xl text-xs md:w-auto md:px-2.5 font-semibold text-sand-200 hairline hover:bg-ink-800 md:h-9"
+        title={src.values === null ? `No ${mode} overlay` : `The map shows: ${src.label}`}
+        className="flex h-11 w-11 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold text-sand-200 hairline hover:bg-ink-800 md:h-9 md:w-auto md:px-2.5"
       >
         <Database size={16} />
         <span className="max-md:hidden">Data</span>
-        <StatusBadge status="DEMO" className="max-md:hidden" />
+        {src.values === null ? (
+          <span className="rounded-full bg-ink-700 px-2 py-0.5 text-[10px] font-bold tracking-wider text-sand-300 max-md:hidden">NO OVERLAY</span>
+        ) : (
+          <StatusBadge status={src.status} className="max-md:hidden" />
+        )}
       </button>
       {open && (
         <div
           role="dialog"
           aria-label="About the data"
-          className="sheet-surface theme-cream hairline animate-rise absolute right-0 top-full z-50 mt-2 w-[min(88vw,340px)] p-4"
+          className="sheet-surface theme-cream hairline animate-rise absolute right-0 top-full z-50 mt-2 max-h-[80dvh] w-[min(92vw,360px)] overflow-y-auto p-4"
         >
           <h2 className="mb-1 text-sm font-bold text-sand-50">Where the numbers come from</h2>
-          <p className="mb-3 text-xs text-sand-300">
-            Every value in AeroMatrix carries one of these labels. In this version, everything is{' '}
-            <strong>DEMO</strong>: seeded demo inputs run through an uncalibrated rule-based model.
+          <p className="mb-2 text-xs text-sand-300">
+            The map currently shows: <strong>{src.values === null ? 'nothing (no data for this mode)' : src.label}</strong>
+            {src.values !== null && <StatusBadge status={src.status} className="ml-1.5 align-middle" />}
           </p>
+          <h3 className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-sand-400">Connections</h3>
+          <ul className="mb-3 space-y-1.5">
+            <Row name="Trained model service" ok={svc.status === 'online' ? true : svc.status === 'connecting' ? null : false} text={svc.status === 'online' ? `online · ${svc.stations.length} stations` : svc.status === 'connecting' ? 'connecting…' : 'offline · stations show "No data feed"'} />
+            <Row name="Live Open-Meteo data" ok={liveOn ? true : live.status === 'loading' || live.status === 'idle' ? null : false} text={liveOn ? 'on' : live.status === 'loading' || live.status === 'idle' ? 'loading…' : 'off (unavailable)'} />
+            <Row name="Observations" ok={obs ? true : null} text={obs ? `${obs.stations.length} imported stations` : 'none imported'} />
+            <Row name="Industry dataset" ok={industry?.status === 'loaded' ? true : industry ? false : null} text={industry?.status === 'loaded' ? 'loaded' : 'not loaded'} />
+          </ul>
+          <h3 className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-sand-400">What each label means</h3>
           <ul className="space-y-2">
             {STATUS_ORDER.map((s) => (
               <li key={s} className="flex items-start gap-2">
@@ -66,9 +104,7 @@ function DataSourceMenu() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-[11px] text-sand-400">
-            Never use this prototype for health, legal or planning decisions.
-          </p>
+          <p className="mt-3 text-[11px] text-sand-400">Never use this prototype for health, legal or planning decisions.</p>
         </div>
       )}
     </div>
@@ -139,6 +175,13 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-1.5">
+        <a
+          href={LANDING_URL}
+          title="Back to site"
+          className="flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold text-sand-200 hairline hover:bg-ink-800 max-lg:hidden"
+        >
+          <ArrowLeft size={14} /> Back to site
+        </a>
         <DataSourceMenu />
         <button
           type="button"

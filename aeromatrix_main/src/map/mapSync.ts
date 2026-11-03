@@ -1,19 +1,34 @@
 import { useTwinStore, type TwinStoreState } from '../store/useTwinStore';
-import type { CellState, LayerId } from '../types';
-import { deltaScaleFor } from '../utils/colors';
+import type { LayerId } from '../types';
+import { AQI_COLORS, type AqiCategory } from '../services/cpcbAqi';
+import { isMeasured } from '../services/aeromatrixApi';
+import { displayedStates, heatSource } from './heatSource';
+import { placedPoints, summariseStations } from '../services/observations';
+import { pollutionColor, rgbCss } from '../utils/colors';
 import type { TwinMap } from './TwinMap';
 
-/** The states the map should currently show (baseline, or the active scenario when it matches this base). */
-export function displayedStates(s: TwinStoreState): CellState[] {
-  const r = s.activeResult;
-  const fresh = r && s.base && r.scenario.length === s.base.cells.length && r.scenario[0]?.cellId === s.base.cells[0]?.id;
-  return s.displayMode !== 'baseline' && fresh ? r.scenario : s.baseline;
-}
+export { displayedStates };
 
 const LAYER_IDS: LayerId[] = [
   'heatmap', 'grid', 'roads', 'industries', 'green', 'buildings', 'terrain', 'satellite', 'risk', 'labels',
-  'elevationTint', 'shadows', 'photoreal', 'places',
+  'elevationTint', 'shadows', 'photoreal', 'places', 'stations', 'midcAreas', 'industrySites',
 ];
+
+const GREY = '#9aa0a6';
+
+/** Marker colour of a station: its last AQI category, or grey when it has no reading. */
+export function stationStyle(s: TwinStoreState): Record<string, { color: string; outdated: boolean }> {
+  const out: Record<string, { color: string; outdated: boolean }> = {};
+  for (const st of s.catalog.stations) {
+    const m = s.modelService.measured[st.id];
+    if (isMeasured(m) && (m.aqi.status === 'AVAILABLE' || m.aqi.status === 'LOWER_BOUND') && m.aqi.category && m.aqi.category in AQI_COLORS) {
+      out[st.id] = { color: AQI_COLORS[m.aqi.category as AqiCategory], outdated: !!m.historical };
+    } else {
+      out[st.id] = { color: GREY, outdated: false };
+    }
+  }
+  return out;
+}
 
 /**
  * Subscribes to the store and updates the map imperatively
@@ -28,23 +43,21 @@ export function bindMapToStore(map: TwinMap): () => void {
     const r = s.activeResult;
     const fresh = !!r && r.scenario.length === base.cells.length && r.scenario[0]?.cellId === base.cells[0]?.id;
 
-    // Heatmap
+    // Heatmap: whichever source the display mode names (a missing source clears the overlay)
     if (
       baseChanged ||
       pv.baseline !== s.baseline ||
       pv.pollutant !== s.pollutant ||
       pv.displayMode !== s.displayMode ||
-      pv.activeResult !== s.activeResult
+      pv.activeResult !== s.activeResult ||
+      pv.live !== s.live ||
+      pv.observedField !== s.observedField ||
+      pv.observations !== s.observations ||
+      pv.forecastLayer !== s.forecastLayer ||
+      pv.modelService.status !== s.modelService.status
     ) {
-      if (s.displayMode === 'delta' && fresh) {
-        const values = base.cells.map((c) => r.delta[c.id]?.[s.pollutant] ?? 0);
-        map.setHeatmap(base, values, { kind: 'delta', pollutant: s.pollutant, scale: deltaScaleFor(s.pollutant, values) });
-      } else {
-        const states = displayedStates(s);
-        const byId = new Map(states.map((x) => [x.cellId, x]));
-        const values = base.cells.map((c) => byId.get(c.id)?.[s.pollutant] ?? 0);
-        map.setHeatmap(base, values, { kind: 'pollution', pollutant: s.pollutant });
-      }
+      const src = heatSource(s);
+      map.setHeatmap(base, src.values, src.spec);
     }
 
     if (baseChanged) {
@@ -63,7 +76,7 @@ export function bindMapToStore(map: TwinMap): () => void {
       const cellById = new Map(base.cells.map((c) => [c.id, c]));
       const sel = s.selectedCellId ? cellById.get(s.selectedCellId) : undefined;
       const affected =
-        s.displayMode !== 'baseline' && fresh
+        (s.displayMode === 'scenario' || s.displayMode === 'delta') && fresh
           ? r.affectedZones.flatMap((id) => {
               const c = cellById.get(id);
               return c ? [{ row: c.row, col: c.col, delta: r.delta[id]?.pm25 ?? 0 }] : [];
@@ -107,6 +120,34 @@ export function bindMapToStore(map: TwinMap): () => void {
     }
     if (baseChanged || pv.candidates !== s.candidates || pv.selectedCandidateId !== s.selectedCandidateId) {
       map.setCandidates(s.candidates, s.selectedCandidateId);
+    }
+
+    // Monitoring stations: only those with a sourced coordinate; colour = last AQI category, grey = no reading
+    if (
+      baseChanged ||
+      pv.catalog !== s.catalog ||
+      pv.modelService.measured !== s.modelService.measured ||
+      pv.selectedStationId !== s.selectedStationId ||
+      pv.observations !== s.observations ||
+      pv.obsWindow !== s.obsWindow ||
+      pv.pollutant !== s.pollutant
+    ) {
+      // Imported observation stations with a coordinate are drawn too, coloured by their observed mean (OBSERVED).
+      const imported = s.observations ? placedPoints(summariseStations(s.observations, s.obsWindow), s.pollutant) : [];
+      const style = stationStyle(s);
+      const extra = imported.map((p) => {
+        const id = `obsmark:${p.name}`;
+        style[id] = { color: rgbCss(pollutionColor(s.pollutant, p.value)), outdated: false };
+        return { id, name: ` · ${Math.round(p.value)}`, lat: p.lat, lon: p.lon };
+      });
+      map.setStations([...s.catalog.stations, ...extra], style, s.selectedStationId);
+    }
+
+    // MIDC estates and mapped industry sites (only when the drop-in dataset is loaded)
+    if (baseChanged || pv.industry !== s.industry || pv.selectedAreaCode !== s.selectedAreaCode || pv.selectedSiteId !== s.selectedSiteId) {
+      const data = s.industry?.status === 'loaded' ? s.industry.data : null;
+      map.setMidc(data ? data.areas.filter((a) => a.rings.length > 0) : null, s.selectedAreaCode);
+      map.setSites(data ? data.sites.filter((x) => x.inAnalysisArea) : [], s.selectedSiteId);
     }
 
     // 3D risk columns follow the displayed scenario

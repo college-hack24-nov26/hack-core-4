@@ -4,6 +4,7 @@ import { useTwinStore } from '../store/useTwinStore';
 import { Chip, Toggle } from '../components/ui';
 import { Compass, FieldError, GroupCard, ParamSlider, errorFor } from './controls';
 import { ResultsStrip } from './ResultsStrip';
+import { RegionScenarioSection } from '../components/RegionScenarioPanels';
 import { PRESETS } from './presets';
 import { builtUpCells } from '../scenarios/actions';
 import { cellAreaKm2 } from '../utils/geo';
@@ -48,6 +49,8 @@ export function WhatIfPanel() {
   const [share, setShare] = useState(0.7);
   const [saveName, setSaveName] = useState('');
   const [trees, setTrees] = useState(0);
+  const [regionId, setRegionId] = useState('');
+  const catalog = useTwinStore((s) => s.catalog);
 
   const roads = useMemo(() => {
     if (!base) return [];
@@ -480,6 +483,33 @@ export function WhatIfPanel() {
         >
           Reset to current weather
         </button>
+      </GroupCard>
+
+      <GroupCard
+        title="Monitoring region (trained model)"
+        hint="Apply this scenario's relative change to the trained model's baseline for a monitoring station. Hypothetical."
+      >
+        <select
+          value={regionId}
+          onChange={(e) => setRegionId(e.target.value)}
+          aria-label="Monitoring region"
+          className={selectCls}
+        >
+          <option value="">Choose a station…</option>
+          {catalog.stations
+            .filter((s) => s.api)
+            .map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+        </select>
+        {catalog.stations.every((s) => !s.api) && (
+          <p className="mt-1 text-[11px] text-sand-400">No data feed: the trained model service is not connected.</p>
+        )}
+        <div className="mt-2">
+          <RegionScenarioSection stationId={regionId || null} />
+        </div>
       </GroupCard>
 
       <FieldError message={errors.find((e) => !/^(Traffic|Area|Vehicle|Public|Industrial|Green|Building|Wind|Rain|Temp|Humid|Pressure)/.test(e)) ?? null} />

@@ -1,6 +1,7 @@
 import { useTwinStore } from '../store/useTwinStore';
 import { cellAtLonLat } from '../utils/grid';
 import { nearestRoad } from '../utils/roads';
+import { areaContains } from '../services/industryData';
 import type { MapClickEvent } from './TwinMap';
 
 let lastAreaCell: { row: number; col: number } | null = null;
@@ -17,6 +18,14 @@ export function handleMapClick(e: MapClickEvent) {
   }
   if (e.pickedId?.startsWith('cand:')) {
     s.selectCandidate(e.pickedId.slice(5));
+    return;
+  }
+  if (e.pickedId?.startsWith('stn:')) {
+    s.selectStation(e.pickedId.slice(4));
+    return;
+  }
+  if (e.pickedId?.startsWith('site:')) {
+    s.selectSite(e.pickedId.slice(5));
     return;
   }
   const { lon, lat } = e;
@@ -61,6 +70,13 @@ export function handleMapClick(e: MapClickEvent) {
         const hit = nearestRoad(base.roads, [lon, lat], maxKm);
         if (hit) {
           s.selectRoad(hit.road.id);
+          return;
+        }
+      }
+      if (s.layers.midcAreas && s.industry?.status === 'loaded') {
+        const area = s.industry.data.areas.find((a) => areaContains(a, [lon, lat]));
+        if (area) {
+          s.selectArea(area.code);
           return;
         }
       }

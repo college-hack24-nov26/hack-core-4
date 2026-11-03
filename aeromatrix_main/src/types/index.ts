@@ -248,9 +248,13 @@ export type LayerId =
   | 'elevationTint'
   | 'shadows'
   | 'photoreal'
-  | 'places';
+  | 'places'
+  | 'stations'
+  | 'midcAreas'
+  | 'industrySites';
 
-export type DisplayMode = 'baseline' | 'scenario' | 'delta';
+/** baseline = DEMO rule model; scenario / delta = MODELED_SCENARIO; current = Open-Meteo MODEL_DATA; observed = imported OBSERVED data; forecast = trained-model MODEL_PREDICTION. */
+export type DisplayMode = 'baseline' | 'scenario' | 'delta' | 'current' | 'observed' | 'forecast';
 
 export type InteractionMode = 'select' | 'add-industry' | 'select-area' | 'pick-candidate';
 

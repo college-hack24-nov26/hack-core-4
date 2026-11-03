@@ -37,6 +37,28 @@ import {
 } from '../services/osmGeometry';
 import { exampleScenarios } from '../scenarios/examples';
 import { PHOTOREAL_AVAILABLE } from '../config';
+import { computeCellStates } from '../services/pollutionModel';
+import {
+  connectModelService as connectModel,
+  initialModelService,
+  refetchForecasts,
+  fetchAqiHistory,
+  type ModelServiceState,
+} from '../services/modelService';
+import { buildStationCatalog, loadVerifiedStations, type StationCatalog, type VerifiedLoad } from '../services/stations';
+import { initialLive, type LiveState } from '../services/liveState';
+import {
+  fitCalibration,
+  summariseStations,
+  type FitResult,
+  type ModelCalibration,
+  type ObservationDataset,
+  type ObservedField,
+  type ObsWindow,
+} from '../services/observations';
+import { loadIndustryData, type IndustryLoad } from '../services/industryData';
+import { buildForecastLayer, type ForecastLayer } from '../analytics/forecastLayer';
+import type { WeatherDataset } from '../data/import/weatherImport';
 import { zonePlaceNames } from '../utils/zones';
 import { uid } from '../utils/format';
 import { bboxContains } from '../utils/geo';
@@ -121,6 +143,9 @@ const DEFAULT_LAYERS: Record<LayerId, boolean> = {
   shadows: false,
   photoreal: PHOTOREAL_AVAILABLE,
   places: false,
+  stations: true,
+  midcAreas: false,
+  industrySites: false,
 };
 
 const EMPTY_WEATHER: Weather = { temperature: 27, windSpeed: 2.4, windDirection: 290, humidity: 58, rainfall: 0, pressure: 1009 };
@@ -153,6 +178,9 @@ const NO_SELECTION = {
   selectedCandidateId: null,
   resultOpen: false,
   rightOpen: false,
+  selectedStationId: null,
+  selectedAreaCode: null,
+  selectedSiteId: null,
 };
 
 function demoInfo(message: string | null, notice: string | null): GeometryInfo {
@@ -217,6 +245,23 @@ interface TwinState {
   geometry: CityGeometry | null;
   geometryInfo: GeometryInfo;
 
+  // V3: trained model service, stations, live model data, observations, industry
+  modelService: ModelServiceState;
+  verified: VerifiedLoad | null;
+  catalog: StationCatalog;
+  allowHistoricalForecast: boolean;
+  selectedStationId: string | null;
+  live: LiveState;
+  observations: ObservationDataset | null;
+  weatherObs: WeatherDataset | null;
+  obsWindow: ObsWindow;
+  observedField: ObservedField | null;
+  forecastLayer: ForecastLayer | null;
+  calibration: ModelCalibration | null;
+  industry: IndustryLoad | null;
+  selectedAreaCode: number | null;
+  selectedSiteId: string | null;
+
   init: (gridSize?: number) => Promise<void>;
   setGridSize: (n: number) => Promise<void>;
   setPollutant: (p: Pollutant) => void;
@@ -267,6 +312,21 @@ interface TwinState {
 
   loadOsm: (source: 'snapshot' | 'live') => Promise<void>;
   useDemoGeometry: () => Promise<void>;
+
+  connectModelService: () => Promise<void>;
+  loadStationCatalog: () => Promise<void>;
+  setAllowHistoricalForecast: (on: boolean) => Promise<void>;
+  loadAqiHistory: (stationName: string) => Promise<void>;
+  selectStation: (id: string | null) => void;
+  setLive: (patch: Partial<LiveState>) => void;
+  setObservations: (ds: ObservationDataset | null) => void;
+  setWeatherObs: (ds: WeatherDataset | null) => void;
+  setObsWindow: (w: ObsWindow) => void;
+  fitModelToObserved: () => FitResult;
+  resetCalibration: () => void;
+  loadIndustry: () => Promise<void>;
+  selectArea: (code: number | null) => void;
+  selectSite: (id: string | null) => void;
 }
 
 let initToken = 0;
@@ -299,7 +359,7 @@ export const useTwinStore = create<TwinState>((set, get) => {
 
   const markScenario = (patch: Partial<TwinState>): Partial<TwinState> => ({
     ...patch,
-    displayMode: get().displayMode === 'baseline' ? 'scenario' : get().displayMode,
+    displayMode: ['baseline', 'current', 'observed', 'forecast'].includes(get().displayMode) ? 'scenario' : get().displayMode,
   });
 
   return {
@@ -336,6 +396,19 @@ export const useTwinStore = create<TwinState>((set, get) => {
 
     candidates: [],
     siteProject: { category: 'Manufacturing', intensity: 60, greenBuffer: false },
+
+    modelService: initialModelService(),
+    verified: null,
+    catalog: { stations: [], unlocated: [], notice: 'Station list not loaded yet.', sourcesText: {} },
+    allowHistoricalForecast: false,
+    live: initialLive(),
+    observations: null,
+    weatherObs: null,
+    obsWindow: { kind: 'last24h' },
+    observedField: null,
+    forecastLayer: null,
+    calibration: null,
+    industry: null,
 
     geometry: null,
     geometryInfo: {
@@ -721,8 +794,105 @@ export const useTwinStore = create<TwinState>((set, get) => {
     async useDemoGeometry() {
       await applyGeometry(dataProvider.getDefaultGeometry(), demoInfo(null, null), true);
     },
+
+    // ---- V3: model service and stations ----
+
+    async loadStationCatalog() {
+      const verified = await loadVerifiedStations();
+      set({ verified, catalog: buildStationCatalog(get().modelService.stations, verified) });
+    },
+
+    async connectModelService() {
+      set({ modelService: { ...get().modelService, status: 'connecting', reason: null } });
+      const [svc, verified] = await Promise.all([connectModel(get().allowHistoricalForecast), loadVerifiedStations()]);
+      set({ modelService: svc, verified, catalog: buildStationCatalog(svc.stations, verified) });
+    },
+
+    async setAllowHistoricalForecast(on) {
+      set({ allowHistoricalForecast: on });
+      const svc = get().modelService;
+      if (svc.status !== 'online') return;
+      const { forecasts, errors } = await refetchForecasts(svc.stations, on);
+      if (get().allowHistoricalForecast !== on) return; // a newer toggle won
+      set({ modelService: { ...get().modelService, forecasts: { ...get().modelService.forecasts, ...forecasts }, errors } });
+    },
+
+    async loadAqiHistory(stationName) {
+      const h = await fetchAqiHistory(stationName);
+      if (h) set({ modelService: { ...get().modelService, aqiHistory: { ...get().modelService.aqiHistory, [stationName]: h } } });
+    },
+
+    selectStation(id) {
+      set({ ...NO_SELECTION, selectedStationId: id, rightOpen: id !== null });
+    },
+
+    setLive(patch) {
+      set({ live: { ...get().live, ...patch } });
+    },
+
+    // ---- V3: observations and calibration ----
+
+    setObservations(ds) {
+      set({ observations: ds && ds.readings.length > 0 ? ds : ds && ds.stations.length > 0 ? ds : null });
+      if (!ds || ds.readings.length === 0) get().resetCalibration();
+    },
+
+    setWeatherObs(ds) {
+      set({ weatherObs: ds && ds.readings.length > 0 ? ds : null });
+    },
+
+    setObsWindow(w) {
+      set({ obsWindow: w });
+    },
+
+    fitModelToObserved() {
+      const { base, observations, obsWindow } = get();
+      if (!base || !observations) return { ok: false, reason: 'Import air-quality observations first.' };
+      const summaries = summariseStations(observations, obsWindow);
+      const uncal = computeCellStates({ ...base, calibration: undefined }, defaultParams(base));
+      const label = obsWindow.kind === 'last24h' ? 'newest 24 h of the imported data' : 'selected period';
+      const fit = fitCalibration(base, uncal, summaries, label);
+      if (!fit.ok) return fit;
+      const nextBase = { ...base, calibration: { localScale: fit.calibration.localScale, backgroundScale: fit.calibration.backgroundScale } };
+      set({ base: nextBase, baseline: scenarioService.baseline(nextBase), calibration: fit.calibration });
+      return fit;
+    },
+
+    resetCalibration() {
+      const { base } = get();
+      if (!base) {
+        set({ calibration: null });
+        return;
+      }
+      const nextBase = { ...base, calibration: undefined };
+      set({ base: nextBase, baseline: scenarioService.baseline(nextBase), calibration: null });
+    },
+
+    // ---- V3: industry ----
+
+    async loadIndustry() {
+      set({ industry: await loadIndustryData() });
+    },
+
+    selectArea(code) {
+      set({ ...NO_SELECTION, selectedAreaCode: code, rightOpen: code !== null });
+    },
+
+    selectSite(id) {
+      set({ ...NO_SELECTION, selectedSiteId: id, rightOpen: id !== null });
+    },
   };
 });
+
+/** Recompute the forecast layer from the current stations and forecasts. */
+export function deriveForecastLayer(s: Pick<TwinStoreState, 'base' | 'catalog' | 'modelService' | 'pollutant'>): ForecastLayer | null {
+  if (!s.base) return null;
+  const forecasts: Record<string, import('../services/aeromatrixApi').ApiForecast | undefined> = {};
+  for (const [id, f] of Object.entries(s.modelService.forecasts)) {
+    if (f && 'pollutants' in f) forecasts[id] = f as import('../services/aeromatrixApi').ApiForecast;
+  }
+  return buildForecastLayer(s.base, s.catalog.stations, forecasts, s.pollutant);
+}
 
 export type TwinStoreState = ReturnType<typeof useTwinStore.getState>;
 export type { IndustryCategory };

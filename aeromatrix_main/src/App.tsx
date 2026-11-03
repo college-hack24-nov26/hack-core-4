@@ -11,16 +11,9 @@ import { CesiumMap } from './map/CesiumMap';
 import { MapLegend } from './map/MapLegend';
 import { useTwinStore } from './store/useTwinStore';
 import { startLiveScenario } from './store/liveScenario';
-import type { Section } from './types';
-
-const SECTIONS: Section[] = [
-  'overview', 'air', 'zones', 'traffic', 'industries', 'green', 'simulator', 'scenarios', 'actions', 'locations', 'sensors', 'analytics', 'data',
-];
-
-function sectionFromHash(): Section | null {
-  const h = window.location.hash.replace(/^#\/?/, '');
-  return (SECTIONS as string[]).includes(h) ? (h as Section) : null;
-}
+import { startDerived } from './store/derived';
+import { startLiveDataWhenReady } from './services/liveData';
+import { parseDeepLink } from './deepLink';
 
 function LoadingOverlay() {
   return (
@@ -64,23 +57,18 @@ export function App() {
   const init = useTwinStore((s) => s.init);
 
   useEffect(() => {
-    // Deep link: #scenarios, #data, #actions ... open that section.
-    const fromHash = sectionFromHash();
-    if (fromHash) {
-      const s = useTwinStore.getState();
-      s.setSection(fromHash);
-      s.setLeftOpen(true);
-    }
-    const onHash = () => {
-      const sec = sectionFromHash();
-      if (sec && sec !== useTwinStore.getState().section) {
-        useTwinStore.getState().setSection(sec);
-        useTwinStore.getState().setLeftOpen(true);
-      }
+    // Deep link at startup: #/air, #scenarios, ?section=simulator ...
+    const open = (sec: ReturnType<typeof parseDeepLink>) => {
+      if (!sec) return;
+      const st = useTwinStore.getState();
+      if (sec !== st.section) st.setSection(sec);
+      st.setLeftOpen(true);
     };
+    open(parseDeepLink(window.location.hash, window.location.search));
+    const onHash = () => open(parseDeepLink(window.location.hash, ''));
     window.addEventListener('hashchange', onHash);
     const unsubSection = useTwinStore.subscribe((s, prev) => {
-      if (s.section !== prev.section && sectionFromHash() !== s.section) {
+      if (s.section !== prev.section && parseDeepLink(window.location.hash, '') !== s.section) {
         try {
           window.history.replaceState(null, '', `#${s.section}`);
         } catch {
@@ -89,11 +77,18 @@ export function App() {
       }
     });
     const stopLive = startLiveScenario();
+    const stopDerived = startDerived();
+    const stopLiveData = startLiveDataWhenReady();
     void init();
+    // External feeds: each one fails into an honest "unavailable" state and never blocks the app.
+    void useTwinStore.getState().connectModelService();
+    void useTwinStore.getState().loadIndustry();
     return () => {
       window.removeEventListener('hashchange', onHash);
       unsubSection();
       stopLive();
+      stopDerived();
+      stopLiveData();
     };
   }, [init]);
 

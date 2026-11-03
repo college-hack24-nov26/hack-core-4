@@ -305,3 +305,143 @@ export class PlaceLayers {
     this.viewer.dataSources.remove(this.places, true);
   }
 }
+
+// ---- V3: monitoring stations and mapped industry sites ----
+
+export interface StationStyle {
+  /** CPCB category colour of the last AQI, or grey when the station has no reading */
+  color: string;
+}
+
+const stationIconCache = new Map<string, string>();
+
+function stationIcon(color: string, selected: boolean, outdated: boolean): string {
+  const key = `${color}|${selected}|${outdated}`;
+  const hit = stationIconCache.get(key);
+  if (hit) return hit;
+  const s = 64;
+  const c = document.createElement('canvas');
+  c.width = s;
+  c.height = s;
+  const ctx = c.getContext('2d');
+  if (!ctx) return '';
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(32, 32, 20, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.lineWidth = selected ? 6 : 4;
+  ctx.strokeStyle = selected ? '#a3263f' : '#ffffff';
+  ctx.stroke();
+  // inner antenna mark: a monitoring station
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(30, 20, 4, 24);
+  ctx.beginPath();
+  ctx.arc(32, 20, 5, 0, Math.PI * 2);
+  ctx.fill();
+  if (outdated) {
+    // a clock tick on the rim marks "Outdated"
+    ctx.strokeStyle = '#1c0a10';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(32, 32, 27, -Math.PI / 2, 0);
+    ctx.stroke();
+  }
+  const url = c.toDataURL('image/png');
+  stationIconCache.set(key, url);
+  return url;
+}
+
+export class StationLayer {
+  readonly ds = new CustomDataSource('stations');
+
+  constructor(private viewer: Viewer) {
+    void viewer.dataSources.add(this.ds);
+  }
+
+  /** Only stations that have a sourced coordinate are drawn. */
+  setData(
+    stations: Array<{ id: string; name: string; lat: number | null; lon: number | null }>,
+    style: Record<string, StationStyle & { outdated: boolean }>,
+    selectedId: string | null,
+  ) {
+    this.ds.entities.suspendEvents();
+    this.ds.entities.removeAll();
+    for (const s of stations) {
+      if (s.lat === null || s.lon === null) continue;
+      const st = style[s.id] ?? { color: '#9aa0a6', outdated: false };
+      this.ds.entities.add({
+        // Imported-observation markers (obsmark:) are display only: they are not selectable stations.
+        id: s.id.startsWith('obsmark:') ? s.id : `stn:${s.id}`,
+        position: Cartesian3.fromDegrees(s.lon, s.lat),
+        billboard: {
+          image: stationIcon(st.color, selectedId === s.id, st.outdated),
+          width: 34,
+          height: 34,
+          heightReference: HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          scaleByDistance: new NearFarScalar(1500, 1.15, 40000, 0.65),
+        },
+        label: {
+          text: s.name,
+          font: '600 12px sans-serif',
+          fillColor: Color.WHITE,
+          outlineColor: Color.fromCssColorString('#1c0a10'),
+          outlineWidth: 3,
+          style: LabelStyle.FILL_AND_OUTLINE,
+          verticalOrigin: VerticalOrigin.TOP,
+          pixelOffset: new Cartesian2(0, 20),
+          heightReference: HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          distanceDisplayCondition: new DistanceDisplayCondition(0, 9000),
+        },
+      });
+    }
+    this.ds.entities.resumeEvents();
+  }
+
+  setVisible(v: boolean) {
+    this.ds.show = v;
+  }
+
+  destroy() {
+    if (!this.viewer.isDestroyed()) this.viewer.dataSources.remove(this.ds, true);
+  }
+}
+
+/** Mapped OSM industry points (candidate sites, not a verified factory list). */
+export class IndustrySiteLayer {
+  readonly ds = new CustomDataSource('industry-sites');
+
+  constructor(private viewer: Viewer) {
+    void viewer.dataSources.add(this.ds);
+    this.ds.show = false;
+  }
+
+  setData(sites: Array<{ id: string; name: string; location: [number, number]; midcCode: number | null }>, selectedId: string | null) {
+    this.ds.entities.suspendEvents();
+    this.ds.entities.removeAll();
+    for (const s of sites) {
+      this.ds.entities.add({
+        id: `site:${s.id}`,
+        position: Cartesian3.fromDegrees(s.location[0], s.location[1]),
+        point: {
+          pixelSize: selectedId === s.id ? 13 : 8,
+          color: Color.fromCssColorString(s.midcCode !== null ? '#d19a2a' : '#8a6a68'),
+          outlineColor: Color.fromCssColorString(selectedId === s.id ? '#a3263f' : '#fbf5e9'),
+          outlineWidth: selectedId === s.id ? 3 : 1.5,
+          heightReference: HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+      });
+    }
+    this.ds.entities.resumeEvents();
+  }
+
+  setVisible(v: boolean) {
+    this.ds.show = v;
+  }
+
+  destroy() {
+    if (!this.viewer.isDestroyed()) this.viewer.dataSources.remove(this.ds, true);
+  }
+}

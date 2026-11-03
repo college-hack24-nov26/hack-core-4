@@ -22,6 +22,10 @@ import { ActionsPanel } from '../scenarios/ActionsPanel';
 import { ScenariosPanel } from '../scenarios/ScenariosPanel';
 import { LocationsPanel } from '../locations/LocationsPanel';
 import { DataPanel } from './DataPanel';
+import { AnalyticsPanel } from './AnalyticsPanel';
+import { IndustryPanel } from './IndustryPanels';
+import { ForecastTab, LiveNowTab, LiveStrip } from './LivePanels';
+import { StationsTab } from './StationPanels';
 
 const RISKS: RiskLevel[] = ['LOW', 'MODERATE', 'HIGH', 'VERY_HIGH'];
 
@@ -81,6 +85,10 @@ function Overview() {
           {RISK_LABEL[meanRisk]}
         </span>
       </div>
+
+      <Section title="Live air quality (model data)">
+        <LiveStrip />
+      </Section>
 
       <Section title="Risk distribution">
         <ul className="space-y-1.5">
@@ -146,7 +154,7 @@ function Overview() {
   );
 }
 
-function AirQuality() {
+function ModelTab() {
   const rows = useZoneRows();
   const pollutant = useTwinStore((s) => s.pollutant);
   const setPollutant = useTwinStore((s) => s.setPollutant);
@@ -259,6 +267,30 @@ function AirQuality() {
   );
 }
 
+function AirQuality() {
+  const [tab, setTab] = useState<'now' | 'stations' | 'forecast' | 'model'>('now');
+  return (
+    <div className="pt-3">
+      <Segmented
+        ariaLabel="Air quality view"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'now', label: 'Now (model data)' },
+          { value: 'stations', label: 'Monitoring stations' },
+          { value: 'forecast', label: 'Forecast' },
+          { value: 'model', label: 'Rule model' },
+        ]}
+        className="max-w-full flex-wrap"
+      />
+      {tab === 'now' && <LiveNowTab />}
+      {tab === 'stations' && <StationsTab />}
+      {tab === 'forecast' && <ForecastTab />}
+      {tab === 'model' && <ModelTab />}
+    </div>
+  );
+}
+
 function Zones() {
   const rows = useZoneRows();
   const pollutant = useTwinStore((s) => s.pollutant);
@@ -347,6 +379,8 @@ export function LeftPanel() {
     section === 'actions' ||
     section === 'locations' ||
     section === 'scenarios' ||
+    section === 'industries' ||
+    section === 'analytics' ||
     section === 'data'
       ? section
       : 'overview';
@@ -398,6 +432,8 @@ export function LeftPanel() {
         {active === 'locations' && <LocationsPanel />}
         {active === 'scenarios' && <ScenariosPanel />}
         {active === 'data' && <DataPanel />}
+        {active === 'industries' && <IndustryPanel />}
+        {active === 'analytics' && <AnalyticsPanel />}
       </div>
     </aside>
   );

@@ -4,6 +4,9 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from 'recharts';
 import { useTwinStore } from '../store/useTwinStore';
 import { Section, StatusBadge } from './ui';
 import { useCandidateDrawer, useIndustryDrawer, useResultDrawer, useRoadDrawer, type DrawerContent } from './drawers';
+import { useStationDrawer } from './StationPanels';
+import { useAreaDrawer, useSiteDrawer } from './IndustryPanels';
+import { isLiveFresh, liveValue, zonePointId } from '../services/liveData';
 import {
   POLLUTANT_LABEL,
   POLLUTANT_UNIT,
@@ -15,10 +18,50 @@ import {
 import { POLLUTANTS } from '../services/pollutionModel';
 import { fmt, fmtInt, fmtSigned } from '../utils/format';
 import { zoneLabel } from '../utils/zones';
-import { displayedStates } from '../map/mapSync';
+import { displayedStates, modeStatus } from '../map/heatSource';
 import type { SourceContribution } from '../types';
 
 const SOURCES: Array<keyof SourceContribution> = ['traffic', 'industry', 'background', 'other'];
+
+/** Observed vs modeled for the selected zone, when more than one source exists. Each value keeps its own status. */
+function CompareSection({ cellId }: { cellId: string }) {
+  const base = useTwinStore((s) => s.base);
+  const baseline = useTwinStore((s) => s.baseline);
+  const pollutant = useTwinStore((s) => s.pollutant);
+  const observed = useTwinStore((s) => s.observedField);
+  const forecast = useTwinStore((s) => s.forecastLayer);
+  const live = useTwinStore((s) => s.live);
+  const idx = base ? base.cells.findIndex((c) => c.id === cellId) : -1;
+  if (!base || idx < 0) return null;
+  const rule = baseline.find((s) => s.cellId === cellId)?.[pollutant];
+  const liveV = isLiveFresh(live) ? liveValue(live.points[zonePointId(cellId)], pollutant) : null;
+  const rows: Array<{ label: string; status: 'DEMO' | 'OBSERVED' | 'MODEL_DATA' | 'MODEL_PREDICTION'; value: number | null; note?: string }> = [
+    { label: 'Rule model', status: 'DEMO', value: rule ?? null },
+    ...(observed ? [{ label: 'Observed (interpolated)', status: 'OBSERVED' as const, value: observed.values[idx] ?? null, note: `nearest imported station ${fmt(observed.nearestKm[idx] ?? 0, 1)} km away` }] : []),
+    ...(liveV !== null ? [{ label: 'Open-Meteo model', status: 'MODEL_DATA' as const, value: liveV, note: '~40 km resolution' }] : []),
+    ...(forecast ? [{ label: 'Trained-model forecast (interpolated)', status: 'MODEL_PREDICTION' as const, value: forecast.field.values[idx] ?? null }] : []),
+  ];
+  if (rows.length < 2) return null;
+  return (
+    <Section title={`${POLLUTANT_LABEL[pollutant]} by source`}>
+      <ul className="space-y-1.5">
+        {rows.map((r) => (
+          <li key={r.label} className="flex items-start justify-between gap-2 rounded-lg bg-ink-850 p-2 text-xs hairline">
+            <span className="min-w-0">
+              <span className="font-semibold text-sand-100">{r.label}</span>
+              {r.note && <span className="block text-[10px] text-sand-500">{r.note}</span>}
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5">
+              <span className="font-mono text-sand-50">{r.value === null ? 'n/a' : fmt(r.value, pollutant === 'co' ? 2 : 1)}</span>
+              <StatusBadge status={r.status} />
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-1 text-[10px] text-sand-500">Values are shown side by side and never blended.</p>
+    </Section>
+  );
+}
 
 function useCellDrawer(): DrawerContent | null {
   const selectedCellId = useTwinStore((s) => s.selectedCellId);
@@ -34,7 +77,7 @@ function useCellDrawer(): DrawerContent | null {
   const baseState = useMemo(() => baseline.find((s) => s.cellId === selectedCellId), [baseline, selectedCellId]);
   if (!cell || !state || !base) return null;
 
-  const showDelta = mode !== 'baseline' && !!activeResult && !!baseState;
+  const showDelta = (mode === 'scenario' || mode === 'delta') && !!activeResult && !!baseState;
   const delta = showDelta ? state.pm25 - baseState!.pm25 : 0;
   const donut = SOURCES.map((k) => ({ key: k, name: SOURCE_LABELS[k], value: state.contributionAbs[k] }));
 
@@ -116,6 +159,8 @@ function useCellDrawer(): DrawerContent | null {
           </dl>
         </Section>
 
+        <CompareSection cellId={cell.id} />
+
         <p className="rounded-xl bg-ink-850 p-3 text-[11px] leading-relaxed text-sand-300 hairline">
           {showDelta ? 'MODELED_SCENARIO values' : 'DEMO values'} from seeded inputs and an uncalibrated rule-based model. Not an observation.
         </p>
@@ -136,8 +181,12 @@ export function RightPanel() {
   const road = useRoadDrawer();
   const candidate = useCandidateDrawer();
   const result = useResultDrawer();
-  const content = industry ?? road ?? candidate ?? result ?? cell;
-  const badge = industry || road || candidate || result ? null : mode === 'baseline' ? baseStatus : 'MODELED_SCENARIO';
+  const station = useStationDrawer();
+  const area = useAreaDrawer();
+  const site = useSiteDrawer();
+  const content = station ?? area ?? site ?? industry ?? road ?? candidate ?? result ?? cell;
+  const other = station || area || site || industry || road || candidate || result;
+  const badge = other ? null : modeStatus(mode, baseStatus);
 
   useEffect(() => {
     if (!rightOpen) return;

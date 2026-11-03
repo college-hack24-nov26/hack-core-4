@@ -28,11 +28,20 @@ import {
   renderGridCanvas,
   renderHeatmapCanvas,
   renderMarkupCanvas,
+  renderMidcCanvas,
   renderRoadsCanvas,
   type MarkupSpec,
 } from './layers/heatmapCanvas';
 import { OverlayLayer } from './layers/overlayLayer';
-import { CandidateLayer, IndustryLayer, PlaceLayers, RiskColumns } from './layers/entityLayers';
+import {
+  CandidateLayer,
+  IndustryLayer,
+  IndustrySiteLayer,
+  PlaceLayers,
+  RiskColumns,
+  StationLayer,
+  type StationStyle,
+} from './layers/entityLayers';
 import { BuildingTiles } from './buildingTiles';
 import { loadPhotoreal } from './photoreal';
 import { PUNE } from '../data/geojson/puneDemoGeometry';
@@ -109,6 +118,9 @@ export class TwinMap {
   private green: OverlayLayer;
   private roads: OverlayLayer;
   private markup: OverlayLayer;
+  private midc: OverlayLayer;
+  private stations: StationLayer;
+  private sites: IndustrySiteLayer;
   private industries: IndustryLayer;
   private candidates: CandidateLayer;
   private risk: RiskColumns;
@@ -160,6 +172,9 @@ export class TwinMap {
     this.roads = new OverlayLayer(this.viewer, this.rectangle, swap, true, 1);
     this.grid = new OverlayLayer(this.viewer, this.rectangle, swap, true, 0.7);
     this.markup = new OverlayLayer(this.viewer, this.rectangle, swap, true, 1);
+    this.midc = new OverlayLayer(this.viewer, this.rectangle, swap, false, 0.8);
+    this.stations = new StationLayer(this.viewer);
+    this.sites = new IndustrySiteLayer(this.viewer);
     this.industries = new IndustryLayer(this.viewer);
     this.candidates = new CandidateLayer(this.viewer);
     this.risk = new RiskColumns(this.viewer);
@@ -206,7 +221,10 @@ export class TwinMap {
     if (this.destroyed) return;
     const picked = this.viewer.scene.pick(pos) as { id?: { id?: unknown } } | undefined;
     const rawId = picked?.id?.id;
-    const pickedId = typeof rawId === 'string' && (rawId.startsWith('ind:') || rawId.startsWith('cand:')) ? rawId : null;
+    const pickedId =
+      typeof rawId === 'string' && (rawId.startsWith('ind:') || rawId.startsWith('cand:') || rawId.startsWith('stn:') || rawId.startsWith('site:'))
+        ? rawId
+        : null;
     const p = this.pick(pos);
     if (!p && !pickedId) return;
     this.cb.onClick({
@@ -272,7 +290,7 @@ export class TwinMap {
   private restack() {
     if (this.destroyed) return;
     const layers = this.viewer.imageryLayers;
-    for (const o of [this.heat, this.green, this.roads, this.grid, this.markup]) {
+    for (const o of [this.heat, this.green, this.midc, this.roads, this.grid, this.markup]) {
       const l = o.imagery;
       if (l && layers.contains(l)) layers.raiseToTop(l);
     }
@@ -291,7 +309,12 @@ export class TwinMap {
 
   // ---- overlays ----
 
-  setHeatmap(base: BaseState, values: number[], spec: HeatSpec) {
+  /** null values clear the heatmap: there is nothing honest to draw. */
+  setHeatmap(base: BaseState, values: number[] | null, spec: HeatSpec) {
+    if (values === null) {
+      this.heat.set(null);
+      return;
+    }
     const colorAt =
       spec.kind === 'pollution'
         ? (v: number) => pollutionColor(spec.pollutant, v)
@@ -318,6 +341,26 @@ export class TwinMap {
 
   setGreen(areas: Array<{ polygon: Array<[number, number]> }>) {
     this.green.set(() => renderGreenCanvas(areas, PUNE.bbox, 2048));
+  }
+
+  setStations(
+    stations: Array<{ id: string; name: string; lat: number | null; lon: number | null }>,
+    style: Record<string, StationStyle & { outdated: boolean }>,
+    selectedId: string | null,
+  ) {
+    this.stations.setData(stations, style, selectedId);
+  }
+
+  setMidc(areas: Array<{ code: number; rings: Array<Array<[number, number]>>; analysisArea: string }> | null, selectedCode: number | null) {
+    if (!areas) {
+      this.midc.set(null);
+      return;
+    }
+    this.midc.set(() => renderMidcCanvas(areas, PUNE.bbox, selectedCode, 2048));
+  }
+
+  setSites(sites: Array<{ id: string; name: string; location: [number, number]; midcCode: number | null }>, selectedId: string | null) {
+    this.sites.setData(sites, selectedId);
   }
 
   setIndustries(base: BaseState, params: ScenarioParams, selectedId: string | null) {
@@ -351,6 +394,15 @@ export class TwinMap {
         break;
       case 'risk':
         this.risk.setVisible(on);
+        break;
+      case 'stations':
+        this.stations.setVisible(on);
+        break;
+      case 'midcAreas':
+        this.midc.setVisible(on);
+        break;
+      case 'industrySites':
+        this.sites.setVisible(on);
         break;
       case 'labels':
         this.places.labels.show = on;
@@ -391,7 +443,7 @@ export class TwinMap {
 
   private async setPhotoreal(on: boolean) {
     if (this.destroyed) return;
-    const overlays = [this.heat, this.green, this.roads, this.grid, this.markup];
+    const overlays = [this.heat, this.green, this.midc, this.roads, this.grid, this.markup];
     if (!on) {
       this.photorealOn = false;
       if (this.photorealTileset) this.photorealTileset.show = false;
@@ -500,10 +552,12 @@ export class TwinMap {
     this.handler.destroy();
     this.buildings.destroy();
     this.industries.destroy();
+    this.stations.destroy();
+    this.sites.destroy();
     this.candidates.destroy();
     this.risk.destroy();
     this.places.destroy();
-    for (const o of [this.heat, this.green, this.roads, this.grid, this.markup]) o.destroy();
+    for (const o of [this.heat, this.green, this.midc, this.roads, this.grid, this.markup]) o.destroy();
     if (!this.viewer.isDestroyed()) this.viewer.destroy();
   }
 }

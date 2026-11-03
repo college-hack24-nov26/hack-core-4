@@ -40,6 +40,14 @@ const GROUPS: Array<{ title: string; items: Item[] }> = [
     ],
   },
   {
+    title: 'Stations and industry',
+    items: [
+      { id: 'stations', label: 'Monitoring stations', hint: 'Only stations with a sourced coordinate' },
+      { id: 'midcAreas', label: 'MIDC industrial areas', hint: 'Needs the industry dataset' },
+      { id: 'industrySites', label: 'Mapped industry sites', hint: 'Needs the industry dataset' },
+    ],
+  },
+  {
     title: 'Places',
     items: [
       { id: 'labels', label: 'Labels' },
@@ -52,6 +60,7 @@ export function LayerControl({ rightOffset }: { rightOffset: string }) {
   const [open, setOpen] = useState(false);
   const layers = useTwinStore((s) => s.layers);
   const notes = useTwinStore((s) => s.layerNotes);
+  const industryLoaded = useTwinStore((s) => s.industry?.status === 'loaded');
   const toggle = useTwinStore((s) => s.toggleLayer);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -116,11 +125,15 @@ export function LayerControl({ rightOffset }: { rightOffset: string }) {
                       type="checkbox"
                       role="switch"
                       checked={layers[it.id]}
+                      disabled={(it.id === 'midcAreas' || it.id === 'industrySites') && !industryLoaded}
                       onChange={() => toggle(it.id)}
-                      className="h-5 w-5 shrink-0 accent-accent-500"
+                      className="h-5 w-5 shrink-0 accent-accent-500 disabled:opacity-40"
                     />
                   </label>
                   {layers[it.id] && notes[it.id] && <p className="px-1 pb-1 text-[11px] text-amber-700">{notes[it.id]}</p>}
+                  {(it.id === 'midcAreas' || it.id === 'industrySites') && !industryLoaded && (
+                    <p className="px-1 pb-1 text-[11px] text-sand-500">Industry dataset not loaded.</p>
+                  )}
                 </div>
               ))}
             </fieldset>

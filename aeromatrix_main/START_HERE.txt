@@ -1,0 +1,34 @@
+AEROMATRIX - START HERE (new laptop)
+
+What you need
+  1. Git                      https://git-scm.com/downloads   (default options)
+  2. Node.js LTS             https://nodejs.org
+  3. Optional, for station forecasts only: 64-bit Python 3.12 from https://www.python.org/downloads/
+     (tick "Add python.exe to PATH"). Python 3.13 also works with the pinned requirements.
+
+Steps
+  1. Get the code:   git clone <repository-url>   then open the folder  aeromatrix_main
+  2. Double-click    RUN_AEROMATRIX.bat
+       - If the folder backend\trained_model exists, the launcher starts the model API (port 8000) in its own window.
+         The first run downloads packages and can take a few minutes. It never retrains.
+       - If it does not exist, the launcher says so and starts only the web app. Everything else still works.
+       - The web app starts on http://localhost:5173 and opens in your browser.
+  3. Close the two windows to stop.
+
+Without the model service
+  The app opens normally. Station panels say "No data feed" and nothing is invented. Live air-quality MODEL data
+  (Open-Meteo), CSV import, the What-If simulator, actions, sites and OpenStreetMap geometry all keep working.
+
+Optional files that can be added later (no code change needed, just restart)
+  backend\trained_model\...                          the trained model service package
+  public\data\station_coordinates_verified.json      sourced station coordinates (stations are drawn only with these)
+  public\data\industry\industry_data.json            MIDC estates, mapped industry sites, emission factors
+
+Optional settings
+  Copy .env.example to .env to set a Cesium ion token or Google Maps key (photorealistic city), the model API address,
+  the "Back to site" link or the live-data refresh interval. Never commit .env.
+
+Manual start (instead of the launcher)
+  npm install
+  npm run dev          -> http://localhost:5173
+  npm run typecheck ; npm test ; npm run build

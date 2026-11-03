@@ -222,3 +222,34 @@ export function renderGreenCanvas(areas: Array<{ polygon: LonLat[] }>, bbox: BBo
   }
   return canvas;
 }
+
+/** MIDC industrial estates as translucent polygons; the selected estate is outlined in the accent colour. */
+export function renderMidcCanvas(
+  areas: Array<{ code: number; rings: LonLat[][]; analysisArea: string }>,
+  bbox: BBox,
+  selectedCode: number | null,
+  size = 2048,
+): HTMLCanvasElement {
+  const [canvas, ctx] = blank(size);
+  if (!ctx) return canvas;
+  const proj = projector(bbox, size);
+  const k = size / 1024;
+  for (const a of areas) {
+    const selected = a.code === selectedCode;
+    for (const ring of a.rings) {
+      ctx.beginPath();
+      ring.forEach((pt, i) => {
+        const [x, y] = proj(pt);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = selected ? 'rgba(163,38,63,0.38)' : 'rgba(209,154,42,0.36)';
+      ctx.fill();
+      ctx.strokeStyle = selected ? '#a3263f' : 'rgba(150,100,10,0.95)';
+      ctx.lineWidth = (selected ? 3.5 : 1.8) * k;
+      ctx.stroke();
+    }
+  }
+  return canvas;
+}
