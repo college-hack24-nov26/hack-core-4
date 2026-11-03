@@ -3,32 +3,47 @@ AEROMATRIX - START HERE (new laptop)
 What you need
   1. Git                      https://git-scm.com/downloads   (default options)
   2. Node.js LTS             https://nodejs.org
-  3. Optional, for station forecasts only: 64-bit Python 3.12 from https://www.python.org/downloads/
-     (tick "Add python.exe to PATH"). Python 3.13 also works with the pinned requirements.
+  3. 64-bit Python 3.12 from https://www.python.org/downloads/ (tick "Add python.exe to PATH").
+     Needed for the AeroSage assistant, and for the model API and Sensor Intelligence once those packages are added.
+     Python 3.13 also works with the pinned requirements.
 
 Steps
   1. Get the code:   git clone <repository-url>   then open the folder  aeromatrix_main
   2. Double-click    RUN_AEROMATRIX.bat
-       - If the folder backend\trained_model exists, the launcher starts the model API (port 8000) in its own window.
-         The first run downloads packages and can take a few minutes. It never retrains.
-       - If it does not exist, the launcher says so and starts only the web app. Everything else still works.
-       - The web app starts on http://localhost:5173 and opens in your browser.
-  3. Close the two windows to stop.
+       The first run downloads about 1 GB of packages and can take 15-30 minutes. Later runs start in about a minute and
+       work offline, except live air quality. The launcher goes through five steps and skips any that are not installed:
+         1 of 5  Model API (port 8000)        only if backend\trained_model\bootstrap.py exists. It never retrains.
+         2 of 5  AeroSage assistant (8010)    sets itself up once, then starts.
+         3 of 5  Sensor Intelligence (8030)   only if backend\task2_model\aeromatrix_service.py exists.
+         4 of 5  Landing page (3000)          npm install once, then starts.
+         5 of 5  Web app (5173)               and opens the landing page in your browser.
+       A port that is already in use is left alone ("assuming it is running there").
+  3. On the landing page press "Explore the System". Close the windows to stop everything.
 
-Without the model service
-  The app opens normally. Station panels say "No data feed" and nothing is invented. Live air-quality MODEL data
-  (Open-Meteo), CSV import, the What-If simulator, actions, sites and OpenStreetMap geometry all keep working.
+Without the optional services
+  The app opens normally. Station panels say "No data feed", the Sensors screen says the service is offline, and AeroSage says
+  it cannot read station data. Nothing is invented. Live air-quality MODEL data (Open-Meteo), CSV import, the What-If simulator,
+  Plan-It, actions, sites and OpenStreetMap geometry all keep working.
 
 Optional files that can be added later (no code change needed, just restart)
   backend\trained_model\...                          the trained model service package
+  backend\task2_model\...                            the Sensor Intelligence package
   public\data\station_coordinates_verified.json      sourced station coordinates (stations are drawn only with these)
   public\data\industry\industry_data.json            MIDC estates, mapped industry sites, emission factors
+  landing\src\assets\*.jpg                           seven optional pictures for the landing page (see landing\README.md)
 
 Optional settings
-  Copy .env.example to .env to set a Cesium ion token or Google Maps key (photorealistic city), the model API address,
-  the "Back to site" link or the live-data refresh interval. Never commit .env.
+  Copy .env.example to .env to set a Cesium ion token or Google Maps key (photorealistic city), the service addresses,
+  the "Back to site" link or the live-data refresh interval. For AeroSage copy backend\chatbot\.env.example to
+  backend\chatbot\.env to add a GEMINI_API_KEY (optional: it lets AeroSage explain and translate). Never commit .env files.
+
+Ports
+  5173 web app   3000 landing   8000 model API   8010 AeroSage   8030 Sensor Intelligence
+  Override with AEROMATRIX_PORT, CHATBOT_PORT or TASK2_PORT before starting the launcher.
 
 Manual start (instead of the launcher)
   npm install
   npm run dev          -> http://localhost:5173
   npm run typecheck ; npm test ; npm run build
+  backend\chatbot\START_CHATBOT.bat        AeroSage
+  cd landing ; npm install ; npm run dev   landing page

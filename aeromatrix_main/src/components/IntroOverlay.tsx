@@ -1,10 +1,10 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react';
-import { Eye, ListChecks, ScanSearch, SlidersHorizontal, X, type LucideIcon } from 'lucide-react';
+import { ClipboardList, Eye, Factory, ListChecks, RadioTower, ScanSearch, SlidersHorizontal, X, type LucideIcon } from 'lucide-react';
 import { LogoMark } from './Brand';
 import { useTwinStore } from '../store/useTwinStore';
 import type { Section } from '../types';
 
-const STEPS: Array<{ icon: LucideIcon; title: string; body: string; section: Section | null }> = [
+const STEPS: Array<{ icon: LucideIcon; title: string; body: string; section: Section | null; planIt?: boolean }> = [
   {
     icon: Eye,
     title: 'Understand',
@@ -29,6 +29,25 @@ const STEPS: Array<{ icon: LucideIcon; title: string; body: string; section: Sec
     body: 'Rank six reduction actions and compare candidate sites for a new industry.',
     section: 'actions',
   },
+  {
+    icon: Factory,
+    title: 'Industries',
+    body: 'See MIDC estates and mapped industry sites, and test reducing, shutting down or relocating them.',
+    section: 'industries',
+  },
+  {
+    icon: RadioTower,
+    title: 'Sensors',
+    body: 'Replay a past hour with sensors removed and see how the second model recovers them.',
+    section: 'sensors',
+  },
+  {
+    icon: ClipboardList,
+    title: 'Plan-It',
+    body: 'Turn a budget into ranked, costed plans with sourced prices, and download a PDF.',
+    section: null,
+    planIt: true,
+  },
 ];
 
 export function IntroOverlay() {
@@ -36,6 +55,7 @@ export function IntroOverlay() {
   const setIntroOpen = useTwinStore((s) => s.setIntroOpen);
   const setSection = useTwinStore((s) => s.setSection);
   const setLeftOpen = useTwinStore((s) => s.setLeftOpen);
+  const setPlanItOpen = useTwinStore((s) => s.setPlanItOpen);
   const primaryRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -104,6 +124,7 @@ export function IntroOverlay() {
                   setLeftOpen(true);
                 }
                 setIntroOpen(false);
+                if (s.planIt) setPlanItOpen(true);
               }}
               className="rounded-2xl bg-ink-850 p-4 text-left hairline transition-colors hover:bg-ink-800"
             >
@@ -114,8 +135,10 @@ export function IntroOverlay() {
           ))}
         </div>
         <p className="mt-4 rounded-xl bg-ink-850 p-3 text-xs leading-relaxed text-sand-300 hairline">
-          Everything you see is <strong className="text-sand-100">DEMO</strong> data from a prototype model. It is not
-          a measurement or a forecast.
+          Every value carries a label: <strong className="text-sand-100">DEMO</strong> (prototype model),{' '}
+          <strong className="text-sand-100">OBSERVED</strong>, <strong className="text-sand-100">MODEL DATA</strong>,{' '}
+          <strong className="text-sand-100">MODEL PREDICTION</strong> or{' '}
+          <strong className="text-sand-100">MODELED SCENARIO</strong>. What-if results are hypothetical, not forecasts.
         </p>
         <button
           ref={primaryRef}

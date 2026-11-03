@@ -1,0 +1,93 @@
+@import 'tailwindcss';
+
+/* Cherry Cola / Vanilla Cream: the same palette as the web app. */
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
+
+  --color-cherry-950: #1c0a10;
+  --color-cherry-900: #251017;
+  --color-cherry-800: #371924;
+  --color-cherry-700: #4a2130;
+  --color-cherry-600: #612b3d;
+  --color-cherry-500: #a3263f;
+  --color-cherry-400: #c84a62;
+  --color-cherry-300: #dd7487;
+  --color-cherry-200: #eba3af;
+
+  --color-cream-50: #fdfaf2;
+  --color-cream-100: #fbf5e9;
+  --color-cream-200: #f4ead7;
+  --color-cream-300: #e8d9bf;
+  --color-cream-400: #d6c2a6;
+  --color-cream-600: #78665b;
+  --color-cream-800: #3b2f2c;
+
+  --animate-drift: drift 60s linear infinite;
+  --animate-rise: rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes drift {
+  from {
+    transform: translateX(-30%);
+  }
+  to {
+    transform: translateX(130vw);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 4.5rem;
+}
+
+body {
+  margin: 0;
+  background: var(--color-cream-100);
+  color: var(--color-cherry-950);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Reveal on scroll. Content is visible by default (no JS, server render); the hook marks off-screen blocks as pending. */
+[data-reveal='pending'] {
+  opacity: 0;
+  transform: translateY(24px);
+}
+[data-reveal='in'] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.8s ease,
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  [data-reveal='pending'] {
+    opacity: 1;
+    transform: none;
+  }
+  .cloud {
+    animation: none !important;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-cherry-500);
+  outline-offset: 3px;
+}

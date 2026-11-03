@@ -1,0 +1,35 @@
+{
+  "_about": "Static names only (NO coordinates). Merged at runtime with the station list from the model API's GET /regions when it is online.",
+  "stations": [
+    { "name": "Karve Road", "aliases": ["karve road", "karve"] },
+    { "name": "Mhada Colony", "aliases": ["mhada colony", "mhada"] },
+    { "name": "Alandi", "aliases": ["alandi", "आळंदी", "आलंदी"] },
+    { "name": "Bhosari", "aliases": ["bhosari", "भोसरी"] },
+    { "name": "Hadapsar", "aliases": ["hadapsar", "हडपसर"] },
+    { "name": "Transport Nagar-Nigdi", "aliases": ["transport nagar", "nigdi", "निगडी"] },
+    { "name": "Revenue Colony-Shivajinagar", "aliases": ["revenue colony", "shivajinagar", "शिवाजीनगर", "शिवाजी नगर"] },
+    { "name": "Katraj Dairy", "aliases": ["katraj dairy", "katraj", "कात्रज"] },
+    { "name": "Savitribai Phule Pune University", "aliases": ["savitribai phule pune university", "pune university", "university", "sppu", "विद्यापीठ"] },
+    { "name": "Bhumkar Nagar", "aliases": ["bhumkar nagar", "bhumkar"] },
+    { "name": "Panchawati Pashan", "aliases": ["panchawati pashan", "panchawati", "pashan", "पाषाण", "पंचवटी"] },
+    { "name": "Dhankawadi", "aliases": ["dhankawadi", "धनकवडी"] }
+  ],
+  "places": [
+    { "name": "Kothrud", "aliases": ["kothrud", "कोथरूड", "कोथरुड"], "note": "Kothrud has only historical AQI (the /aqi/history route); it is NOT mapped to Karve Road." },
+    { "name": "Baner", "aliases": ["baner", "बाणेर"], "note": "Baner is a locality, not one of the 12 monitoring stations." },
+    { "name": "Shivajinagar", "aliases": ["shivajinagar", "शिवाजीनगर"], "station": "Revenue Colony-Shivajinagar" }
+  ],
+  "pollutants": {
+    "pm25": ["pm2.5", "pm25", "pm 2.5", "pm2_5", "fine particulate", "फाइन पार्टिकुलेट"],
+    "pm10": ["pm10", "pm 10"],
+    "no2": ["no2", "nitrogen dioxide"],
+    "no": ["nitric oxide"],
+    "nox": ["nox"],
+    "so2": ["so2", "sulphur dioxide", "sulfur dioxide"],
+    "co": ["carbon monoxide"],
+    "o3": ["o3", "ozone"],
+    "nh3": ["nh3", "ammonia"],
+    "benzene": ["benzene"],
+    "aqi": ["aqi", "air quality index", "एक्यूआई", "वायु गुणवत्ता सूचकांक"]
+  }
+}

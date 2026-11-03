@@ -172,6 +172,8 @@ export interface ScenarioParams {
   industryIntensityOverrides: Record<string, number>;
   industrialControl: number;
   greenCoverDelta: number;
+  /** extra green-cover points for individual zones (used by Plan-It for targeted planting) */
+  greenCoverByCell?: Record<string, number>;
   greenBuffer: boolean;
   buildingDensityDelta: number;
   buildingHeightMultiplier: number;

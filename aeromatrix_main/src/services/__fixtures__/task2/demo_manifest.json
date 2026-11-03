@@ -1,0 +1,30 @@
+[
+  {
+    "name": "A_normal",
+    "status": "AVAILABLE",
+    "actual": 17.39,
+    "prediction": 12.204377044237154,
+    "absolute_error": 5.185622955762847
+  },
+  {
+    "name": "B_missing_readings",
+    "status": "AVAILABLE",
+    "actual": 12.63,
+    "prediction": 13.900273864759804,
+    "absolute_error": 1.2702738647598029
+  },
+  {
+    "name": "C_unseen_station",
+    "status": "AVAILABLE",
+    "actual": 34.6,
+    "prediction": 9.224218403386612,
+    "absolute_error": 25.37578159661339
+  },
+  {
+    "name": "D_severe_loss",
+    "status": "UNAVAILABLE",
+    "actual": 12.98,
+    "prediction": null,
+    "absolute_error": null
+  }
+]

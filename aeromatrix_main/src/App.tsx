@@ -7,6 +7,8 @@ import { OrbitNav } from './components/OrbitNav';
 import { IntroOverlay } from './components/IntroOverlay';
 import { BottomPanel } from './components/BottomPanel';
 import { Toast } from './components/Toast';
+import { PlanItPanel } from './plan/PlanItPanel';
+import { AeroSageHost } from './aerosage/AeroSageHost';
 import { CesiumMap } from './map/CesiumMap';
 import { MapLegend } from './map/MapLegend';
 import { useTwinStore } from './store/useTwinStore';
@@ -105,6 +107,8 @@ export function App() {
             <OrbitNav />
           </>
         )}
+        <PlanItPanel />
+        <AeroSageHost />
         <Toast />
         <IntroOverlay />
         {loading && !hasBase && <LoadingOverlay />}

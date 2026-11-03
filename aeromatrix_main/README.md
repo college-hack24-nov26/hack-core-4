@@ -1,10 +1,32 @@
-# AeroMatrix - Versions 1 to 3
+# AeroMatrix - Versions 1 to 4
 
 An urban air-quality digital twin of Pune and Pimpri-Chinchwad.
 
 - **V1 Foundation:** app shell, design system, demo city, rule-based pollution engine, 3D map.
 - **V2 Simulation:** What-If simulator, saved scenarios, reduction actions, candidate-site comparison, OpenStreetMap geometry, map layers.
 - **V3 Real data:** the trained station-forecast service, verified station coordinates, live Open-Meteo model data, CPCB AQI, CSV import, validation and calibration, a forecast layer, analytics and industry data.
+- **V4 Platform:** Plan-It budgeted plans, Sensor Intelligence (missing-sensor replay), the AeroSage assistant, the landing site, a one-click launcher and deploy notes.
+
+## Services and ports
+
+| Port | Service | Where | Required |
+| --- | --- | --- | --- |
+| 5173 | Web app (this folder) | `npm run dev` | yes |
+| 3000 | Landing site | `landing/` | no |
+| 8000 | Trained model API | `backend/trained_model/` (supplied separately) | no |
+| 8010 | AeroSage assistant | `backend/chatbot/` | no |
+| 8030 | Sensor Intelligence | `backend/task2_model/` (supplied separately) | no |
+
+Everything except the web app is optional. The browser reaches the model API and AeroSage directly (`VITE_AEROMATRIX_API_URL`,
+`VITE_CHATBOT_API_URL`) and Sensor Intelligence through the dev-server proxy `/task2/...` (`TASK2_API_TARGET`).
+
+```
+ browser ── web app (5173) ──┬── model API (8000)        read-only GET
+                             ├── AeroSage (8010) ── model API, Open-Meteo, knowledge notes
+                             ├── /task2 proxy ── Sensor Intelligence (8030)
+                             └── Open-Meteo, OpenStreetMap, map tiles
+ landing (3000) ── "Explore the System" ──> web app
+```
 
 ## Data disclaimer and what each label means
 
@@ -45,6 +67,17 @@ When those files are added later nothing in the code needs to change; restart th
 - **Industries** (launcher): 28 MIDC estates, mapped OSM industry points, fuel emission estimates with ARAI/TERI factors, ERA5 seasonal weather, and reduce / shut down / relocate actions on the modeled sources in or within 1 km. The source intensities are assumptions because the dataset has no facility emissions, and every screen says so.
 - **Region scenarios:** the What-If panel, station drawer and Analytics share one hypothetical evaluation: the trained model's baseline times the rule engine's relative change for the zone containing the station.
 
+**Platform (V4):**
+
+| Feature | What it does | Needs |
+| --- | --- | --- |
+| **Plan-It** (header button, Actions panel) | Turns a budget and a target area into up to three ranked plans (tree planting, industry controls, traffic management). The search is exhaustive and deterministic, costs are whole rupees that add up to the line items, and the effect comes from the same scenario engine as the What-If simulator, so *Preview on map* matches the plan's numbers. Every price shows whether it is sourced (with source and date) or an estimate; a missing price drops the option with a note. If nothing fits, it says so and suggests a budget. Download a PDF. | nothing |
+| **Sensors** (launcher, `#sensors`) | Replays a past hour with chosen sensors removed and shows how the second trained model recovers the next-hour PM2.5 / PM10 from nearby stations (donor table, timeline, AQI), plus a planner for illustrative actions under a budget. Always labelled historical replay. | Sensor Intelligence (8030). Without it the screen shows an offline state with start instructions. |
+| **AeroSage** (round button, bottom right) | Chat in English, Hindi or Marathi, with optional voice input and read-aloud. Station numbers come straight from the model API; project questions come from verified notes; it can open panels, select a station or set up a what-if. Anything that changes your scenario waits for your confirmation, and it only says an action happened after the app has confirmed it. | AeroSage (8010). The model API for station numbers. A Gemini key is optional (general questions, translation). |
+| **Landing site** | Explains Understand, Predict, Simulate and Act, and deep-links into the matching panel. | `landing/` (3000) |
+
+The app opens and every screen works with all of these backends off.
+
 ## Run it
 
 ```bash
@@ -55,9 +88,25 @@ npm test
 npm run build
 ```
 
-On Windows, double-click `RUN_AEROMATRIX.bat`. If `backend\trained_model\bootstrap.py` exists it starts the model API (port 8000) in its own window first (64-bit Python 3.12 preferred, falling back to the `python` on PATH and saying which). Otherwise it prints that the package is not installed and starts only the web app. See `START_HERE.txt` for a new laptop.
+On Windows, double-click `RUN_AEROMATRIX.bat`. It goes through five steps and starts what is installed: the model API (only if `backend\trained_model\bootstrap.py` exists), AeroSage (sets itself up on first run), Sensor Intelligence (only if `backend\task2_model\aeromatrix_service.py` exists), the landing page and the web app, then opens the landing page. Anything missing is skipped with a message and a port that is already listening is left alone. The first run downloads about 1 GB (15-30 minutes); later runs take about a minute. It prefers 64-bit Python 3.12, falling back to the `python` on PATH and saying which. See `START_HERE.txt` for a new laptop.
 
-Refresh the bundled OSM snapshot with `node scripts/fetch-osm-snapshot.mjs`. Copy `.env.example` to `.env` for the optional settings (`VITE_CESIUM_ION_TOKEN`, `VITE_GOOGLE_MAPS_API_KEY`, `VITE_AEROMATRIX_API_URL`, `VITE_LANDING_URL`, `VITE_LIVE_REFRESH_MINUTES`).
+Run AeroSage alone with `backend\chatbot\START_CHATBOT.bat` and its tests with `TEST_CHATBOT.bat`; run the landing site with `npm install` then `npm run dev` inside `landing/`.
+
+Refresh the bundled OSM snapshot with `node scripts/fetch-osm-snapshot.mjs`. Copy `.env.example` to `.env` for the optional settings (`VITE_CESIUM_ION_TOKEN`, `VITE_GOOGLE_MAPS_API_KEY`, `VITE_AEROMATRIX_API_URL`, `VITE_CHATBOT_API_URL`, `VITE_LANDING_URL`, `VITE_LIVE_REFRESH_MINUTES`).
+
+## Using real data
+
+Real data is added by dropping files in; no code changes are needed (restart afterwards):
+
+- the trained model package in `backend/trained_model/` for station readings and forecasts;
+- the Sensor Intelligence package in `backend/task2_model/`;
+- `public/data/station_coordinates_verified.json` for sourced station coordinates;
+- `public/data/industry/industry_data.json` for the industry dataset;
+- your own CSV exports through the Data panel (they stay in your browser).
+
+## Deploying
+
+`vercel.json` and `deploy/VERCEL.md` describe the static web app on Vercel. The Python services are hosted separately; see `deploy/huggingface/`.
 
 ## Layout
 
@@ -67,5 +116,11 @@ Refresh the bundled OSM snapshot with `node scripts/fetch-osm-snapshot.mjs`. Cop
 - `src/map/` - Cesium map, layers, display-mode sources and sync
 - `src/store/` - zustand store, live scenario runner, derived fields
 - `src/components/` - panels and drawers
+- `src/plan/` - Plan-It: cost model, plan engine, PDF, panel
+- `src/task2/`, `src/planning/` - Sensor Intelligence client, panel and the budget planner maths
+- `src/aerosage/` - the assistant: chat UI, validated actions, voice, service client
+- `backend/chatbot/` - the AeroSage service (FastAPI) with its knowledge notes and tests
+- `landing/` - the landing site (TanStack Start)
+- `deploy/` - Vercel and Hugging Face notes
 - `src/services/__fixtures__/` - recorded API and Open-Meteo fixtures used by the tests
 - `docs/contracts/` (repository root) - the model API contract and response examples these clients are built from

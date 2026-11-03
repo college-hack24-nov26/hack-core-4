@@ -1,0 +1,7 @@
+.venv/
+.env
+runtime/
+rag/knowledge_index/
+__pycache__/
+.pytest_cache/
+*.pyc

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * PROTOTYPE rule-based pollution model. UNCALIBRATED.
  *
  * This engine is illustrative only: simple, transparent rules (traffic, industry plumes, street
@@ -139,7 +139,7 @@ export function computeCellStates(
       params.greenBuffer &&
       addedIndustries.some((i) => haversineKm(i.location, cell.center) <= coef.greenBufferRadiusKm);
     const green = clamp(
-      cell.greenCover + params.greenCoverDelta + (nearAdded ? coef.greenBufferBoostPts : 0),
+      cell.greenCover + params.greenCoverDelta + (params.greenCoverByCell?.[cell.id] ?? 0) + (nearAdded ? coef.greenBufferBoostPts : 0),
       0,
       95,
     );

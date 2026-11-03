@@ -68,6 +68,7 @@ export function validateParams(p: ScenarioParams): string[] {
   range(e, 'Humidity', p.weather.humidity, 0, 100);
   range(e, 'Pressure', p.weather.pressure, 900, 1100);
   for (const c of p.roadClosures) range(e, `Diversion share for ${c.roadId}`, c.diversionShare, 0, 1);
+  for (const [id, v] of Object.entries(p.greenCoverByCell ?? {})) range(e, `Green cover change for zone ${id}`, v, -60, 60);
   return e;
 }
 
@@ -97,6 +98,7 @@ export function sanitizeParams(base: BaseState, p: ScenarioParams): ScenarioPara
       .filter((c) => roadIds.has(c.roadId))
       .map((c) => (c.divertToRoadId && !roadIds.has(c.divertToRoadId) ? { ...c, divertToRoadId: null } : c)),
     removedIndustryIds: p.removedIndustryIds.filter((i) => industryIds.has(i)),
+    ...(p.greenCoverByCell ? { greenCoverByCell: Object.fromEntries(Object.entries(p.greenCoverByCell).filter(([id]) => cellIds.has(id))) } : {}),
     industryIntensityOverrides: overrides,
   };
 }

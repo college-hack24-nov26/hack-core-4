@@ -59,6 +59,8 @@ import {
 import { loadIndustryData, type IndustryLoad } from '../services/industryData';
 import { buildForecastLayer, type ForecastLayer } from '../analytics/forecastLayer';
 import type { WeatherDataset } from '../data/import/weatherImport';
+import { planProject, DEFAULT_LIMITS, type Objective, type PlanLimits, type PlanOutcome } from '../plan/planEngine';
+import { DEFAULT_ASSUMPTIONS, cloneAssumptions, type PlanAssumptions } from '../plan/costModel';
 import { zonePlaceNames } from '../utils/zones';
 import { uid } from '../utils/format';
 import { bboxContains } from '../utils/geo';
@@ -262,6 +264,10 @@ interface TwinState {
   selectedAreaCode: number | null;
   selectedSiteId: string | null;
 
+  // V4: Plan-It
+  planItOpen: boolean;
+  plan: PlanItState;
+
   init: (gridSize?: number) => Promise<void>;
   setGridSize: (n: number) => Promise<void>;
   setPollutant: (p: Pollutant) => void;
@@ -327,6 +333,40 @@ interface TwinState {
   loadIndustry: () => Promise<void>;
   selectArea: (code: number | null) => void;
   selectSite: (id: string | null) => void;
+  setPlanItOpen: (open: boolean) => void;
+  patchPlan: (patch: Partial<PlanItState>) => void;
+  runPlan: () => void;
+}
+
+/** Plan-It form and result state. A grid or data change marks an existing outcome stale (see planBaseKey). */
+export interface PlanItState {
+  budget: number;
+  targetId: string;
+  limits: PlanLimits;
+  objective: Objective;
+  assumptions: PlanAssumptions;
+  view: 'form' | 'results';
+  outcome: PlanOutcome | null;
+  outcomeKey: string | null;
+  selected: 'A' | 'B' | 'C';
+}
+
+export const initialPlan = (): PlanItState => ({
+  budget: 5_000_000,
+  targetId: 'city',
+  limits: { ...DEFAULT_LIMITS },
+  objective: 'pm25',
+  assumptions: cloneAssumptions(DEFAULT_ASSUMPTIONS),
+  view: 'form',
+  outcome: null,
+  outcomeKey: null,
+  selected: 'A',
+});
+
+/** Identity of the data a plan was computed on. */
+export function planBaseKey(base: BaseState): string {
+  const cal = base.calibration ? `/${base.calibration.backgroundScale.toFixed(3)}` : '-';
+  return `|${base.geometrySource}|${base.cells.length}|${base.industries.length}|${cal}`;
 }
 
 let initToken = 0;
@@ -409,6 +449,8 @@ export const useTwinStore = create<TwinState>((set, get) => {
     forecastLayer: null,
     calibration: null,
     industry: null,
+    planItOpen: false,
+    plan: initialPlan(),
 
     geometry: null,
     geometryInfo: {
@@ -880,6 +922,23 @@ export const useTwinStore = create<TwinState>((set, get) => {
 
     selectSite(id) {
       set({ ...NO_SELECTION, selectedSiteId: id, rightOpen: id !== null });
+    },
+
+    // ---- V4: Plan-It ----
+
+    setPlanItOpen(open) {
+      set({ planItOpen: open });
+    },
+
+    patchPlan(patch) {
+      set({ plan: { ...get().plan, ...patch } });
+    },
+
+    runPlan() {
+      const { base, plan } = get();
+      if (!base) return;
+      const outcome = planProject({ base, budget: plan.budget, targetId: plan.targetId, limits: plan.limits, objective: plan.objective, assumptions: plan.assumptions });
+      set({ plan: { ...plan, outcome, outcomeKey: planBaseKey(base), view: 'results', selected: 'A' } });
     },
   };
 });

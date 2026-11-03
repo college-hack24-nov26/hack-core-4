@@ -22,6 +22,7 @@ import { ActionsPanel } from '../scenarios/ActionsPanel';
 import { ScenariosPanel } from '../scenarios/ScenariosPanel';
 import { LocationsPanel } from '../locations/LocationsPanel';
 import { DataPanel } from './DataPanel';
+import { SensorsPanel } from '../task2/SensorsPanel';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { IndustryPanel } from './IndustryPanels';
 import { ForecastTab, LiveNowTab, LiveStrip } from './LivePanels';
@@ -381,6 +382,7 @@ export function LeftPanel() {
     section === 'scenarios' ||
     section === 'industries' ||
     section === 'analytics' ||
+    section === 'sensors' ||
     section === 'data'
       ? section
       : 'overview';
@@ -434,6 +436,7 @@ export function LeftPanel() {
         {active === 'data' && <DataPanel />}
         {active === 'industries' && <IndustryPanel />}
         {active === 'analytics' && <AnalyticsPanel />}
+        {active === 'sensors' && <SensorsPanel />}
       </div>
     </aside>
   );

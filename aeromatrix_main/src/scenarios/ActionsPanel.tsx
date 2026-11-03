@@ -12,6 +12,7 @@ export function ActionsPanel() {
   const names = useTwinStore((s) => s.placeNames);
   const applyParams = useTwinStore((s) => s.applyParams);
   const setDisplayMode = useTwinStore((s) => s.setDisplayMode);
+  const setPlanItOpen = useTwinStore((s) => s.setPlanItOpen);
   const [evals, setEvals] = useState<ActionEvaluation[] | null>(null);
   const [stability, setStability] = useState<StabilityReport | null>(null);
   const [appliedId, setAppliedId] = useState<string | null>(null);
@@ -44,6 +45,14 @@ export function ActionsPanel() {
         Six reduction actions, each run on the current city model and ranked by mean PM2.5 reduction.{' '}
         <StatusBadge status="MODELED_SCENARIO" className="align-middle" /> Core actions are flagged.
       </p>
+
+      <button
+        type="button"
+        onClick={() => setPlanItOpen(true)}
+        className="flex min-h-11 w-full items-center justify-center rounded-xl bg-accent-500 text-sm font-bold text-sand-50 hover:bg-accent-400"
+      >
+        Plan-It: find the best package for a budget
+      </button>
 
       {stability && !stability.stable && (
         <div role="note" className="flex gap-2 rounded-xl bg-amber-500/15 p-3 text-xs text-amber-800 ring-1 ring-amber-500/40">

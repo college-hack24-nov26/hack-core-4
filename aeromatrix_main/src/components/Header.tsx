@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, CircleHelp, Database } from 'lucide-react';
+import { ArrowLeft, CircleHelp, ClipboardList, Database } from 'lucide-react';
 import { LogoMark, Wordmark } from './Brand';
 import { Segmented, StatusBadge, STATUS_STYLE } from './ui';
 import { useTwinStore } from '../store/useTwinStore';
@@ -126,6 +126,7 @@ export function Header() {
   const setPollutant = useTwinStore((s) => s.setPollutant);
   const setGridSize = useTwinStore((s) => s.setGridSize);
   const setIntroOpen = useTwinStore((s) => s.setIntroOpen);
+  const setPlanItOpen = useTwinStore((s) => s.setPlanItOpen);
 
   return (
     <header className="relative z-40 flex h-14 shrink-0 items-center gap-1.5 border-b border-sand-400/15 bg-ink-950 px-2.5 sm:gap-2 md:gap-4 md:px-4">
@@ -182,6 +183,15 @@ export function Header() {
         >
           <ArrowLeft size={14} /> Back to site
         </a>
+        <button
+          type="button"
+          onClick={() => setPlanItOpen(true)}
+          title="Plan-It: costed intervention planner"
+          className="flex h-11 items-center justify-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold text-sand-50 bg-accent-500 hover:bg-accent-400 md:h-9"
+        >
+          <ClipboardList size={15} />
+          <span className="max-md:hidden">Plan-It</span>
+        </button>
         <DataSourceMenu />
         <button
           type="button"
