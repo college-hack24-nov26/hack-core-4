@@ -1,11 +1,17 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
+const CLOSE_DISTANCE = 90;
+
 /**
- * Detail panel: a bottom sheet on phones and tablets, a card on the right on wide screens. The bottom padding keeps
- * the last controls clear of the two round launchers in the corners.
+ * Detail panel: a bottom sheet on phones and tablets (drag the handle down to close), a card on the right on wide
+ * screens. The bottom padding keeps the last controls clear of the two round launchers in the corners.
  */
 export function Sheet({ title, subtitle, onClose, children, chips }: { title: string; subtitle?: ReactNode; onClose: () => void; children: ReactNode; chips?: ReactNode }) {
+  const [dy, setDy] = useState(0);
+  const start = useRef<number | null>(null);
+  const last = useRef(0);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -13,13 +19,43 @@ export function Sheet({ title, subtitle, onClose, children, chips }: { title: st
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  const down = (e: ReactPointerEvent) => {
+    start.current = e.clientY;
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+  const move = (e: ReactPointerEvent) => {
+    if (start.current === null) return;
+    last.current = Math.max(0, e.clientY - start.current);
+    setDy(last.current);
+  };
+  const up = () => {
+    if (start.current === null) return;
+    start.current = null;
+    // The ref, not the state: a quick flick can release before the last move has re-rendered.
+    if (last.current > CLOSE_DISTANCE) onClose();
+    else setDy(0);
+    last.current = 0;
+  };
+
   return (
     <aside
       role="dialog"
       aria-label={title}
-      className="animate-sheet-up fixed inset-x-0 bottom-0 z-20 flex max-h-[78dvh] flex-col rounded-t-3xl bg-ink-950 shadow-2xl hairline lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-16 lg:max-h-none lg:w-[420px] lg:rounded-2xl"
+      style={dy > 0 ? { transform: `translateY(${dy}px)`, transition: 'none' } : undefined}
+      className="animate-sheet-up fixed inset-x-0 bottom-0 z-20 flex max-h-[82dvh] flex-col rounded-t-3xl bg-ink-950 shadow-2xl hairline lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-16 lg:max-h-none lg:w-[420px] lg:rounded-2xl"
     >
-      <header className="flex items-start justify-between gap-3 border-b border-sand-500/20 p-4">
+      <div
+        className="flex h-6 shrink-0 cursor-grab touch-none items-center justify-center lg:hidden"
+        onPointerDown={down}
+        onPointerMove={move}
+        onPointerUp={up}
+        onPointerCancel={up}
+        aria-hidden
+      >
+        <span className="h-1.5 w-10 rounded-full bg-sand-500/50" />
+      </div>
+      <header className="flex items-start justify-between gap-3 border-b border-sand-500/20 px-4 pb-3 pt-1 lg:pt-4">
         <div className="min-w-0">
           <h2 className="font-display text-lg font-bold leading-snug text-sand-50">{title}</h2>
           {subtitle && <div className="mt-0.5 text-xs text-sand-300">{subtitle}</div>}

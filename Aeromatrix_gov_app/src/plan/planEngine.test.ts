@@ -158,7 +158,7 @@ describe('planProject', () => {
     }
     expect(out.feasible).toBeGreaterThanOrEqual(out.plans.length);
     expect(out.evaluated).toBeGreaterThan(out.feasible);
-    expect(out.notes.join(' ')).toMatch(/MODELED_SCENARIO/);
+    expect(out.notes.join(' ')).toMatch(/modelled scenario results/);
   });
 
   it('is deterministic', () => {

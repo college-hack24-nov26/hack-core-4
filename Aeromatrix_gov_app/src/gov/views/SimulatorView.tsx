@@ -1,29 +1,32 @@
-import { useMemo, useState } from 'react';
-import { Download, FileText, Save, Trash2 } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { ChevronDown, Download, FileText, Save, Trash2 } from 'lucide-react';
 import { useTwinStore } from '../../store/useTwinStore';
 import { formatINR } from '../../plan/costModel';
 import { useGovStore } from '../govStore';
-import { useAirData } from '../lib/airdata';
+import { colorOf, aqiCategory, useAirData } from '../lib/airdata';
+import { costBreakdown, runningRates } from '../lib/costs';
 import { useHotspots } from '../lib/hotspots';
-import { TREE_CHOICES, closureChoices, hasMeasures, industryUnitsAvailable, runMeasures, type MeasureSelection, type SimOutcome } from '../lib/measures';
+import { TREE_CHOICES, closureChoices, hasMeasures, industryUnitsAvailable, runMeasures, type MeasureSelection } from '../lib/measures';
 import { downloadText, scenariosCsv, toSavedScenario } from '../lib/scenarios';
 import { formatIst, signed } from '../lib/format';
-import { AqiChip, Btn, EmptyState, Field, PageTitle, SectionCard, StatusChip, Table, inputCls } from '../ui';
+import { CompareChart } from '../charts';
+import { AqiChip, Btn, Card, EmptyState, Field, PageTitle, SectionCard, StatusChip, Table, inputCls } from '../ui';
 
 function Choice<T extends string | number>({ label, value, options, onChange, disabledFor }: { label: string; value: T; options: Array<{ value: T; label: string }>; onChange: (v: T) => void; disabledFor?: (v: T) => boolean }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+    <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
       {options.map((o) => {
         const dis = disabledFor?.(o.value) ?? false;
+        const on = o.value === value;
         return (
           <button
             key={String(o.value)}
             type="button"
             role="radio"
-            aria-checked={o.value === value}
+            aria-checked={on}
             disabled={dis}
             onClick={() => onChange(o.value)}
-            className={`gov-tap min-h-11 min-w-11 rounded-xl px-3.5 text-sm font-bold hairline disabled:cursor-not-allowed disabled:opacity-40 ${o.value === value ? 'bg-accent-500 text-white' : 'bg-ink-800 text-sand-100 hover:bg-ink-700'}`}
+            className={`gov-tap min-h-11 min-w-12 rounded-xl px-4 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${on ? 'bg-accent-500 text-white shadow-sm' : 'bg-ink-800 text-sand-100 hover:bg-ink-700'}`}
           >
             {o.label}
           </button>
@@ -33,22 +36,15 @@ function Choice<T extends string | number>({ label, value, options, onChange, di
   );
 }
 
-export function CostTable({ o }: { o: SimOutcome }) {
+function Details({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <Table
-      caption="Cost lines"
-      head={['Item', 'Quantity', 'Unit price', 'Total', 'Basis']}
-      rows={o.lines.map((l) => [
-        <span key="i">
-          {l.item}
-          {l.note && <span className="block text-sand-400">{l.note}</span>}
-        </span>,
-        `${l.quantity.toLocaleString('en-IN')} ${l.unit}`,
-        formatINR(l.unitPrice),
-        formatINR(l.total),
-        l.kind === 'sourced' ? 'Sourced' : 'Estimate *',
-      ])}
-    />
+    <details className="group rounded-xl border border-sand-500/15">
+      <summary className="gov-tap flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 text-sm font-medium text-sand-100 [&::-webkit-details-marker]:hidden">
+        {title}
+        <ChevronDown size={16} className="text-sand-400 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="border-t border-sand-500/12 p-4">{children}</div>
+    </details>
   );
 }
 
@@ -75,167 +71,198 @@ export function SimulatorView() {
   const zone = targetId ? zoneById.get(targetId) : undefined;
   const cell = base && targetId ? base.cells.find((c) => c.id === targetId) : undefined;
 
-  const outcome = useMemo(
-    () => (base && cell && zone ? runMeasures({ base, cell, zoneName: zone.place, currentPm25: zone.pm25, selection: measures }) : null),
-    [base, cell, zone, measures],
-  );
+  const outcome = useMemo(() => (base && cell && zone ? runMeasures({ base, cell, zoneName: zone.place, currentPm25: zone.pm25, selection: measures }) : null), [base, cell, zone, measures]);
   const closures = useMemo(() => (base && cell ? closureChoices(base, cell) : []), [base, cell]);
   const units = base && cell ? industryUnitsAvailable(base, cell) : 0;
+  const costs = useMemo(() => (outcome ? costBreakdown(outcome.lines) : null), [outcome]);
+  const rates = outcome ? runningRates(outcome.recurring, outcome.dust) : null;
 
   if (!base || air.zones.length === 0) {
     return (
-      <div className="mx-auto max-w-3xl p-4 pb-32">
+      <div className="mx-auto max-w-3xl px-4 pb-40 pt-6 sm:px-6">
         <PageTitle title="Simulator" />
-        <EmptyState title="No area values to simulate on" reason="The Simulator applies a relative change to an area's current model value. There is no live model data right now (no data feed), so nothing is shown rather than a made-up number." />
+        <Card>
+          <EmptyState title="Nothing to simulate yet" reason="Area readings are not available right now." />
+        </Card>
       </div>
     );
   }
 
   const set = (p: Partial<MeasureSelection>) => setMeasures(p);
-  const saved = scenarios;
-  const toCompare = saved.filter((s) => compare.includes(s.id));
+  const toCompare = scenarios.filter((s) => compare.includes(s.id));
+  const compareRows = outcome && outcome.modelledEffect && outcome.currentPm25 !== null && outcome.projectedPm25 !== null && outcome.lowPm25 !== null
+    ? [
+        { name: 'Existing', value: outcome.currentPm25, color: '#9a8a80' },
+        { name: 'If half the effect', value: outcome.lowPm25, color: '#d9a441' },
+        { name: 'Simulated', value: outcome.projectedPm25, color: '#2fae8b' },
+      ]
+    : null;
 
   return (
-    <div className="mx-auto max-w-5xl p-4 pb-32">
-      <PageTitle title="Simulator" sub="Test an action before ordering it. Results are relative changes from an uncalibrated prototype model, applied to the area's current model value." right={<StatusChip kind="simulation" />} />
+    <div className="mx-auto max-w-3xl px-4 pb-40 pt-6 sm:px-6">
+      <PageTitle title="Simulator" />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SectionCard title="1. Choose the area">
-          <Field label="Area or hotspot">
+      <div className="space-y-4">
+        <SectionCard title="Area">
+          <Field label="Where">
             <select value={targetId ?? ''} onChange={(e) => setSimTarget(e.target.value)} className={inputCls}>
               {hot.zones.map((h) => (
                 <option key={h.id} value={h.zone!.id}>
-                  {h.name} (AQI {h.aqi}, {h.category})
+                  {h.name} · AQI {h.aqi}
                 </option>
               ))}
             </select>
           </Field>
           {zone && (
-            <div className="mt-3 rounded-xl bg-ink-800 p-3 hairline">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-sand-400">Existing condition</div>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <AqiChip aqi={zone.aqi} category={zone.category} />
-                <StatusChip kind="estimated" />
-              </div>
-              <div className="mt-1 text-xs text-sand-300">
-                PM2.5 {zone.pm25?.toFixed(1) ?? 'n/a'} ug/m3 · model hour {formatIst(zone.time)}
-              </div>
+            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-ink-800 p-4">
+              <span className="text-sm text-sand-300">Existing</span>
+              <AqiChip aqi={zone.aqi} category={zone.category} />
+              <span className="text-sm text-sand-100">PM2.5 {zone.pm25?.toFixed(1) ?? 'n/a'} µg/m³</span>
+              <StatusChip kind="estimated" />
             </div>
           )}
         </SectionCard>
 
-        <SectionCard title="2. Choose measures" action={<Btn variant="ghost" onClick={resetMeasures} className="!px-2 text-xs">Clear all</Btn>}>
-          <div className="space-y-4">
-            <Field label="Traffic enforcement">
-              <Choice label="Traffic enforcement" value={measures.traffic} onChange={(v) => set({ traffic: v })} options={[{ value: 'off', label: 'Off' }, { value: 'standard', label: 'Standard' }, { value: 'intensive', label: 'Intensive' }]} />
+        <SectionCard title="Interventions" action={<Btn variant="ghost" onClick={resetMeasures} className="!px-3 text-sm">Clear</Btn>}>
+          <div className="space-y-6">
+            <Field label="Reduce traffic">
+              <Choice label="Traffic" value={measures.traffic} onChange={(v) => set({ traffic: v })} options={[{ value: 'off', label: 'Off' }, { value: 'standard', label: 'Standard' }, { value: 'intensive', label: 'Intensive' }]} />
             </Field>
-            <Field label="Road closure" hint={closures.length === 0 ? 'No named major road passes through this area in the map data.' : 'Traffic is diverted to the nearest other road.'}>
+            <Field label="Close a road" hint={closures.length === 0 ? 'No major road in this area.' : undefined}>
               <select value={measures.closureRoadId ?? ''} onChange={(e) => set({ closureRoadId: e.target.value || null })} className={inputCls} disabled={closures.length === 0}>
-                <option value="">No closure</option>
+                <option value="">None</option>
                 {closures.map((c) => (
                   <option key={c.road.id} value={c.road.id}>
-                    {c.road.name} ({c.road.roadClass}, {c.lengthKm.toFixed(1)} km here)
+                    {c.road.name} · {c.lengthKm.toFixed(1)} km
                   </option>
                 ))}
               </select>
             </Field>
             {measures.closureRoadId && (
-              <Field label={`Share of traffic diverted: ${Math.round(measures.closureDiversion * 100)}%`}>
+              <Field label={`Traffic diverted: ${Math.round(measures.closureDiversion * 100)}%`}>
                 <input type="range" min={0} max={1} step={0.1} value={measures.closureDiversion} onChange={(e) => set({ closureDiversion: Number(e.target.value) })} className="h-8 w-full accent-accent-500" />
               </Field>
             )}
-            <Field label="Industrial controls (bag filters)" hint={units === 0 ? 'No modelled industrial source lies in this area.' : `${units} modelled industrial source${units === 1 ? '' : 's'} in this area. Emission quantities are assumptions: the data has locations only.`}>
-              <Choice label="Industrial units" value={measures.industry} onChange={(v) => set({ industry: v })} options={[0, 1, 2, 3].map((n) => ({ value: n as 0 | 1 | 2 | 3, label: String(n) }))} disabledFor={(v) => v > units} />
+            <Field label="Industrial units" hint={units === 0 ? 'No industrial unit in this area.' : `${units} in this area`}>
+              <div className="space-y-3">
+                <Choice label="Industrial units" value={measures.industry} onChange={(v) => set({ industry: v })} options={[0, 1, 2, 3].map((n) => ({ value: n as 0 | 1 | 2 | 3, label: String(n) }))} disabledFor={(v) => v > units} />
+                {measures.industry > 0 && (
+                  <Choice
+                    label="Industrial measure"
+                    value={measures.industryMode}
+                    onChange={(v) => set({ industryMode: v })}
+                    options={[
+                      { value: 'controls', label: 'Fit filters' },
+                      { value: 'restrict', label: 'Restrict output' },
+                    ]}
+                  />
+                )}
+              </div>
             </Field>
-            <Field label="Trees to plant">
-              <Choice label="Trees" value={measures.trees} onChange={(v) => set({ trees: v })} options={TREE_CHOICES.map((n) => ({ value: n, label: n === 0 ? 'None' : n.toLocaleString('en-IN') }))} />
+            <Field label="Green cover">
+              <Choice label="Trees" value={measures.trees} onChange={(v) => set({ trees: v })} options={TREE_CHOICES.map((n) => ({ value: n, label: n === 0 ? 'None' : n.toLocaleString('en-IN') + ' trees' }))} />
             </Field>
-            <Field label="Dust control (water sprinkling)" hint="Costed and scheduled. Its effect on air quality is NOT modelled; it is checked by readings on Day 7 and Day 14.">
+            <Field label="Dust control" hint="Water sprinkling on the main roads. Costed and scheduled; its effect is not modelled.">
               <Choice label="Dust control" value={measures.dust ? 'on' : 'off'} onChange={(v) => set({ dust: v === 'on' })} options={[{ value: 'off', label: 'Off' }, { value: 'on', label: 'On' }]} />
             </Field>
           </div>
         </SectionCard>
-      </div>
 
-      <div className="mt-4">
         {!outcome ? (
-          <EmptyState title="Choose at least one measure" reason="Pick a measure above to see the existing condition against the simulated change, the cost and the implementation period." />
+          <Card>
+            <EmptyState title="Choose an intervention" reason="The result appears here." />
+          </Card>
         ) : (
-          <SectionCard title="3. Result" action={<StatusChip kind="simulation" />}>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl bg-ink-800 p-4 hairline">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-sand-400">Existing</div>
-                <div className="mt-1 font-display text-3xl font-bold text-sand-50">{outcome.currentPm25?.toFixed(1) ?? 'n/a'}</div>
-                <div className="text-xs text-sand-300">PM2.5 ug/m3 now</div>
-                <div className="mt-2 flex gap-2">{zone && <AqiChip aqi={zone.aqi} category={zone.category} />}<StatusChip kind="estimated" /></div>
-              </div>
-              <div className="rounded-xl bg-ink-800 p-4 hairline">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-sand-400">Simulated</div>
-                {outcome.modelledEffect ? (
-                  <>
-                    <div className="mt-1 font-display text-3xl font-bold text-sand-50">{outcome.projectedPm25?.toFixed(1) ?? 'n/a'}</div>
-                    <div className="text-xs text-sand-300">PM2.5 ug/m3 ({signed(outcome.changePct)}%)</div>
-                    <div className="mt-2 text-xs text-sand-100">
-                      If only half the assumed effect is achieved: <b>{outcome.lowPm25?.toFixed(1) ?? 'n/a'}</b> ({signed(outcome.lowPct)}%)
-                    </div>
-                  </>
-                ) : (
-                  <div className="mt-2 text-sm text-sand-100">No modelled change: the selected measure&apos;s effect is not modelled.</div>
-                )}
-                <div className="mt-2"><StatusChip kind="simulation" /></div>
-              </div>
-            </div>
+          <SectionCard title="Result" action={<StatusChip kind="simulation" />}>
+            {compareRows ? (
+              <>
+                <div className="flex items-end gap-3">
+                  <span className="text-4xl font-semibold tabular-nums" style={{ color: colorOf(aqiCategory(zone?.aqi ?? 0)) }}>
+                    {signed(outcome.changePct, 0)}%
+                  </span>
+                  <span className="pb-1 text-sm text-sand-300">PM2.5, range {signed(outcome.lowPct, 0)}% to {signed(outcome.changePct, 0)}%</span>
+                </div>
+                <CompareChart rows={compareRows} unit="µg/m³" />
+              </>
+            ) : (
+              <p className="text-[15px] text-sand-100">The selected intervention has no modelled effect on PM2.5. It is costed and scheduled below.</p>
+            )}
 
-            <dl className="mt-4 grid grid-cols-2 gap-2 text-sm lg:grid-cols-4">
+            <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-4">
               {[
-                ['One-time cost', formatINR(outcome.oneTime)],
-                ['First-year running cost', formatINR(outcome.recurring)],
-                ['Implementation period', `${outcome.weeks} week${outcome.weeks === 1 ? '' : 's'}`],
-                ['Zones improved', String(outcome.zonesImproved)],
+                ['Time to implement', `${outcome.weeks} week${outcome.weeks === 1 ? '' : 's'}`],
+                ['One-time cost', outcome.oneTime > 0 ? formatINR(outcome.oneTime) : outcome.costNotes.length > 0 ? 'Not available' : '₹0'],
+                ['Running cost', outcome.recurring > 0 ? `${formatINR(outcome.recurring)} / year` : '₹0'],
+                ['Areas improved', String(outcome.zonesImproved)],
               ].map(([k, v]) => (
-                <div key={k} className="rounded-xl bg-ink-800 p-3 hairline">
-                  <dt className="text-[11px] font-bold uppercase tracking-wider text-sand-400">{k}</dt>
-                  <dd className="font-display text-lg font-bold text-sand-50">{v}</dd>
+                <div key={k}>
+                  <dt className="text-xs font-medium text-sand-400">{k}</dt>
+                  <dd className="mt-0.5 text-[17px] font-semibold tabular-nums text-sand-50">{v}</dd>
                 </div>
               ))}
             </dl>
+            {outcome.costNotes.map((n) => (
+              <p key={n} className="mt-3 text-sm text-sand-300">
+                {n}
+              </p>
+            ))}
+            <p className="mt-4 text-xs text-sand-400">A modelled estimate, not a guaranteed result. Measured readings should confirm any change.</p>
 
-            <div className="mt-4 space-y-1 text-xs text-sand-300">
-              <p><b className="text-sand-100">Measures:</b> {outcome.measures.join('; ')}</p>
-              {outcome.options.map((o) => (
-                <p key={o.key}>{o.effect}</p>
-              ))}
-              {outcome.closure && <p>Closes {outcome.closure.roadName}; {Math.round(outcome.closure.diversion * 100)}% of its traffic is diverted{outcome.closure.divertToName ? ` to ${outcome.closure.divertToName}` : ''}. Closure cost lines are planner assumptions.</p>}
-              <p>The change is the engine&apos;s relative change for this area ({signed(outcome.relative * 100)}% of the prototype value {outcome.protoBefore.toFixed(1)} → {outcome.protoAfter.toFixed(1)}), applied to the current model value. Implementation periods are planning assumptions.</p>
-              {outcome.notes.map((n) => <p key={n} className="text-sand-100">{n}</p>)}
-            </div>
+            <div className="mt-5 space-y-3">
+              <Details title="Assumptions">
+                <ul className="space-y-2 text-sm text-sand-200">
+                  {outcome.options.map((o) => (
+                    <li key={o.key}>{o.effect}</li>
+                  ))}
+                  {outcome.closure && (
+                    <li>
+                      Closing {outcome.closure.roadName}; {Math.round(outcome.closure.diversion * 100)}% of its traffic moves to {outcome.closure.divertToName ?? 'other roads'}.
+                    </li>
+                  )}
+                  {outcome.options.flatMap((o) => o.limitations.slice(0, 2)).map((l) => (
+                    <li key={l} className="text-sand-300">
+                      {l}
+                    </li>
+                  ))}
+                  {outcome.notes.map((n) => (
+                    <li key={n} className="text-sand-300">
+                      {n}
+                    </li>
+                  ))}
+                </ul>
+              </Details>
 
-            {outcome.dust && (
-              <div className="mt-4 rounded-xl border border-sand-500/30 p-3">
-                <h3 className="text-sm font-bold text-sand-50">Dust control operating plan (effect not modelled)</h3>
-                {outcome.dust.roads.length === 0 ? (
-                  <p className="mt-1 text-xs text-sand-300">{outcome.dust.notes[1]}</p>
-                ) : (
-                  <>
-                    <Table head={['Road', 'Class', 'Length here', 'Water per pass']} rows={outcome.dust.roads.map((r) => [r.name, r.roadClass, `${r.lengthKm.toFixed(1)} km`, `${Math.round(r.litresPerPass).toLocaleString('en-IN')} L`])} />
-                    <p className="mt-2 text-xs text-sand-300">
-                      Time slots {outcome.dust.slots.join(', ')} · {Math.round(outcome.dust.litresPerDay).toLocaleString('en-IN')} L a day · {outcome.dust.tankers} tanker{outcome.dust.tankers === 1 ? '' : 's'} · {outcome.dust.tripsPerDay} trips a day · {outcome.dust.crew} crew · {outcome.dust.days} days.
+              {outcome.dust && outcome.dust.roads.length > 0 && (
+                <Details title="Dust control plan">
+                  <Table head={['Road', 'Length', 'Water per round']} rows={outcome.dust.roads.map((r) => [r.name, `${r.lengthKm.toFixed(1)} km`, `${Math.round(r.litresPerPass).toLocaleString('en-IN')} L`])} />
+                  <p className="mt-3 text-sm text-sand-300">
+                    {outcome.dust.slots.length} rounds a day ({outcome.dust.slots.join(', ')}) · {Math.round(outcome.dust.litresPerDay).toLocaleString('en-IN')} L a day · {outcome.dust.tankers} tanker{outcome.dust.tankers === 1 ? '' : 's'} · crew of {outcome.dust.crew} · {outcome.dust.days} days. Check readings on Day 7 and Day 14.
+                  </p>
+                </Details>
+              )}
+
+              {costs && costs.groups.length > 0 && (
+                <Details title="Cost details">
+                  <Table
+                    head={['Item', 'Amount']}
+                    rows={[
+                      ...costs.groups.map((g) => [g.group, formatINR(g.total)]),
+                      [<b key="t">Total (one-time + first year)</b>, <b key="v">{formatINR(costs.total)}</b>],
+                    ]}
+                  />
+                  {rates && (rates.perDay > 0) && (
+                    <p className="mt-3 text-sm text-sand-300">
+                      Running cost: {formatINR(rates.perDay)} a day · {formatINR(rates.perWeek)} a week · {formatINR(rates.perMonth)} a month
                     </p>
-                    <p className="mt-1 text-xs text-sand-300">Check: {outcome.dust.verification.map((v) => `Day ${v.day}`).join(' and ')} readings.</p>
-                  </>
-                )}
-              </div>
-            )}
-
-            <div className="mt-4">
-              <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-sand-400">Cost (INR)</h3>
-              <CostTable o={outcome} />
-              <p className="mt-1 text-[11px] text-sand-400">* Estimate: no public price was found; the basis is stated in the Plan-It price table. Sourced prices name their source in the report.</p>
+                  )}
+                  <p className="mt-2 text-xs text-sand-400">Items marked as estimates in the report have no published price; sourced prices are listed there.</p>
+                </Details>
+              )}
             </div>
 
-            <div className="mt-4 flex flex-wrap items-end gap-2">
-              <div className="min-w-0 flex-1 basis-60">
-                <Field label="Scenario name (optional)">
+            <div className="mt-6 flex flex-wrap items-end gap-3">
+              <div className="min-w-0 flex-1 basis-56">
+                <Field label="Save as">
                   <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} placeholder={`${zone?.place ?? 'Area'}: ${outcome.measures[0] ?? ''}`} />
                 </Field>
               </div>
@@ -251,7 +278,7 @@ export function SimulatorView() {
                   }
                 }}
               >
-                Save scenario
+                Save
               </Btn>
               <Btn
                 icon={FileText}
@@ -265,50 +292,51 @@ export function SimulatorView() {
             </div>
           </SectionCard>
         )}
-      </div>
 
-      <SectionCard title={`Saved scenarios (${saved.length})`} className="mt-4" action={saved.length > 0 ? <Btn icon={Download} variant="ghost" className="!px-2 text-xs" onClick={() => downloadText('aeromatrix-scenarios.csv', scenariosCsv(saved))}>Export CSV</Btn> : undefined}>
-        {saved.length === 0 ? (
-          <p className="text-xs text-sand-300">Nothing saved yet. Saved scenarios stay in this browser only.</p>
-        ) : (
-          <>
-            <ul className="space-y-2">
-              {saved.map((s) => (
-                <li key={s.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-ink-800 p-3 hairline">
-                  <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-sm text-sand-100">
-                    <input type="checkbox" checked={compare.includes(s.id)} onChange={(e) => setCompare(e.target.checked ? [...compare, s.id] : compare.filter((x) => x !== s.id))} className="h-5 w-5 accent-accent-500" aria-label={`Compare ${s.name}`} />
-                    <span className="min-w-0">
-                      <span className="block truncate font-bold">{s.name}</span>
-                      <span className="block truncate text-xs text-sand-400">{s.target.label} · {formatIst(Date.parse(s.savedAt))}</span>
-                    </span>
-                  </label>
-                  <Btn variant="ghost" className="!px-2 text-xs" onClick={() => { setReportScenario(s.id); setView('reports'); }}>Use in report</Btn>
-                  <Btn variant="ghost" icon={Trash2} className="!px-2 text-xs" onClick={() => deleteScenario(s.id)} title="Delete">Delete</Btn>
-                </li>
-              ))}
-            </ul>
-            {toCompare.length >= 2 && (
-              <div className="mt-3">
-                <h3 className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-sand-400">Side by side <StatusChip kind="simulation" /></h3>
-                <Table
-                  head={['', ...toCompare.map((s) => s.name)]}
-                  rows={[
-                    ['Area', ...toCompare.map((s) => s.target.label)],
-                    ['Measures', ...toCompare.map((s) => s.measures.join('; '))],
-                    ['PM2.5 now → simulated', ...toCompare.map((s) => `${s.baselinePm25.toFixed(1)} → ${s.projectedPm25.toFixed(1)}`)],
-                    ['Change (half-effect)', ...toCompare.map((s) => `${signed(s.changePct)}% (${signed(s.lowPct)}%)`)],
-                    ['One-time cost', ...toCompare.map((s) => formatINR(s.oneTime))],
-                    ['First-year running', ...toCompare.map((s) => formatINR(s.recurring))],
-                    ['Weeks', ...toCompare.map((s) => String(s.weeks))],
-                    ['Zones improved', ...toCompare.map((s) => String(s.zonesImproved))],
-                  ]}
-                />
-              </div>
-            )}
-            {toCompare.length < 2 && saved.length >= 2 && <p className="mt-2 text-xs text-sand-400">Tick two or more scenarios to compare them side by side.</p>}
-          </>
-        )}
-      </SectionCard>
+        <SectionCard
+          title={`Saved scenarios${scenarios.length ? ` (${scenarios.length})` : ''}`}
+          action={scenarios.length > 0 ? <Btn icon={Download} variant="ghost" className="!px-3 text-sm" onClick={() => downloadText('aeromatrix-scenarios.csv', scenariosCsv(scenarios))}>Export</Btn> : undefined}
+        >
+          {scenarios.length === 0 ? (
+            <p className="text-sm text-sand-300">Saved scenarios appear here.</p>
+          ) : (
+            <>
+              <ul className="space-y-2">
+                {scenarios.map((s) => (
+                  <li key={s.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-ink-800 p-3">
+                    <label className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-sm text-sand-100">
+                      <input type="checkbox" checked={compare.includes(s.id)} onChange={(e) => setCompare(e.target.checked ? [...compare, s.id] : compare.filter((x) => x !== s.id))} className="h-5 w-5 accent-accent-500" aria-label={`Compare ${s.name}`} />
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">{s.name}</span>
+                        <span className="block truncate text-xs text-sand-400">{s.target.label} · {formatIst(Date.parse(s.savedAt), false)}</span>
+                      </span>
+                    </label>
+                    <Btn variant="ghost" className="!px-3 text-sm" onClick={() => { setReportScenario(s.id); setView('reports'); }}>Report</Btn>
+                    <Btn variant="ghost" icon={Trash2} className="!px-3" ariaLabel={`Delete ${s.name}`} onClick={() => deleteScenario(s.id)} />
+                  </li>
+                ))}
+              </ul>
+              {toCompare.length >= 2 ? (
+                <div className="mt-4">
+                  <Table
+                    head={['', ...toCompare.map((s) => s.name)]}
+                    rows={[
+                      ['Area', ...toCompare.map((s) => s.target.label)],
+                      ['PM2.5 now → simulated', ...toCompare.map((s) => `${s.baselinePm25.toFixed(1)} → ${s.projectedPm25.toFixed(1)}`)],
+                      ['Change', ...toCompare.map((s) => `${signed(s.changePct, 0)}% (${signed(s.lowPct, 0)}%)`)],
+                      ['One-time cost', ...toCompare.map((s) => formatINR(s.oneTime))],
+                      ['Running cost / year', ...toCompare.map((s) => formatINR(s.recurring))],
+                      ['Weeks', ...toCompare.map((s) => String(s.weeks))],
+                    ]}
+                  />
+                </div>
+              ) : (
+                scenarios.length >= 2 && <p className="mt-3 text-xs text-sand-400">Tick two or more to compare.</p>
+              )}
+            </>
+          )}
+        </SectionCard>
+      </div>
     </div>
   );
 }

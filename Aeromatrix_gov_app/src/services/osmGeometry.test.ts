@@ -53,13 +53,13 @@ describe('elementsToGeometry', () => {
     expect(g.roads[0].volume).toBeGreaterThanOrEqual(g.roads[1].volume);
   });
 
-  it('keeps green areas and industrial zones, and puts a labelled DEMO source on the zone', () => {
+  it('keeps green areas and industrial zones, and puts an assumed source on the zone', () => {
     expect(g.greenAreas).toHaveLength(1);
     expect(g.industrialAreas).toHaveLength(1);
     expect(g.industries).toHaveLength(1);
     const i = g.industries[0];
-    expect(i.name).toMatch(/DEMO source/);
-    expect(i.status).toMatch(/DEMO/);
+    expect(i.name).not.toMatch(/DEMO|demo/);
+    expect(i.status).toMatch(/Assumed source/);
     expect(i.emissionIntensity).toBeGreaterThanOrEqual(28);
     expect(i.emissionIntensity).toBeLessThanOrEqual(85);
     expect(i.location[0]).toBeGreaterThan(73.9);

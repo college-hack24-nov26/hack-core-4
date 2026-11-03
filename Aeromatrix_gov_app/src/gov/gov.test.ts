@@ -91,7 +91,7 @@ describe('zone rows from live model data', () => {
   it('builds a row only for zones with a model value; nothing is invented for the rest', () => {
     const c = cells();
     const points = { [zonePointId(c[0].id)]: makePoint('a', [73.85, 18.5], 100) };
-    const out = buildZoneRows({ base: osmBase, points, placeNames: {}, nowMs: NOW, industryLoaded: false });
+    const out = buildZoneRows({ base: osmBase, points, placeNames: {}, nowMs: NOW });
     expect(out.rows).toHaveLength(1);
     expect(out.missing).toBe(c.length - 1);
     expect(out.rows[0].id).toBe(c[0].id);
@@ -100,7 +100,7 @@ describe('zone rows from live model data', () => {
   });
 
   it('gives no rows at all when there is no live data', () => {
-    const out = buildZoneRows({ base: osmBase, points: {}, placeNames: {}, nowMs: NOW, industryLoaded: false });
+    const out = buildZoneRows({ base: osmBase, points: {}, placeNames: {}, nowMs: NOW });
     expect(out.rows).toEqual([]);
     expect(out.missing).toBe(osmBase.cells.length);
   });
@@ -113,7 +113,7 @@ describe('zone rows from live model data', () => {
       [zonePointId(c[1].id)]: makePoint('b', shared, 100),
       [zonePointId(c[2].id)]: makePoint('c', [74.0, 18.6], 40),
     };
-    const rows = buildZoneRows({ base: osmBase, points, placeNames: {}, nowMs: NOW, industryLoaded: false }).rows;
+    const rows = buildZoneRows({ base: osmBase, points, placeNames: {}, nowMs: NOW }).rows;
     expect(new Set(rows.map((r) => r.gridKey)).size).toBe(2);
     const g = groupByGrid(rows);
     expect(g).toHaveLength(2);
@@ -124,14 +124,14 @@ describe('zone rows from live model data', () => {
     const c = cells();
     const rising = (h: number) => 40 + Math.max(0, h) * 2; // 40 now, 88 at +24 h, 136 at +48 h
     const points = { [zonePointId(c[0].id)]: makePoint('a', [73.9, 18.5], rising) };
-    const row = buildZoneRows({ base: osmBase, points, placeNames: {}, nowMs: NOW, industryLoaded: false }).rows[0];
+    const row = buildZoneRows({ base: osmBase, points, placeNames: {}, nowMs: NOW }).rows[0];
     expect(row.forecast.map((f) => f.hours)).toEqual([24, 48, 72]);
     expect(row.forecast[0].date).toBe('2026-11-04');
     expect(row.forecast[1].aqi).toBeGreaterThan(row.forecast[0].aqi);
     expect(row.forecast.every((f) => f.category === CATEGORIES[categoryRank(f.category)])).toBe(true);
-    const flat = buildZoneRows({ base: osmBase, points: { [zonePointId(c[0].id)]: makePoint('a', [73.9, 18.5], 80) }, placeNames: {}, nowMs: NOW, industryLoaded: false }).rows[0];
+    const flat = buildZoneRows({ base: osmBase, points: { [zonePointId(c[0].id)]: makePoint('a', [73.9, 18.5], 80) }, placeNames: {}, nowMs: NOW }).rows[0];
     expect(flat.trend).toBe('flat');
-    const falling = buildZoneRows({ base: osmBase, points: { [zonePointId(c[0].id)]: makePoint('a', [73.9, 18.5], (h) => Math.max(5, 120 - h * 3)) }, placeNames: {}, nowMs: NOW, industryLoaded: false }).rows[0];
+    const falling = buildZoneRows({ base: osmBase, points: { [zonePointId(c[0].id)]: makePoint('a', [73.9, 18.5], (h) => Math.max(5, 120 - h * 3)) }, placeNames: {}, nowMs: NOW }).rows[0];
     expect(falling.trend).toBe('down');
     expect(falling.trendPct).toBeLessThan(-5);
   });
@@ -141,7 +141,7 @@ describe('zone rows from live model data', () => {
     const p = makePoint('a', [73.9, 18.5], 80);
     p.times = p.times.slice(0, 48 + 30); // data only about 30 h ahead
     for (const k of OM_POLLUTANTS) p.hourly[k] = p.hourly[k].slice(0, p.times.length);
-    const row = buildZoneRows({ base: osmBase, points: { [zonePointId(c[0].id)]: p }, placeNames: {}, nowMs: NOW, industryLoaded: false }).rows[0];
+    const row = buildZoneRows({ base: osmBase, points: { [zonePointId(c[0].id)]: p }, placeNames: {}, nowMs: NOW }).rows[0];
     expect(row.forecast.map((f) => f.hours)).toEqual([24]);
   });
 
@@ -172,36 +172,38 @@ describe('likely causes need evidence', () => {
 
   it('finds traffic evidence from mapped OSM roads, with the road names', () => {
     const cell = busiest();
-    const causes = causeEvidence(osmBase, cell, 60, 100, true);
+    const causes = causeEvidence(osmBase, cell, 60, 100);
     const traffic = causes.find((c) => c.key === 'traffic');
     expect(traffic).toBeDefined();
-    expect(traffic!.evidence.join(' ')).toMatch(/OpenStreetMap/);
-    expect(traffic!.evidence.join(' ')).toMatch(/no traffic counts/i);
+    expect(traffic!.evidence.join(' ')).toMatch(/runs [\d.]+ km through the area/);
+    expect(traffic!.evidence.join(' ')).toMatch(/km of major road in the area/);
+    expect(traffic!.evidence.join(' ')).not.toMatch(/OpenStreetMap|proxy|traffic counts/i);
   });
 
   it('flags dust only from a low PM2.5/PM10 ratio and never invents it otherwise', () => {
     const cell = osmBase.cells[0];
-    expect(causeEvidence(osmBase, cell, 20, 100, true).find((c) => c.key === 'dust')?.strength).toBe('Strong');
-    expect(causeEvidence(osmBase, cell, 40, 100, true).find((c) => c.key === 'dust')?.strength).toBe('Moderate');
-    expect(causeEvidence(osmBase, cell, 70, 100, true).find((c) => c.key === 'dust')).toBeUndefined();
-    expect(causeEvidence(osmBase, cell, null, null, true).find((c) => c.key === 'dust')).toBeUndefined();
+    expect(causeEvidence(osmBase, cell, 20, 100).find((c) => c.key === 'dust')?.strength).toBe('Strong');
+    expect(causeEvidence(osmBase, cell, 40, 100).find((c) => c.key === 'dust')?.strength).toBe('Moderate');
+    expect(causeEvidence(osmBase, cell, 70, 100).find((c) => c.key === 'dust')).toBeUndefined();
+    expect(causeEvidence(osmBase, cell, null, null).find((c) => c.key === 'dust')).toBeUndefined();
   });
 
   it('shows no road or industry cause on the demo city, which is not OSM evidence', () => {
-    const causes = causeEvidence(demoBase, demoBase.cells[0], 70, 100, false);
+    const causes = causeEvidence(demoBase, demoBase.cells[0], 70, 100);
     expect(causes.map((c) => c.key)).toEqual([]);
   });
 
-  it('says when the industry dataset is not loaded', () => {
+  it('words industry evidence plainly and shows it only where an industrial area or unit is near', () => {
+    let found = 0;
     for (const cell of osmBase.cells) {
-      const ind = causeEvidence(osmBase, cell, 70, 100, false).find((c) => c.key === 'industry');
+      const ind = causeEvidence(osmBase, cell, 70, 100).find((c) => c.key === 'industry');
       if (ind) {
-        expect(ind.evidence.join(' ')).toMatch(/dataset not loaded/i);
-        return;
+        found++;
+        expect(ind.evidence.join(' ')).toMatch(/within 1\.5 km|industrial area/);
+        expect(ind.evidence.join(' ')).not.toMatch(/dataset|OpenStreetMap|DEMO|demo/);
       }
     }
-    // The snapshot has no mapped industry near any zone: nothing to assert, and nothing was invented.
-    expect(true).toBe(true);
+    expect(found).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -324,7 +326,7 @@ describe('coverage gaps', () => {
 
   it('is disabled with a reason when there are no placed stations', () => {
     const r = coverageGaps([cell('x', 73.9, 18.5)], []);
-    expect(r.disabledReason).toMatch(/not loaded/i);
+    expect(r.disabledReason).toMatch(/not available/i);
     expect(r.gaps).toEqual([]);
   });
 });
@@ -338,7 +340,7 @@ function zonesAt(category: 'low' | 'poor' | 'verypoor', forecast?: (h: number) =
     [zonePointId(c[0].id)]: makePoint('a', [73.9, 18.5], forecast ?? pm),
     [zonePointId(c[1].id)]: makePoint('b', [73.9, 18.5], forecast ?? pm),
   };
-  return buildZoneRows({ base: osmBase, points, placeNames: {}, nowMs: NOW, industryLoaded: false }).rows;
+  return buildZoneRows({ base: osmBase, points, placeNames: {}, nowMs: NOW }).rows;
 }
 
 const noStations = (): StationBuild => ({ placed: [], notPlaced: [], notice: 'x', modelService: { status: 'online', reason: null } });
@@ -353,7 +355,7 @@ describe('alerts', () => {
     const poor = buildAlerts({ zones: zonesAt('poor'), stations: noStations(), records: {}, nowMs: NOW });
     expect(poor).toHaveLength(1); // two zones share one model point
     expect(poor[0]).toMatchObject({ kind: 'current', severity: 'high', threshold: 201, confidence: CONFIDENCE_TEXT });
-    expect(poor[0].location).toMatch(/1 neighbouring zone/);
+    expect(poor[0].location).toMatch(/1 nearby area/);
     expect(poor[0].deadline).toBe(addDaysIst(NOW, 2));
     const vp = buildAlerts({ zones: zonesAt('verypoor'), stations: noStations(), records: {}, nowMs: NOW });
     expect(vp[0].severity).toBe('critical');
@@ -439,10 +441,10 @@ describe('hotspots', () => {
       [zonePointId(c[2].id)]: makePoint('c', [74.0, 18.6], 40),
       [zonePointId(c[3].id)]: makePoint('d', [74.1, 18.7], 100),
     };
-    const zones = buildZoneRows({ base: osmBase, points, placeNames: {}, nowMs: NOW, industryLoaded: false }).rows;
+    const zones = buildZoneRows({ base: osmBase, points, placeNames: {}, nowMs: NOW }).rows;
     const z = zoneHotspots(zones);
     expect(z.map((h) => h.category)).toEqual(['Very Poor', 'Poor', 'Satisfactory']);
-    expect(z[0].subtitle).toMatch(/1 neighbouring zone/);
+    expect(z[0].subtitle).toMatch(/1 nearby area/);
     const { catalog, svc, live } = stationFixture();
     const st = stationHotspots(buildStationRows(catalog, svc, live, NOW).placed, zones);
     // both fixtures carry AQI 180, so the higher PM2.5 reading (Katraj, 90 against 60) ranks first

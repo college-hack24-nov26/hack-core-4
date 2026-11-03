@@ -1,13 +1,17 @@
 /**
- * Hotspots: two honest rankings that are never blended. Zones use the live CAMS model estimate (one entry per model
- * grid point, because neighbouring zones often share a value); stations use their last reading, with its date.
+ * Hotspots: two rankings that are never blended. Areas use the live model estimate (one entry per model grid point,
+ * because neighbouring areas often share a value); stations use their last reading, with its date. Either can be ranked
+ * by the overall AQI or by the concentration of one pollutant.
  */
 import { useMemo } from 'react';
 import type { LonLat } from '../../types';
-import { groupByGrid, useAirData, type AqiCategory, type CauseEvidence, type Trend, type ZoneRow } from './airdata';
+import { POLLUTANT_NAME, POLLUTANT_UNIT, groupByGrid, useAirData, type AqiCategory, type CauseEvidence, type PollutantKey, type Trend, type ZoneRow } from './airdata';
 import { useStations, type StationRow } from './stations';
 
 export type HotspotKind = 'zone' | 'station';
+
+/** What a list is ranked by: the overall AQI, or the concentration of one pollutant. */
+export type Metric = 'aqi' | PollutantKey;
 
 export interface Hotspot {
   /** zone:<cell id> or station:<station id> */
@@ -20,6 +24,10 @@ export interface Hotspot {
   category: AqiCategory | null;
   dominant: string | null;
   pm25: number | null;
+  /** the value the list is ranked by, with its unit (AQI has none) */
+  metricValue: number | null;
+  metricUnit: string;
+  metricLabel: string;
   trend: Trend;
   trendPct: number;
   /** a station has one reading only, so its trend is unknown */
@@ -33,18 +41,24 @@ export interface Hotspot {
   station: StationRow | null;
 }
 
-export function zoneHotspots(zones: ZoneRow[]): Hotspot[] {
+const metricInfo = (m: Metric) => ({ unit: m === 'aqi' ? '' : POLLUTANT_UNIT[m], label: m === 'aqi' ? 'AQI' : POLLUTANT_NAME[m] });
+
+export function zoneHotspots(zones: ZoneRow[], metric: Metric = 'aqi'): Hotspot[] {
+  const info = metricInfo(metric);
   return groupByGrid(zones)
     .map(({ zone, sharing }): Hotspot => ({
       id: `zone:${zone.id}`,
       kind: 'zone',
       name: zone.place,
-      subtitle: sharing > 0 ? `CAMS model estimate; ${sharing} neighbouring zone${sharing === 1 ? '' : 's'} share this model value` : 'CAMS model estimate',
+      subtitle: sharing > 0 ? `Also covers ${sharing} nearby area${sharing === 1 ? '' : 's'}` : 'Area estimate',
       location: zone.location,
       aqi: zone.aqi,
       category: zone.category,
       dominant: zone.dominant,
       pm25: zone.pm25,
+      metricValue: metric === 'aqi' ? zone.aqi : (zone.values[metric] ?? null),
+      metricUnit: info.unit,
+      metricLabel: info.label,
       trend: zone.trend,
       trendPct: zone.trendPct,
       trendKnown: true,
@@ -54,7 +68,8 @@ export function zoneHotspots(zones: ZoneRow[]): Hotspot[] {
       zone,
       station: null,
     }))
-    .sort((a, b) => (b.aqi ?? 0) - (a.aqi ?? 0) || (b.pm25 ?? 0) - (a.pm25 ?? 0) || a.name.localeCompare(b.name));
+    .filter((h) => h.metricValue !== null)
+    .sort((a, b) => (b.metricValue ?? 0) - (a.metricValue ?? 0) || (b.aqi ?? 0) - (a.aqi ?? 0) || a.name.localeCompare(b.name));
 }
 
 /** Nearest zone to a point (its causes are the best available evidence for a station). */
@@ -71,22 +86,27 @@ export function nearestZone(zones: ZoneRow[], p: LonLat): ZoneRow | null {
   return best;
 }
 
-export function stationHotspots(stations: StationRow[], zones: ZoneRow[]): Hotspot[] {
+export function stationHotspots(stations: StationRow[], zones: ZoneRow[], metric: Metric = 'aqi'): Hotspot[] {
+  const info = metricInfo(metric);
   return stations
     .filter((s) => s.readings.length > 0)
     .map((s): Hotspot => {
       const zone = nearestZone(zones, [s.lon, s.lat]);
       const pm = s.readings.find((r) => r.key === 'pm25');
+      const chosen = metric === 'aqi' ? null : s.readings.find((r) => r.key === metric);
       return {
         id: `station:${s.id}`,
         kind: 'station',
         name: s.name,
-        subtitle: s.status === 'live' ? 'Monitoring station, current reading' : 'Monitoring station, last reading (outdated)',
+        subtitle: s.status === 'live' ? 'Station, current reading' : 'Station, last reading',
         location: [s.lon, s.lat],
         aqi: s.aqi?.value ?? null,
         category: s.aqi?.category ?? null,
         dominant: s.aqi?.dominant ?? null,
         pm25: pm?.value ?? null,
+        metricValue: metric === 'aqi' ? (s.aqi?.value ?? null) : (chosen?.value ?? null),
+        metricUnit: info.unit,
+        metricLabel: info.label,
         trend: 'flat',
         trendPct: 0,
         trendKnown: false,
@@ -97,7 +117,8 @@ export function stationHotspots(stations: StationRow[], zones: ZoneRow[]): Hotsp
         station: s,
       };
     })
-    .sort((a, b) => (b.aqi ?? -1) - (a.aqi ?? -1) || (b.pm25 ?? -1) - (a.pm25 ?? -1) || a.name.localeCompare(b.name));
+    .filter((h) => metric === 'aqi' || h.metricValue !== null)
+    .sort((a, b) => (b.metricValue ?? -1) - (a.metricValue ?? -1) || (b.aqi ?? -1) - (a.aqi ?? -1) || (b.pm25 ?? -1) - (a.pm25 ?? -1) || a.name.localeCompare(b.name));
 }
 
 export interface HotspotSet {
@@ -107,12 +128,12 @@ export interface HotspotSet {
   combined: Hotspot[];
 }
 
-export function useHotspots(): HotspotSet {
+export function useHotspots(metric: Metric = 'aqi'): HotspotSet {
   const air = useAirData();
   const st = useStations();
   return useMemo(() => {
-    const zones = zoneHotspots(air.zones);
-    const stations = stationHotspots(st.placed, air.zones);
+    const zones = zoneHotspots(air.zones, metric);
+    const stations = stationHotspots(st.placed, air.zones, metric);
     return { zones, stations, combined: [...zones, ...stations] };
-  }, [air.zones, st.placed]);
+  }, [air.zones, st.placed, metric]);
 }

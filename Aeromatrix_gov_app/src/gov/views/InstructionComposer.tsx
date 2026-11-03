@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Copy, Mail, MessageCircle, Check } from 'lucide-react';
+import { Copy, Mail, MessageCircle, Check, Share2 } from 'lucide-react';
 import { Btn, Field, inputCls } from '../ui';
 import { mailtoLink, whatsappLink, type Department } from '../lib/routing';
 import { NOT_SENT_NOTE, copyText } from '../lib/instructions';
+import { canShareText, shareText } from '../lib/share';
 
 const OTHER = '__other__';
 
@@ -13,8 +14,8 @@ export interface ComposerResult {
 }
 
 /**
- * Prepares an instruction. The Commissioner edits the text, then copies it or opens a draft; "Approve and record"
- * stores the instruction in this browser. Nothing is ever sent by the app.
+ * Prepares an instruction. The Commissioner edits the text, then copies it or opens a draft; "Approve" records the
+ * instruction in this browser. Nothing is ever sent by the app.
  */
 export function InstructionComposer({
   departments,
@@ -48,43 +49,48 @@ export function InstructionComposer({
   };
 
   return (
-    <div className="space-y-3">
-      <Field label="Recipient" hint="Suggested from the likely cause. You choose who receives it.">
+    <div className="space-y-4">
+      <Field label="Send to">
         <select value={choice} onChange={(e) => setChoice(e.target.value)} className={inputCls} aria-label="Recipient">
           {departments.map((d) => (
             <option key={d.key} value={d.name}>
               {d.name}
             </option>
           ))}
-          <option value={OTHER}>Someone else (type below)</option>
+          <option value={OTHER}>Someone else</option>
         </select>
       </Field>
       {choice === OTHER && (
-        <Field label="Recipient name, or an email address for the email draft">
-          <input value={typed} onChange={(e) => setTyped(e.target.value)} className={inputCls} placeholder="Name, office or email" />
+        <Field label="Name, office or email">
+          <input value={typed} onChange={(e) => setTyped(e.target.value)} className={inputCls} />
         </Field>
       )}
       <Field label="Deadline">
         <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={inputCls} />
       </Field>
-      <Field label="Message (edit freely)">
-        <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={9} className={`${inputCls} py-2 leading-relaxed`} />
+      <Field label="Message">
+        <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={9} className={`${inputCls} py-3 leading-relaxed`} />
       </Field>
-      <p className="rounded-xl bg-ink-800 p-3 text-xs text-sand-200 hairline">{NOT_SENT_NOTE}</p>
       <div className="flex flex-wrap gap-2">
         <Btn onClick={() => void doCopy()} icon={copied ? Check : Copy}>
           {copied ? 'Copied' : 'Copy'}
         </Btn>
         <Btn href={mailtoLink(to, subject, fullText)} icon={Mail} title="Opens a draft in your email app">
-          Email draft
+          Email
         </Btn>
         <Btn href={whatsappLink(fullText)} icon={MessageCircle} title="Opens a WhatsApp draft; you pick the contact">
-          WhatsApp draft
+          WhatsApp
         </Btn>
+        {canShareText() && (
+          <Btn icon={Share2} onClick={() => void shareText(subject, fullText)} title="Opens the share sheet; you pick the app and the person">
+            Share
+          </Btn>
+        )}
       </div>
+      <p className="text-xs text-sand-400">{NOT_SENT_NOTE}</p>
       {onApprove && (
         <Btn variant="primary" disabled={!canApprove} className="w-full" onClick={() => onApprove({ to, deadline, message })}>
-          {approveLabel ?? 'Approve and record'}
+          {approveLabel ?? 'Approve instruction'}
         </Btn>
       )}
     </div>

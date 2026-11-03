@@ -74,7 +74,7 @@ describe('buildStationCatalog', () => {
 describe('loadVerifiedStations', () => {
   it('is "not loaded" when the drop-in file is missing', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => res({}, 404)));
-    expect(await loadVerifiedStations()).toMatchObject({ status: 'not-loaded', reason: expect.stringMatching(/not loaded/) });
+    expect(await loadVerifiedStations()).toMatchObject({ status: 'not-loaded', reason: expect.stringMatching(/not available/) });
   });
 
   it('is "not loaded" for an HTML fallback or a file in another format', async () => {

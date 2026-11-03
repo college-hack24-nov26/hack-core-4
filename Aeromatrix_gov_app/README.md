@@ -4,6 +4,8 @@ A decision-support app for the Municipal Commissioner of Pune and Pimpri-Chinchw
 
 It **finds** the air-quality problem, **explains** it, **recommends** an action and the department to inform, **tests** the action in a simulation, and produces a **costed implementation report**. It never sends anything: instructions are prepared, and the Commissioner copies them or opens an email / WhatsApp draft.
 
+It is made to be installed on a phone: see **Phone and PWA** below.
+
 This is its own Vite project (React 19, TypeScript strict, Tailwind 4, zustand, Leaflet, Cesium for the optional 3D map, jsPDF). It **reuses the backends of `aeromatrix_main`** (model API 8000, AeroSage 8010, Sensor Intelligence 8030) and has no backend folder of its own. The shared frontend code (store, services, scenario engine, Plan-It cost model, TwinMap, AeroSage) is a copy inside `src/`.
 
 ## Run it
@@ -30,7 +32,7 @@ Phone try-out on your network: `npm run dev -- --host --port 5174`.
 | AeroSage (8010), Sensor Intelligence (8030) | The assistant says it is not running; nothing else changes. |
 | Open-Meteo (no internet) | Home says "No data feed"; no number is invented. |
 
-The files above are **drop-ins** supplied separately. Add them later and restart; no code changes are needed. This app never creates them, nor the PWA icons.
+The files above are **drop-ins** supplied separately. Add them later and restart; no code changes are needed. This app never creates them. (The app's own install icons are different files, in `public/pwa/`.)
 
 ## Screens
 
@@ -64,15 +66,30 @@ Every value carries one of five chips: **Measured**, **Outdated**, **Estimated**
 
 An alert exists only when real data crosses a threshold: the current model value or a model-outlook day of an area reaching **Poor (CPCB AQI 201) or worse**, or station feeds going stale. Severity: critical (Very Poor or worse), high (Poor), watch (a Poor crossing only at +72 h, or stale feeds), info (a service is unreachable).
 
-## Phone and PWA
+## Phone and PWA (mobile app)
 
-It installs like an app: web manifest (`AeroMatrix Commissioner`, standalone, portrait), a service worker that caches **only the app shell and static data** (never the model API, Open-Meteo, map tiles or the assistant, so nothing offline is shown as current), an "Offline" notice and a dismissible install prompt (the choice is remembered under `aeromatrix.gov.installHidden`).
+The Commissioner app is built to be installed on a phone and used like a native app.
 
-- Layout: no sideways scrolling at 375 px, 44 px touch targets, 16 px inputs, safe-area insets, tables scroll inside their card, bottom sheets instead of side panels, the 2D map by default.
-- **Installing needs https.** Deploy the built app (`vercel.json` is a static SPA configuration) or use any https host. The model API must be reachable from the phone as well for a real rollout.
-- The service worker is registered in production builds only.
+**Install**
+- **Android (Chrome / Edge):** open the https address, then tap *Install* in the bar at the top (or the browser menu, *Install app*).
+- **iPhone / iPad (Safari):** tap the Share button, then *Add to Home Screen*. The app shows this hint itself in Safari.
+- The app opens full screen with its own icon, a splash while it loads, the system light or dark theme (a saved choice wins), and shortcuts on the icon for Alerts, Simulator and Reports.
+- **Installing needs https.** Deploy the built app (`vercel.json` is a static SPA configuration) or use any https host. The model API must be reachable from the phone as well for a real rollout. For a quick look on your own network: `npm run dev -- --host --port 5174` and open the printed network address on the phone (plain http: it works in the browser but cannot be installed).
+
+**Built for a phone**
+- Layout checked at 360, 375, 412 px wide, a phone turned sideways (812 x 375) and a tablet (768 px): no sideways scrolling, 44 px touch targets, 16 px inputs (no zoom on focus), safe-area insets for notches, tables scroll inside their card.
+- The launcher fans out inside the screen in both orientations. Detail panels are bottom sheets with a handle: drag down to close.
+- The 2D map is the default and finger-sized zoom buttons. The **Me** button shows where you are (asked once, only when tapped; the position is never stored or sent) and opens the area you stand in.
+- Reports: **Download** saves the PDF, **Share PDF** opens the phone's share sheet. Instructions have a **Share** button next to Copy, Email and WhatsApp. The share sheet is the phone's own: you choose the app and the person, so the app still sends nothing.
+- No pull-to-refresh or accidental page zoom; the screens scroll inside their own area.
+- Works offline for the app shell and static data: it opens, shows an **Offline** notice, and shows no number as current. Live data (model API, Open-Meteo, map tiles, assistant) is never cached.
+- **Updates:** when a new version is ready a bar says so; tap *Reload*. A new version never replaces the running one underneath an open form.
+
+**Files**
+- `public/manifest.webmanifest`, `public/sw.js`, `index.html` (iOS tags and the splash).
+- Icons are in `public/pwa/` (`icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`), drawn from the AeroMatrix mark by `scripts/make-icons.mjs` (`node scripts/make-icons.mjs` redraws them). They deliberately do not use the root-level `public/icon-*.png` names, which stay free for icons supplied separately.
+- The service worker is registered in production builds only. Hide the install prompt with the `aeromatrix.gov.installHidden` key; the iOS hint uses `aeromatrix.gov.iosHintHidden`.
 - A store app would be a Capacitor wrapper; that is **not** set up.
-- The install icons `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` and `apple-touch-icon.png` are drop-ins in `public/`. The app works without them; install prompts need them.
 
 ## Code map
 

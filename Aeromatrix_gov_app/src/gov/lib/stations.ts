@@ -176,7 +176,7 @@ export function buildStationRows(catalog: StationCatalog, svc: ModelServiceState
   return {
     placed,
     notPlaced: [...catalog.unlocated, ...noCoord],
-    notice: placed.length === 0 ? (catalog.notice ?? 'Sourced station coordinates not loaded.') : null,
+    notice: placed.length === 0 ? (catalog.notice ?? 'Station locations are not available.') : null,
     modelService: { status: svc.status, reason: svc.reason },
   };
 }

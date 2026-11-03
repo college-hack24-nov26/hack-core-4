@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Moon, Sun, TriangleAlert } from 'lucide-react';
-import { AeroSageHost } from '../aerosage/AeroSageHost';
 import { LogoMark } from '../components/Brand';
 import { startLiveDataWhenReady } from '../services/liveData';
 import { useTwinStore } from '../store/useTwinStore';
@@ -8,6 +7,7 @@ import { GOV_VIEWS, useGovStore, type GovView } from './govStore';
 import { GovOrbit, VIEW_LABEL } from './GovOrbit';
 import { PwaBar } from './Pwa';
 import { formatIst } from './lib/format';
+import { installBackButton } from './lib/native';
 import { HomeView } from './views/HomeView';
 import { AlertsView } from './views/AlertsView';
 import { MapView } from './views/MapView';
@@ -19,9 +19,16 @@ import { ReportsView } from './views/ReportsView';
 const THEME_KEY = 'aeromatrix.gov.theme';
 type Theme = 'cream' | 'dark';
 
-function readTheme(): Theme {
+/** The saved choice, else the phone's own light / dark setting. */
+export function readTheme(): Theme {
   try {
-    return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'cream';
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'dark' || saved === 'cream') return saved;
+  } catch {
+    /* fall through to the system setting */
+  }
+  try {
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'cream';
   } catch {
     return 'cream';
   }
@@ -82,12 +89,34 @@ export function GovApp() {
     };
   }, [init, setView]);
 
+  // Android back button: close an open panel, then go back to Home, then leave the app.
+  useEffect(() => {
+    let remove: (() => void) | undefined;
+    void installBackButton(() => {
+      const g = useGovStore.getState();
+      if (g.selectedAlertId || g.selectedHotspotId || g.selectedStationId) {
+        g.selectAlert(null);
+        g.selectHotspot(null);
+        g.selectStation(null);
+        return true;
+      }
+      if (g.view !== 'home') {
+        g.setView('home');
+        return true;
+      }
+      return false;
+    }).then((r) => {
+      remove = r;
+    });
+    return () => remove?.();
+  }, []);
+
   const liveText =
     live.status === 'ready' && live.lastUpdated
-      ? `Model data ${formatIst(live.lastUpdated)}`
+      ? `Updated ${formatIst(live.lastUpdated).replace(/^\d+ \w+ \d+, /, '')}`
       : live.status === 'offline'
-        ? 'Model data offline'
-        : 'Loading model data';
+        ? 'Offline'
+        : 'Updating…';
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-ink-950 text-sand-100">
@@ -128,7 +157,6 @@ export function GovApp() {
           </div>
         )}
         {hasBase && <GovOrbit />}
-        <AeroSageHost />
         {loading && !hasBase && (
           <div role="status" className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-ink-950/70">
             <div className="flex items-center gap-3 rounded-2xl bg-ink-900 px-5 py-3 text-sm text-sand-100 hairline">

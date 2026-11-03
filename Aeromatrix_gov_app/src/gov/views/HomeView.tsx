@@ -1,136 +1,142 @@
-import { Bell, Flame, RadioTower, RefreshCw, WifiOff } from 'lucide-react';
-import { useTwinStore } from '../../store/useTwinStore';
+import { AlertTriangle, Bell, CheckCircle2, ChevronRight, RadioTower, RefreshCw } from 'lucide-react';
 import { refreshLiveNow } from '../../services/liveData';
 import { useGovStore } from '../govStore';
-import { useAirData } from '../lib/airdata';
-import { useAlerts, SEVERITY_LABEL, type AlertSeverity } from '../lib/alerts';
+import { POLLUTANT_NAME, POLLUTANT_UNIT, colorOf, useAirData, type PollutantKey } from '../lib/airdata';
+import { SEVERITY_LABEL, useAlerts, type AlertSeverity } from '../lib/alerts';
 import { useHotspots } from '../lib/hotspots';
 import { countStations, useStations } from '../lib/stations';
-import { formatIst, pollutantLabel } from '../lib/format';
-import { AqiChip, Btn, EmptyState, ForecastStrip, KpiCard, PageTitle, SectionCard, StatusChip, TrendBadge } from '../ui';
+import { formatAge, formatIst } from '../lib/format';
+import { ForecastChart } from '../charts';
+import { AqiChip, Btn, CategoryScale, Card, EmptyState, Gauge, Skeleton, StatusChip, TrendBadge } from '../ui';
 
 const SEV_COLOR: Record<AlertSeverity, string> = { critical: '#d9372f', high: '#f08c1a', watch: '#e0b100', info: '#9a8a80' };
+
+const timeOnly = (ms: number) => formatIst(ms).replace(/^.*?, /, '');
 
 export function HomeView() {
   const air = useAirData();
   const stations = useStations();
-  const { alerts, bySeverity, newCount } = useAlerts();
-  const hot = useHotspots();
+  const { alerts, bySeverity } = useAlerts();
+  const hot = useHotspots('aqi');
   const setView = useGovStore((s) => s.setView);
   const selectAlert = useGovStore((s) => s.selectAlert);
   const selectHotspot = useGovStore((s) => s.selectHotspot);
-  const svc = useTwinStore((s) => s.modelService);
-  const verified = useTwinStore((s) => s.verified);
-  const industry = useTwinStore((s) => s.industry);
-  const geometryInfo = useTwinStore((s) => s.geometryInfo);
-  const counts = countStations(stations);
-  const open = alerts.filter((a) => a.record.status !== 'resolved');
   const city = air.city;
+  const loading = !city && (air.status === 'idle' || air.status === 'loading');
+
+  const open = alerts.filter((a) => a.record.status !== 'resolved');
+  const critical = bySeverity.critical;
+  const c = countStations(stations);
+  const total = c.total + c.notPlaced;
+  const unavailable = Math.max(0, total - c.live - c.outdated);
+  const outdatedStations = stations.placed.filter((s) => s.status === 'outdated');
+  const dominant = city?.aqi.dominant_pollutant as PollutantKey | null | undefined;
 
   return (
-    <div className="mx-auto max-w-6xl p-4 pb-32">
-      <PageTitle
-        title="Pune and Pimpri-Chinchwad: air today"
-        sub="Find the problem, understand it, decide what to do, test it, and get a costed plan."
-        right={
-          <Btn icon={RefreshCw} onClick={() => void refreshLiveNow(true)} title="Fetch the latest model data now">
-            Refresh
-          </Btn>
-        }
-      />
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        <div className="md:col-span-2 xl:col-span-1">
-          {city ? (
-            <KpiCard
-              label="City air quality (estimate)"
-              value={Math.round(city.value)}
-              accent={undefined}
-              chip={
-                <>
-                  <AqiChip category={city.category} />
-                  <StatusChip kind="estimated" />
-                </>
-              }
-              sub={
-                <>
-                  <div>Main pollutant {pollutantLabel(city.aqi.dominant_pollutant)}; PM2.5 {city.pm25?.toFixed(0) ?? 'n/a'} and PM10 {city.pm10?.toFixed(0) ?? 'n/a'} ug/m3</div>
-                  <div className="mt-1 text-sand-400">{city.method}</div>
-                  <div className="mt-1 text-sand-400">Model hour: {formatIst(city.asOf)}</div>
-                </>
-              }
-            />
-          ) : (
-            <SectionCard title="City air quality">
-              <EmptyState
-                icon={WifiOff}
-                title={air.status === 'loading' || air.status === 'idle' ? 'Loading model data' : 'No data feed'}
-                reason={air.status === 'loading' || air.status === 'idle' ? 'Fetching the Open-Meteo CAMS model data for the city.' : (air.reason ?? 'Open-Meteo did not return data. Nothing is shown rather than an invented number.')}
-              />
-            </SectionCard>
-          )}
+    <div className="mx-auto max-w-5xl px-4 pb-40 pt-6 sm:px-6">
+      <header className="mb-6 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="gov-eyebrow">Pune and Pimpri-Chinchwad</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-sand-50 sm:text-[28px]">Needs attention now</h1>
         </div>
+        <Btn variant="ghost" icon={RefreshCw} ariaLabel="Refresh data" onClick={() => void refreshLiveNow(true)} className="!px-3" />
+      </header>
 
-        <SectionCard title="Outlook" action={<StatusChip kind="forecast" />}>
-          <ForecastStrip days={city?.forecast ?? []} />
-          <p className="mt-2 text-[11px] text-sand-400">City-wide model outlook. Model data has no published error band here.</p>
-        </SectionCard>
+      <div className="gov-stagger grid gap-4 md:grid-cols-2">
+        {/* A. Overall city AQI */}
+        <Card>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="gov-eyebrow">City air quality</h2>
+            <StatusChip kind="estimated" />
+          </div>
+          {loading ? (
+            <div className="mt-6 space-y-3">
+              <Skeleton className="mx-auto h-28 w-56" />
+              <Skeleton className="mx-auto h-4 w-40" />
+            </div>
+          ) : city ? (
+            <div className="mt-3 flex flex-col items-center text-sand-50">
+              <Gauge value={city.value} category={city.category} />
+              <div className="-mt-1 text-lg font-semibold" style={{ color: colorOf(city.category) }}>
+                {city.category}
+              </div>
+              <div className="mt-3">
+                <CategoryScale category={city.category} />
+              </div>
+              <p className="mt-4 text-sm text-sand-300">
+                {dominant && POLLUTANT_NAME[dominant] ? `Main pollutant ${POLLUTANT_NAME[dominant]}` : 'Main pollutant unavailable'}
+                {dominant && city.aqi.subindices[dominant] ? ` · ${Math.round(city.aqi.subindices[dominant]!.concentration)} ${POLLUTANT_UNIT[dominant]}` : ''}
+              </p>
+              <p className="mt-1 text-xs text-sand-400">Updated {formatIst(city.asOf)}</p>
+            </div>
+          ) : (
+            <EmptyState title="Air quality unavailable" reason={air.reason ?? 'Check the connection and refresh.'} />
+          )}
+        </Card>
 
-        <SectionCard
-          title="Alerts"
-          action={
-            <Btn variant="ghost" icon={Bell} onClick={() => setView('alerts')} className="!px-2 text-xs">
-              {newCount > 0 ? `${newCount} new` : 'Open'}
-            </Btn>
-          }
-        >
-          <div className="mb-3 flex flex-wrap gap-2">
-            {(['critical', 'high', 'watch', 'info'] as AlertSeverity[]).map((s) => (
-              <span key={s} className="inline-flex items-center gap-1.5 rounded-full bg-ink-800 px-2.5 py-1 text-xs font-semibold text-sand-100 hairline">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: SEV_COLOR[s] }} />
-                {bySeverity[s]} {SEVERITY_LABEL[s].toLowerCase()}
+        {/* C. Active alerts */}
+        <Card>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="gov-eyebrow">Active alerts</h2>
+            {critical > 0 ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#d9372f]/12 px-2.5 py-0.5 text-xs font-semibold text-[#d9372f]">
+                <AlertTriangle size={13} /> {critical} critical
               </span>
-            ))}
+            ) : (
+              <span className="text-xs text-sand-400">None critical</span>
+            )}
+          </div>
+          <div className="mt-3 flex items-end gap-3">
+            <span className="text-6xl font-semibold leading-none tabular-nums text-sand-50">{open.length}</span>
+            <span className="pb-1 text-sm text-sand-300">{open.length === 1 ? 'alert needs attention' : 'alerts need attention'}</span>
           </div>
           {open.length === 0 ? (
-            <p className="text-sm text-sand-300">No threshold is crossed right now. An alert appears only when real data reaches Poor or worse, or station feeds go stale.</p>
+            <p className="mt-5 flex items-center gap-2 text-sm text-sand-300">
+              <CheckCircle2 size={17} className="text-emerald-500" /> All clear right now.
+            </p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="mt-5 space-y-1">
               {open.slice(0, 3).map((a) => (
-                <li key={a.id}>
+                <li key={a.id} className="gov-alert-in">
                   <button
                     type="button"
                     onClick={() => {
                       selectAlert(a.id);
                       setView('alerts');
                     }}
-                    className="gov-tap w-full rounded-xl bg-ink-800 p-3 text-left hairline hover:bg-ink-700"
+                    className="gov-row gov-tap flex w-full items-center gap-3 px-2 py-2 text-left"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: SEV_COLOR[a.severity] }} />
-                      <span className="text-sm font-bold text-sand-50">{a.title}</span>
-                    </div>
-                    <div className="mt-0.5 pl-4 text-xs text-sand-300">{a.record.status === 'new' ? 'New' : a.record.status}</div>
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: SEV_COLOR[a.severity] }} aria-label={SEVERITY_LABEL[a.severity]} />
+                    <span className="min-w-0 flex-1 truncate text-sm text-sand-100">{a.title}</span>
+                    <ChevronRight size={16} className="shrink-0 text-sand-500" />
                   </button>
                 </li>
               ))}
             </ul>
           )}
-        </SectionCard>
+          <Btn variant="secondary" icon={Bell} className="mt-5 w-full" onClick={() => setView('alerts')}>
+            Open alerts inbox
+          </Btn>
+        </Card>
 
-        <SectionCard
-          title="Top hotspots (areas)"
-          className="md:col-span-2"
-          action={
-            <Btn variant="ghost" icon={Flame} onClick={() => setView('hotspots')} className="!px-2 text-xs">
-              All hotspots
-            </Btn>
-          }
-        >
-          {hot.zones.length === 0 ? (
-            <EmptyState title="No area values" reason="Hotspots are ranked from the live model estimate for each area. There is no model data right now." />
+        {/* B. Top pollution hotspots */}
+        <Card className="md:col-span-2">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="gov-eyebrow">Top pollution hotspots</h2>
+            <button type="button" onClick={() => setView('hotspots')} className="gov-tap inline-flex min-h-9 items-center gap-1 text-sm font-medium text-accent-400 hover:underline">
+              See all <ChevronRight size={15} />
+            </button>
+          </div>
+          {loading ? (
+            <div className="space-y-2">
+              {[0, 1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-14" />
+              ))}
+            </div>
+          ) : hot.zones.length === 0 ? (
+            <EmptyState title="No hotspots to rank" reason="Area readings are not available right now." />
           ) : (
-            <ol className="space-y-2">
+            <ol>
               {hot.zones.slice(0, 5).map((h, i) => (
                 <li key={h.id}>
                   <button
@@ -139,81 +145,89 @@ export function HomeView() {
                       selectHotspot(h.id);
                       setView('hotspots');
                     }}
-                    className="gov-tap flex w-full items-center gap-3 rounded-xl bg-ink-800 p-3 text-left hairline hover:bg-ink-700"
+                    className="gov-row gov-tap flex w-full items-center gap-3 px-2 py-3 text-left sm:gap-4"
                   >
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-ink-700 text-xs font-bold text-sand-100">{i + 1}</span>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink-800 text-sm font-semibold tabular-nums text-sand-200">{i + 1}</span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-bold text-sand-50">{h.name}</span>
-                      <span className="block truncate text-xs text-sand-400">{h.subtitle}</span>
+                      <span className="block truncate text-[15px] font-medium text-sand-50">{h.name}</span>
+                      <span className="block truncate text-sm text-sand-300">
+                        {h.dominant && POLLUTANT_NAME[h.dominant as PollutantKey] ? POLLUTANT_NAME[h.dominant as PollutantKey] : 'AQI'}
+                        {h.zone && h.dominant && h.zone.values[h.dominant as PollutantKey] !== undefined ? ` ${Math.round(h.zone.values[h.dominant as PollutantKey]!)} ${POLLUTANT_UNIT[h.dominant as PollutantKey]}` : ''}
+                      </span>
                     </span>
-                    <TrendBadge trend={h.trend} pct={h.trendPct} />
+                    <span className="hidden sm:block">
+                      <TrendBadge trend={h.trend} pct={h.trendPct} />
+                    </span>
                     <AqiChip aqi={h.aqi} category={h.category} />
                   </button>
                 </li>
               ))}
             </ol>
           )}
-        </SectionCard>
+        </Card>
 
-        <SectionCard
-          title="Monitoring stations"
-          action={
-            <Btn variant="ghost" icon={RadioTower} onClick={() => setView('stations')} className="!px-2 text-xs">
-              Stations
-            </Btn>
-          }
-        >
-          <dl className="grid grid-cols-2 gap-2 text-sm">
-            {[
-              ['Measured now', counts.live],
-              ['Outdated', counts.outdated],
-              ['No data feed', counts.noFeed + counts.estimate],
-              ['Not placed', counts.notPlaced],
-            ].map(([k, v]) => (
-              <div key={k} className="rounded-xl bg-ink-800 p-3 hairline">
-                <dt className="text-[11px] font-bold uppercase tracking-wider text-sand-400">{k}</dt>
-                <dd className="font-display text-2xl font-bold text-sand-50">{v}</dd>
-              </div>
-            ))}
-          </dl>
-          <p className="mt-2 text-xs text-sand-300">
-            {counts.total === 0
-              ? (stations.notice ?? 'Sourced station coordinates not loaded.')
-              : counts.live === 0
-                ? 'No station has a current reading. The newest readings are old and are shown with their dates.'
-                : `${counts.live} of ${counts.total} placed stations have a current reading.`}
-          </p>
-        </SectionCard>
+        {/* D. Next 24-72 hours */}
+        <Card>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="gov-eyebrow">Next 24 to 72 hours</h2>
+            <StatusChip kind="forecast" />
+          </div>
+          <div className="mt-3">
+            {loading ? <Skeleton className="h-40" /> : city && city.forecast.length > 0 ? <ForecastChart days={city.forecast} /> : <EmptyState title="Forecast unavailable" />}
+          </div>
+        </Card>
 
-        <SectionCard title="Data freshness" className="md:col-span-2 xl:col-span-3">
-          <ul className="grid gap-2 text-xs sm:grid-cols-2 xl:grid-cols-3">
-            <li className="rounded-xl bg-ink-800 p-3 hairline">
-              <div className="font-bold text-sand-100">Open-Meteo CAMS model data</div>
-              <div className="text-sand-300">
-                {air.lastUpdated ? `Fetched ${formatIst(air.lastUpdated)}` : 'Not fetched yet'}
-                {air.status === 'offline' ? ' (offline)' : ''}
+        {/* E. Station health */}
+        <Card>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="gov-eyebrow">Station health</h2>
+            <button type="button" onClick={() => setView('stations')} className="gov-tap inline-flex min-h-9 items-center gap-1 text-sm font-medium text-accent-400 hover:underline">
+              Stations <ChevronRight size={15} />
+            </button>
+          </div>
+          {total === 0 ? (
+            <EmptyState icon={RadioTower} title="No station list" reason="Station locations are not available yet." />
+          ) : (
+            <>
+              <div className="mt-3 flex items-end gap-3">
+                <span className="text-5xl font-semibold leading-none tabular-nums text-sand-50">{total}</span>
+                <span className="pb-1 text-sm text-sand-300">monitoring stations</span>
               </div>
-              {air.missingZones > 0 && air.zones.length > 0 && <div className="text-sand-400">{air.missingZones} zones have no model value.</div>}
-            </li>
-            <li className="rounded-xl bg-ink-800 p-3 hairline">
-              <div className="font-bold text-sand-100">Station-data service</div>
-              <div className="text-sand-300">{svc.status === 'online' ? `Online, connected ${formatIst(svc.connectedAt)}` : svc.status === 'connecting' ? 'Connecting' : `Not reachable${svc.reason ? `: ${svc.reason}` : ''}`}</div>
-            </li>
-            <li className="rounded-xl bg-ink-800 p-3 hairline">
-              <div className="font-bold text-sand-100">Station coordinates</div>
-              <div className="text-sand-300">{verified?.status === 'loaded' ? `${verified.file.stations.length} sourced coordinates loaded` : 'Sourced station coordinates not loaded'}</div>
-            </li>
-            <li className="rounded-xl bg-ink-800 p-3 hairline">
-              <div className="font-bold text-sand-100">Roads and industry (OpenStreetMap)</div>
-              <div className="text-sand-300">{geometryInfo.source === 'osm' ? `Snapshot${geometryInfo.generated ? ` of ${geometryInfo.generated.slice(0, 10)}` : ''}` : 'Not loaded; causes cannot be shown'}</div>
-            </li>
-            <li className="rounded-xl bg-ink-800 p-3 hairline">
-              <div className="font-bold text-sand-100">Industry dataset (MIDC)</div>
-              <div className="text-sand-300">{industry?.status === 'loaded' ? 'Loaded' : 'Industry dataset not loaded'}</div>
-            </li>
-          </ul>
-        </SectionCard>
+              <div className="mt-4 flex h-2.5 w-full overflow-hidden rounded-full bg-ink-800" role="img" aria-label={`${c.live} working, ${c.outdated} outdated, ${unavailable} unavailable`}>
+                <span style={{ width: `${(c.live / total) * 100}%`, background: '#2fae8b' }} />
+                <span style={{ width: `${(c.outdated / total) * 100}%`, background: '#e0a100' }} />
+                <span style={{ width: `${(unavailable / total) * 100}%`, background: '#9a8a80' }} />
+              </div>
+              <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
+                {[
+                  ['Working', c.live, '#2fae8b'],
+                  ['Outdated', c.outdated, '#c98a00'],
+                  ['Unavailable', unavailable, '#9a8a80'],
+                ].map(([k, v, col]) => (
+                  <div key={k as string}>
+                    <dd className="text-2xl font-semibold tabular-nums" style={{ color: col as string }}>
+                      {v}
+                    </dd>
+                    <dt className="text-xs text-sand-300">{k}</dt>
+                  </div>
+                ))}
+              </dl>
+              {outdatedStations.length > 0 && (
+                <ul className="mt-4 space-y-1.5 border-t border-sand-500/15 pt-3 text-sm">
+                  {outdatedStations.slice(0, 3).map((s) => (
+                    <li key={s.id} className="flex items-center justify-between gap-2">
+                      <span className="min-w-0 truncate text-sand-100">{s.name}</span>
+                      <span className="shrink-0 text-xs text-amber-700">{formatAge(s.ageMs)}</span>
+                    </li>
+                  ))}
+                  {outdatedStations.length > 3 && <li className="text-xs text-sand-400">and {outdatedStations.length - 3} more outdated</li>}
+                </ul>
+              )}
+            </>
+          )}
+        </Card>
       </div>
+      {city && <p className="mt-5 text-center text-xs text-sand-400">Last model update {timeOnly(city.asOf)}</p>}
     </div>
   );
 }

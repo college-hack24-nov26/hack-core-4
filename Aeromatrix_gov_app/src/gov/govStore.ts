@@ -88,7 +88,7 @@ export interface GovState {
   alertRecords: Record<string, AlertRecord>;
   scenarios: GovSavedScenario[];
   settings: GovSettings;
-  /** a map fly-to request from AeroSage or a card */
+  /** a map fly-to request from a card or the locate button */
   mapFocus: { lon: number; lat: number; nonce: number } | null;
 
   setView: (v: GovView) => void;

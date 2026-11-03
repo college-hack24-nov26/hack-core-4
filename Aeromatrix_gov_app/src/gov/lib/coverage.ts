@@ -34,7 +34,7 @@ export function coverageGaps(
   radiusKm: number = COVERAGE_RADIUS_KM,
 ): CoverageResult {
   const empty = (reason: string): CoverageResult => ({ radiusKm, gaps: [], covered: 0, coveredOnlyByOutdated: 0, total: cells.length, disabledReason: reason });
-  if (stations.length === 0) return empty('Sourced station coordinates not loaded, so coverage cannot be assessed.');
+  if (stations.length === 0) return empty('Station locations are not available, so monitoring gaps cannot be assessed.');
   const feed = stations.filter(providesCoverage);
   const gaps: CoverageCell[] = [];
   let covered = 0;

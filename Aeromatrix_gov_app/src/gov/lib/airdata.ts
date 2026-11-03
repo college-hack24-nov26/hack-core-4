@@ -12,6 +12,7 @@ import { aqiForPoint } from '../../services/openMeteo';
 import { AQI_COLORS, METHOD_MODEL, aqiCategory, type AqiCategory, type AqiResult } from '../../services/cpcbAqi';
 import { distanceToBBoxKm, haversineKm, polygonCentroid } from '../../utils/geo';
 import { zoneLabel } from '../../utils/zones';
+import { PUNE_LOCALITIES } from '../../data/geojson/puneLocalities';
 
 export const CATEGORIES: AqiCategory[] = ['Good', 'Satisfactory', 'Moderate', 'Poor', 'Very Poor', 'Severe'];
 export const categoryRank = (c: AqiCategory | null | undefined): number => (c ? CATEGORIES.indexOf(c) : -1);
@@ -22,6 +23,11 @@ export const CATEGORY_FLOOR: Record<AqiCategory, number> = { Good: 0, Satisfacto
 
 export type { AqiCategory };
 export { aqiCategory };
+
+export type PollutantKey = 'pm25' | 'pm10' | 'no2' | 'so2' | 'co' | 'o3';
+export const POLLUTANT_KEYS: PollutantKey[] = ['pm25', 'pm10', 'no2', 'so2', 'co', 'o3'];
+export const POLLUTANT_NAME: Record<PollutantKey, string> = { pm25: 'PM2.5', pm10: 'PM10', no2: 'NO₂', so2: 'SO₂', co: 'CO', o3: 'O₃' };
+export const POLLUTANT_UNIT: Record<PollutantKey, string> = { pm25: 'µg/m³', pm10: 'µg/m³', no2: 'µg/m³', so2: 'µg/m³', co: 'mg/m³', o3: 'µg/m³' };
 
 export type EvidenceKey = 'traffic' | 'industry' | 'dust';
 export type Strength = 'Strong' | 'Moderate' | 'Weak';
@@ -54,6 +60,8 @@ export interface ZoneRow {
   dominant: string | null;
   /** CPCB sub-index of each pollutant that entered the AQI, highest first */
   subindices: Array<{ pollutant: string; value: number; concentration: number }>;
+  /** current model concentration of every pollutant that has a value (units in POLLUTANT_UNIT) */
+  values: Partial<Record<PollutantKey, number>>;
   pm25: number | null;
   pm10: number | null;
   /** model hour the value is for (ms) */
@@ -78,7 +86,32 @@ export const MAJOR_ROAD_CLASSES = ['motorway', 'trunk', 'primary', 'secondary'];
 const IST = 'Asia/Kolkata';
 const istDay = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: IST, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
 
-export const gridKeyOf = (p: LiveAirPoint): string => `${p.grid[1].toFixed(2)},${p.grid[0].toFixed(2)}`;
+const DIRECTIONS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
+
+/**
+ * A readable name for a zone: the locality inside it, otherwise its direction from the nearest locality ("East of
+ * Hadapsar"). The grid label is the last resort.
+ */
+export function placeFor(cell: GridCell, names: Record<string, string>): string {
+  if (names[cell.id]) return names[cell.id];
+  let best: { name: string; center: LonLat } | null = null;
+  let bestKm = Infinity;
+  for (const l of PUNE_LOCALITIES) {
+    const d = haversineKm(l.center, cell.center);
+    if (d < bestKm) {
+      bestKm = d;
+      best = l;
+    }
+  }
+  if (!best || bestKm > 7) return zoneLabel(cell, names);
+  const dx = cell.center[0] - best.center[0];
+  const dy = cell.center[1] - best.center[1];
+  const bearing = (Math.atan2(dx, dy) * 180) / Math.PI;
+  const dir = DIRECTIONS[Math.round(((bearing + 360) % 360) / 45) % 8];
+  return `${dir[0].toUpperCase()}${dir.slice(1)} of ${best.name}`;
+}
+
+export const gridKeyOf =(p: LiveAirPoint): string => `${p.grid[1].toFixed(2)},${p.grid[0].toFixed(2)}`;
 
 // ---- OSM evidence ----
 
@@ -119,7 +152,7 @@ const NEAR_INDUSTRY_KM = 1.5;
  * the PM2.5/PM10 ratio of the model data. A cause with no evidence is simply absent. These are indicators, not an
  * apportionment of the pollution (D7).
  */
-export function causeEvidence(base: BaseState, cell: GridCell, pm25: number | null, pm10: number | null, industryLoaded: boolean): CauseEvidence[] {
+export function causeEvidence(base: BaseState, cell: GridCell, pm25: number | null, pm10: number | null): CauseEvidence[] {
   const out: CauseEvidence[] = [];
   if (base.geometrySource === 'osm') {
     const roads = majorRoadsInZone(base, cell, 5, false);
@@ -132,8 +165,8 @@ export function causeEvidence(base: BaseState, cell: GridCell, pm25: number | nu
         label: 'Road traffic',
         strength,
         evidence: [
-          ...roads.slice(0, 3).map((r) => `${r.road.name} (${r.road.roadClass}) runs ${r.lengthKm.toFixed(1)} km through the zone (OpenStreetMap)`),
-          `${total.toFixed(1)} km of mapped major road in the zone. Road class is only a proxy: no traffic counts are connected.`,
+          ...roads.slice(0, 3).map((r) => `${r.road.name} (${r.road.roadClass}) runs ${r.lengthKm.toFixed(1)} km through the area`),
+          `${total.toFixed(1)} km of major road in the area`,
         ],
       });
     }
@@ -147,11 +180,9 @@ export function causeEvidence(base: BaseState, cell: GridCell, pm25: number | nu
     if (sources.length + areas.length > 0) {
       const n = sources.length + areas.length;
       const evidence = [
-        ...sources.slice(0, 3).map((s) => `${s.name} (${s.category}), mapped industry point within ${NEAR_INDUSTRY_KM} km (OpenStreetMap)`),
-        ...(areas.length > 0 ? [`${areas.length} mapped industrial area${areas.length === 1 ? '' : 's'} in or near the zone (OpenStreetMap)`] : []),
-        'Emission quantities are not known: the dataset has locations only.',
+        ...sources.slice(0, 3).map((s) => `${s.name} (${s.category}), within ${NEAR_INDUSTRY_KM} km`),
+        ...(areas.length > 0 ? [`${areas.length} industrial area${areas.length === 1 ? '' : 's'} in or near the area`] : []),
       ];
-      if (!industryLoaded) evidence.push('Industry dataset not loaded: MIDC estates and emission estimates were not used.');
       out.push({ key: 'industry', label: 'Industry', strength: n >= 4 ? 'Strong' : n >= 2 ? 'Moderate' : 'Weak', evidence });
     }
   }
@@ -163,10 +194,7 @@ export function causeEvidence(base: BaseState, cell: GridCell, pm25: number | nu
         key: 'dust',
         label: 'Road and construction dust',
         strength: ratio < 0.35 ? 'Strong' : ratio < 0.45 ? 'Moderate' : 'Weak',
-        evidence: [
-          `PM2.5/PM10 = ${ratio.toFixed(2)} in the model data. A low ratio points to coarse particles such as road, soil and construction dust.`,
-          'The ratio is an indicator only; no dust source has been surveyed.',
-        ],
+        evidence: [`PM2.5/PM10 is ${ratio.toFixed(2)}: a low ratio points to coarse dust from roads, soil and construction`],
       });
     }
   }
@@ -220,9 +248,8 @@ export function buildZoneRows(args: {
   points: Record<string, LiveAirPoint>;
   placeNames: Record<string, string>;
   nowMs: number;
-  industryLoaded: boolean;
 }): ZoneBuild {
-  const { base, points, placeNames, nowMs, industryLoaded } = args;
+  const { base, points, placeNames, nowMs } = args;
   const rows: ZoneRow[] = [];
   let missing = 0;
   for (const cell of base.cells) {
@@ -238,10 +265,15 @@ export function buildZoneRows(args: {
     }
     const pm25 = liveValue(p, 'pm25', nowMs);
     const pm10 = liveValue(p, 'pm10', nowMs);
+    const values: ZoneRow['values'] = {};
+    for (const k of POLLUTANT_KEYS) {
+      const v = liveValue(p, k, nowMs);
+      if (v !== null) values[k] = v;
+    }
     const t = trendOf(p, idx);
     rows.push({
       id: cell.id,
-      place: zoneLabel(cell, placeNames),
+      place: placeFor(cell, placeNames),
       location: cell.center,
       gridKey: gridKeyOf(p),
       aqi: aqi.value,
@@ -250,13 +282,14 @@ export function buildZoneRows(args: {
       subindices: Object.entries(aqi.subindices)
         .map(([pollutant, s]) => ({ pollutant, value: s.value, concentration: s.concentration }))
         .sort((a, b) => b.value - a.value),
+      values,
       pm25,
       pm10,
       time: p.times[idx] * 1000,
       trend: t.trend,
       trendPct: t.pct,
       forecast: forecastFor(p.times, p.hourly, nowMs),
-      causes: causeEvidence(base, cell, pm25, pm10, industryLoaded),
+      causes: causeEvidence(base, cell, pm25, pm10),
     });
   }
   return { rows, missing };
@@ -309,17 +342,15 @@ export function useAirData(): AirData {
   const base = useTwinStore((s) => s.base);
   const live = useTwinStore((s) => s.live);
   const placeNames = useTwinStore((s) => s.placeNames);
-  const industry = useTwinStore((s) => s.industry);
   return useMemo(() => {
     const now = Date.now();
-    const industryLoaded = industry?.status === 'loaded';
     if (!base || Object.keys(live.points).length === 0) {
       return { status: live.status, reason: live.reason, zones: [], missingZones: base?.cells.length ?? 0, city: null, lastUpdated: live.lastUpdated };
     }
-    const built = buildZoneRows({ base, points: live.points, placeNames, nowMs: now, industryLoaded });
+    const built = buildZoneRows({ base, points: live.points, placeNames, nowMs: now });
     return { status: live.status, reason: live.reason, zones: built.rows, missingZones: built.missing, city: buildCitySummary(live.points, now), lastUpdated: live.lastUpdated };
     // `live.lastUpdated` changes whenever new points arrive; the current hour moves slowly enough that a refresh re-derives it.
-  }, [base, live, placeNames, industry]);
+  }, [base, live, placeNames]);
 }
 
 /** One representative zone per model grid point (neighbouring zones often share a value). */

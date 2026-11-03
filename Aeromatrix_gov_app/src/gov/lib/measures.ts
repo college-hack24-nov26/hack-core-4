@@ -23,22 +23,30 @@ import {
 import { distanceToPathKm } from '../../utils/geo';
 import { dustPlan, type DustPlan } from './dustControl';
 import { majorRoadsInZone } from './airdata';
+import type { ProjectionCuts } from './apportionment';
 
 export type TrafficMeasure = 'off' | 'standard' | 'intensive';
 export type TreeCount = 0 | 250 | 500 | 1000 | 2000;
 export const TREE_CHOICES: TreeCount[] = [0, 250, 500, 1000, 2000];
 
+export type IndustryMode = 'controls' | 'restrict';
+
 export interface MeasureSelection {
   traffic: TrafficMeasure;
   trees: TreeCount;
   industry: 0 | 1 | 2 | 3;
+  /** controls = bag filters fitted (costed); restrict = temporary restriction of output (no price exists) */
+  industryMode: IndustryMode;
   closureRoadId: string | null;
   /** share of the closed road's traffic that diverts to a neighbouring road */
   closureDiversion: number;
   dust: boolean;
 }
 
-export const NO_MEASURES: MeasureSelection = { traffic: 'off', trees: 0, industry: 0, closureRoadId: null, closureDiversion: 0.6, dust: false };
+export const NO_MEASURES: MeasureSelection = { traffic: 'off', trees: 0, industry: 0, industryMode: 'controls', closureRoadId: null, closureDiversion: 0.6, dust: false };
+
+/** Share of a restricted unit's output that is assumed to stop (a planning assumption). */
+export const RESTRICTION_CUT = 0.5;
 
 export const hasMeasures = (s: MeasureSelection): boolean =>
   s.traffic !== 'off' || s.trees > 0 || s.industry > 0 || s.closureRoadId !== null || s.dust;
@@ -89,6 +97,10 @@ export interface SimOutcome {
   modelledEffect: boolean;
   measures: string[];
   notes: string[];
+  /** measures whose cost cannot be given, with the reason (never a made-up price) */
+  costNotes: string[];
+  /** how much each source falls, for projecting a source-contribution chart when a study exists */
+  cuts: ProjectionCuts;
 }
 
 /** The road closure options for a zone: named major roads through it. */
@@ -153,10 +165,39 @@ export function runMeasures(args: {
   const notes: string[] = [];
   if (sel.traffic !== 'off') options.push(trafficOption(target, sel.traffic, DEFAULT_ASSUMPTIONS));
   if (sel.trees > 0) options.push(treeOption(target, sel.trees, DEFAULT_ASSUMPTIONS));
+  const costNotes: string[] = [];
+  let industryCut = 0;
   if (sel.industry > 0) {
     const sources = eligibleSources(base, target);
-    if (sources.length === 0) notes.push('No modelled industrial source lies in this zone, so industrial controls were not applied.');
-    else options.push(industryOption(sources, Math.min(sel.industry, sources.length), DEFAULT_ASSUMPTIONS));
+    if (sources.length === 0) notes.push('No industrial unit lies in this area, so no industrial measure was applied.');
+    else {
+      const k = Math.min(sel.industry, sources.length);
+      if (sel.industryMode === 'restrict') {
+        const chosen = sources.slice(0, k);
+        const overrides: Record<string, number> = {};
+        for (const s of chosen) overrides[s.id] = Math.round(s.emissionIntensity * (1 - RESTRICTION_CUT) * 10) / 10;
+        options.push({
+          key: `industry-restrict-${k}`,
+          type: 'industry',
+          label: `Restrict ${k} industrial unit${k === 1 ? '' : 's'} to half output`,
+          quantity: k,
+          quantityUnit: 'units',
+          location: chosen.map((s) => s.name).join(', '),
+          lines: [],
+          oneTime: 0,
+          recurring: 0,
+          total: 0,
+          patch: { industryIntensityOverrides: overrides },
+          effect: `Cuts the modelled output of ${chosen.map((s) => s.name).join(', ')} by ${Math.round(RESTRICTION_CUT * 100)}% while the restriction lasts.`,
+          limitations: ['The share of output that stops is an assumption; actual emissions of each unit are not known.', 'A restriction is temporary: the effect ends when it is lifted.'],
+        });
+        costNotes.push('Industrial restriction: no cost is given because no price exists for lost output or enforcement.');
+        industryCut = (RESTRICTION_CUT * k) / sources.length;
+      } else {
+        options.push(industryOption(sources, k, DEFAULT_ASSUMPTIONS));
+        industryCut = (DEFAULT_ASSUMPTIONS.bagFilterCapture * k) / sources.length;
+      }
+    }
   }
 
   const params = mergeParams(base, options);
@@ -223,6 +264,11 @@ export function runMeasures(args: {
     modelledEffect,
     measures,
     notes,
+    costNotes,
+    cuts: {
+      traffic: sel.traffic === 'off' ? 0 : DEFAULT_ASSUMPTIONS.trafficReduction[sel.traffic],
+      industry: industryCut,
+    },
   };
 }
 

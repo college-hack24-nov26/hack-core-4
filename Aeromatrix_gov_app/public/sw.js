@@ -4,11 +4,17 @@
  * It never touches the model API, Open-Meteo, map tiles or the assistant (all cross-origin or /task2), so nothing
  * offline can be mistaken for current data.
  */
-const CACHE = 'aeromatrix-gov-shell-v1';
-const SHELL = ['/', '/manifest.webmanifest', '/aeromatrix-mark.svg'];
+const CACHE = 'aeromatrix-gov-shell-v2';
+const SHELL = ['/', '/manifest.webmanifest', '/aeromatrix-mark.svg', '/pwa/icon-192.png', '/pwa/icon-512.png', '/pwa/apple-touch-icon.png'];
+
+// The page can ask a waiting worker to take over (the "update ready" bar).
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
+});
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // No automatic skipWaiting: a new version waits until the Commissioner taps "Reload" (never swaps under an open form).
+  event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));
 });
 
 self.addEventListener('activate', (event) => {

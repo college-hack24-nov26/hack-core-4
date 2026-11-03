@@ -84,7 +84,7 @@ export function heatSource(s: TwinStoreState, nowMs: number = Date.now()): HeatS
     }
     default: {
       const byId = new Map(s.baseline.map((x) => [x.cellId, x]));
-      return { values: base.cells.map((c) => byId.get(c.id)?.[p] ?? 0), spec: { kind: 'pollution', pollutant: p }, status: base.status, label: 'Prototype rule model on DEMO inputs', reason: null };
+      return { values: base.cells.map((c) => byId.get(c.id)?.[p] ?? 0), spec: { kind: 'pollution', pollutant: p }, status: base.status, label: 'Scenario model', reason: null };
     }
   }
 }

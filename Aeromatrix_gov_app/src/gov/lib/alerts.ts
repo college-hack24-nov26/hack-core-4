@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Alerts. An alert exists ONLY when a configured threshold is crossed by real data: the current model value or a
  * forecast day of a zone reaching Poor or worse, or stale station feeds. Ids are stable so the Commissioner's
  * workflow records (acknowledged, assigned, resolved) persist across refreshes and reloads.
@@ -6,7 +6,7 @@
 import { useEffect, useMemo } from 'react';
 import type { LonLat } from '../../types';
 import { useGovStore, type AlertRecord } from '../govStore';
-import { CATEGORY_FLOOR, categoryRank, groupByGrid, useAirData, type AqiCategory, type CauseEvidence, type ForecastDay, type Strength, type ZoneRow } from './airdata';
+import { CATEGORY_FLOOR, POLLUTANT_NAME, POLLUTANT_UNIT, categoryRank, groupByGrid, useAirData, type AqiCategory, type CauseEvidence, type ForecastDay, type PollutantKey, type Strength, type ZoneRow } from './airdata';
 import { countStations, nearestStations, useStations, type StationBuild, type StationRow } from './stations';
 import { actionFor, departmentsFor, type CauseKey, type Department } from './routing';
 import { addDaysIst } from './format';
@@ -34,8 +34,14 @@ export interface GovAlert {
   location: string;
   locationLonLat: LonLat | null;
   zoneId: string | null;
-  /** AQI now (CAMS estimate) */
+  /** the pollutant or condition the alert is about */
+  condition: string;
+  /** AQI now (estimate) */
   current: number | null;
+  /** the current reading in words, e.g. "AQI 230 Â· PM2.5 112 Âµg/mÂ³" */
+  currentDetail: string;
+  /** the expected reading in words, for forecast alerts */
+  expectedDetail: string | null;
   /** AQI expected on forDate (forecast alerts) */
   expected: number | null;
   threshold: number;
@@ -60,14 +66,21 @@ export function topCause(causes: CauseEvidence[]): CauseEvidence | null {
   return [...causes].sort((a, b) => STRENGTH_RANK[a.strength] - STRENGTH_RANK[b.strength])[0];
 }
 
-const NO_EVIDENCE = 'No likely cause could be shown with evidence for this place. Construction sites, RMC plants, waste burning and brick kilns were not assessed.';
+const NO_EVIDENCE = 'No likely cause is supported by the available data.';
 
 const severityOf = (c: AqiCategory): AlertSeverity => (categoryRank(c) >= categoryRank('Very Poor') ? 'critical' : 'high');
 
 const dominantLabel = (d: string | null): string | null => (d ? d.toUpperCase().replace('PM25', 'PM2.5') : null);
 
 function placeText(z: ZoneRow, sharing: number): string {
-  return sharing > 0 ? `${z.place} and ${sharing} neighbouring zone${sharing === 1 ? '' : 's'}` : z.place;
+  return sharing > 0 ? `${z.place} and ${sharing} nearby area${sharing === 1 ? '' : 's'}` : z.place;
+}
+
+/** "AQI 230 Â· PM2.5 112 Âµg/mÂ³" for the main pollutant of an area. */
+function readingText(z: ZoneRow): string {
+  const key = (z.dominant ?? '') as PollutantKey;
+  const v = z.values[key];
+  return v === undefined ? `AQI ${z.aqi}` : `AQI ${z.aqi} Â· ${POLLUTANT_NAME[key]} ${v < 10 ? v.toFixed(1) : Math.round(v)} ${POLLUTANT_UNIT[key]}`;
 }
 
 export interface AlertInputs {
@@ -89,6 +102,7 @@ export function buildAlerts({ zones, stations, records, nowMs }: AlertInputs): G
     const near = nearestStations(stations.placed, zone.location, 3, 10).map((x) => x.station);
     const base = {
       pollutant: dominantLabel(zone.dominant),
+      condition: dominantLabel(zone.dominant) ?? 'Air quality',
       location: place,
       locationLonLat: zone.location,
       zoneId: zone.id,
@@ -112,7 +126,9 @@ export function buildAlerts({ zones, stations, records, nowMs }: AlertInputs): G
         severity,
         title: `${zone.category} air in ${zone.place}`,
         current: zone.aqi,
+        currentDetail: readingText(zone),
         expected: null,
+        expectedDetail: null,
         forDate: null,
         deadline: addDaysIst(nowMs, DEADLINE_DAYS[severity]),
         record: rec(id),
@@ -134,7 +150,9 @@ export function buildAlerts({ zones, stations, records, nowMs }: AlertInputs): G
         severity,
         title: `${worst.category} air expected in ${zone.place} by ${first.date}`,
         current: zone.aqi,
+        currentDetail: readingText(zone),
         expected: worst.aqi,
+        expectedDetail: `AQI ${worst.aqi}${worst.pm25 !== null ? ` Â· PM2.5 ${Math.round(worst.pm25)} Âµg/mÂ³` : ''}`,
         forDate: first.date,
         deadline: addDaysIst(nowMs, DEADLINE_DAYS[severity]),
         record: rec(id),
@@ -154,17 +172,20 @@ export function buildAlerts({ zones, stations, records, nowMs }: AlertInputs): G
       severity: 'watch',
       title: none ? 'No monitoring station has a current reading' : `${c.outdated} of ${withReading} monitoring stations have no current reading`,
       pollutant: null,
+      condition: 'Station readings',
       location: 'Monitoring network',
       locationLonLat: null,
       zoneId: null,
       current: null,
+      currentDetail: `${c.outdated} of ${withReading} stations outdated`,
       expected: null,
+      expectedDetail: null,
       threshold: 0,
       forDate: null,
-      confidence: 'Based on the timestamps of the latest station readings.',
+      confidence: "Based on the time of each station's latest reading.",
       reasons: [
-        `${c.outdated} station${c.outdated === 1 ? '' : 's'} last reported more than 3 hours ago (the readings are shown with their dates as Outdated).`,
-        'Stations without a current feed do not provide monitoring coverage.',
+        `${c.outdated} station${c.outdated === 1 ? '' : 's'} last reported more than 3 hours ago`,
+        'Stations without a current reading do not give monitoring coverage.',
       ],
       action: actionFor('station', 'the city'),
       causeKey: 'station',
@@ -181,18 +202,21 @@ export function buildAlerts({ zones, stations, records, nowMs }: AlertInputs): G
       id,
       kind: 'data',
       severity: 'info',
-      title: 'The station-data service is not reachable',
+      title: 'Station readings are unavailable',
       pollutant: null,
+      condition: 'Station readings',
       location: 'Monitoring network',
       locationLonLat: null,
       zoneId: null,
       current: null,
+      currentDetail: 'Station service not responding',
       expected: null,
+      expectedDetail: null,
       threshold: 0,
       forDate: null,
-      confidence: 'The app could not connect to the trained model service.',
-      reasons: [stations.modelService.reason ?? 'The service did not answer.', 'Station panels show "No data feed". City and zone values still come from Open-Meteo model data.'],
-      action: 'Start the model service (see the README) or check its address, then reload.',
+      confidence: 'The station data service did not respond.',
+      reasons: ['No station readings could be retrieved.', 'City and area values are still estimated from model data.'],
+      action: 'Ask the monitoring team to restore the station data connection.',
       causeKey: 'station',
       departments: departmentsFor('station'),
       deadline: addDaysIst(nowMs, DEADLINE_DAYS.info),

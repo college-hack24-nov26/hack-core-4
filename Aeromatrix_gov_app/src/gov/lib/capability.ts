@@ -1,3 +1,5 @@
+import { isNative } from './native';
+
 /** Whether this device should be OFFERED the 3D map. It is never loaded automatically, and never on phones. */
 export interface DeviceInfo {
   webgl2: boolean;
@@ -13,6 +15,10 @@ export function isCapableDesktop(d: DeviceInfo): boolean {
 
 export function readDevice(): DeviceInfo {
   let webgl2 = false;
+  // The Android app ships the light 2D map only.
+  if (isNative()) {
+    return { webgl2: false, cores: null, memoryGb: null, widthPx: window.innerWidth, finePointer: false };
+  }
   try {
     const c = document.createElement('canvas');
     webgl2 = !!c.getContext('webgl2');

@@ -24,7 +24,7 @@ import { uid } from '../utils/format';
 export const AFFECTED_THRESHOLD = 0.5;
 
 export const SCENARIO_DISCLAIMER =
-  'Prototype modeled estimate from an uncalibrated rule-based model on DEMO inputs. Not an observation or validated prediction.';
+  'Modelled scenario estimate. Not an observation or a validated prediction.';
 
 export function defaultParams(base: BaseState): ScenarioParams {
   return {

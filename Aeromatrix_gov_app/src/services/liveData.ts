@@ -175,7 +175,8 @@ export function startLiveDataWhenReady(): () => void {
     if (key !== lastKey) {
       lastKey = key;
       void refreshLiveNow(true);
-      if (!timer) timer = setInterval(() => void refreshLiveNow(false), LIVE_REFRESH_MINUTES * 60 * 1000);
+      // No background requests: a hidden tab or a phone in the pocket does not refresh; it catches up when shown again.
+      if (!timer) timer = setInterval(() => document.visibilityState === 'visible' && void refreshLiveNow(false), LIVE_REFRESH_MINUTES * 60 * 1000);
     }
   };
   const unsub = useTwinStore.subscribe((s, prev) => {

@@ -1,14 +1,15 @@
-import { FileText, RadioTower } from 'lucide-react';
-import { useTwinStore } from '../../store/useTwinStore';
+import { useMemo, useState } from 'react';
+import { ChevronRight, FileText, RadioTower } from 'lucide-react';
 import { useGovStore } from '../govStore';
 import { useAirData } from '../lib/airdata';
 import { nearestZone } from '../lib/hotspots';
-import { STATUS_LABEL, countStations, useStations, type StationRow, type StationStatus } from '../lib/stations';
+import { countStations, useStations, type StationRow, type StationStatus } from '../lib/stations';
 import { formatAge, formatIst } from '../lib/format';
-import { AqiChip, Btn, EmptyState, PageTitle, SectionCard, StatusChip, Table, type ChipKind } from '../ui';
+import { AqiChip, Btn, Card, EmptyState, PageTitle, Pills, StatusChip, type ChipKind } from '../ui';
 import { Sheet } from '../Sheet';
 
 const chipOf = (s: StationStatus): ChipKind => (s === 'live' ? 'measured' : s === 'outdated' ? 'outdated' : s === 'estimate' ? 'estimated' : 'nofeed');
+const STATE_LABEL: Record<StationStatus, string> = { live: 'Working', outdated: 'Outdated', estimate: 'Unavailable', no_feed: 'Unavailable' };
 
 function StationDetail({ s, onClose }: { s: StationRow; onClose: () => void }) {
   const air = useAirData();
@@ -19,80 +20,71 @@ function StationDetail({ s, onClose }: { s: StationRow; onClose: () => void }) {
       title={s.name}
       subtitle={[s.agency, s.city].filter(Boolean).join(' · ') || 'Monitoring station'}
       onClose={onClose}
-      chips={<StatusChip kind={chipOf(s.status)} label={s.status === 'estimate' ? 'Estimated (no reading)' : undefined} />}
+      chips={<StatusChip kind={chipOf(s.status)} label={STATE_LABEL[s.status]} />}
     >
-      <div className="space-y-5">
+      <div className="space-y-7">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-5">
+          <div>
+            <dt className="text-xs font-medium text-sand-400">Last updated</dt>
+            <dd className="mt-0.5 text-[15px] text-sand-50">{s.lastReadingAt ? formatIst(s.lastReadingAt) : 'No reading'}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium text-sand-400">Freshness</dt>
+            <dd className="mt-0.5 text-[15px] text-sand-50">{s.lastReadingAt ? formatAge(s.ageMs) : 'No reading'}</dd>
+          </div>
+          <div className="col-span-2">
+            <dt className="text-xs font-medium text-sand-400">Location</dt>
+            <dd className="mt-0.5 text-[15px] text-sand-50">
+              {s.lat.toFixed(4)}°N, {s.lon.toFixed(4)}°E{zone ? ` · near ${zone.place}` : ''}
+            </dd>
+          </div>
+        </dl>
+
         {s.readings.length > 0 ? (
           <section>
-            <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-sand-400">Last reading</h3>
-            {s.aqi && (
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <AqiChip aqi={s.aqi.value} category={s.aqi.category} />
-                <StatusChip kind={s.status === 'live' ? 'measured' : 'outdated'} />
-                <span className="text-xs text-sand-300">
-                  CPCB AQI from station data{s.aqi.lowerBound ? ' (lower bound)' : ''}
-                  {s.aqi.periodEnd ? `, period ending ${formatIst(s.aqi.periodEnd)}` : ''}
-                </span>
-              </div>
-            )}
-            <Table
-              head={['Pollutant', 'Value', 'Hour', 'Age']}
-              rows={s.readings.map((r) => [r.label, `${r.value.toFixed(r.value < 10 ? 2 : 0)} ${r.unit}`, formatIst(r.time), formatAge(s.lastReadingAt === null ? null : (s.ageMs ?? 0) + (s.lastReadingAt - r.time))])}
-            />
-            {s.status !== 'live' && (
-              <p className="mt-2 rounded-xl bg-amber-600/10 p-3 text-xs text-sand-100 hairline">
-                These readings are OUTDATED: the newest is from {formatIst(s.lastReadingAt)} ({formatAge(s.ageMs)}). They are shown with their dates and are not today&apos;s air quality.
-              </p>
-            )}
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="gov-eyebrow">Latest readings</h3>
+              {s.aqi && <AqiChip aqi={s.aqi.value} category={s.aqi.category} />}
+            </div>
+            <ul className="grid grid-cols-2 gap-2">
+              {s.readings.map((r) => (
+                <li key={r.key} className="rounded-xl bg-ink-800 p-3">
+                  <div className="text-xs text-sand-400">{r.label}</div>
+                  <div className="mt-0.5 text-lg font-semibold tabular-nums text-sand-50">
+                    {r.value.toFixed(r.value < 10 ? 2 : 0)} <span className="text-xs font-normal text-sand-300">{r.unit}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {s.status !== 'live' && <p className="mt-3 text-sm text-amber-700">This reading is from {formatIst(s.lastReadingAt)} and is not current.</p>}
           </section>
         ) : (
-          <EmptyState title="No data feed" reason="The station-data service has no reading for this station." />
+          <EmptyState title="No readings" reason="This station has not reported." />
         )}
 
         {s.status !== 'live' && s.estimate && (
-          <section className="rounded-xl bg-ink-800 p-3 hairline">
-            <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-sand-400">Model estimate for this location</h3>
+          <section className="rounded-xl bg-ink-800 p-4">
+            <h3 className="gov-eyebrow mb-2">Estimate for this place</h3>
             <div className="flex flex-wrap items-center gap-2">
               <AqiChip aqi={s.estimate.aqi} category={s.estimate.category} />
               <StatusChip kind="estimated" />
             </div>
-            <p className="mt-2 text-xs text-sand-300">
-              This station has no current reading, so this is a MODEL ESTIMATE (Open-Meteo CAMS, about 40 km resolution) for the place, not a measurement. Model hour {formatIst(s.estimate.asOf)}.
-            </p>
+            <p className="mt-2 text-sm text-sand-300">Estimated from model data. It is not a station measurement.</p>
           </section>
         )}
 
         {s.forecast && (
           <section>
-            <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-sand-400">PM2.5 forecast (trained model)</h3>
-            <div className="flex flex-wrap items-center gap-2 text-sm text-sand-100">
+            <h3 className="gov-eyebrow mb-2">PM2.5 forecast</h3>
+            <div className="flex flex-wrap items-center gap-2">
               <StatusChip kind="forecast" />
-              <span className="font-bold">{s.forecast.value.toFixed(0)} ug/m3</span>
-              <span className="text-xs text-sand-300">
-                interval {s.forecast.lower.toFixed(0)} to {s.forecast.upper.toFixed(0)}, valid {formatIst(s.forecast.validAt)}
+              <span className="text-lg font-semibold tabular-nums text-sand-50">{s.forecast.value.toFixed(0)} µg/m³</span>
+              <span className="text-sm text-sand-300">
+                range {s.forecast.lower.toFixed(0)} to {s.forecast.upper.toFixed(0)}
               </span>
             </div>
-            <p className="mt-1 text-xs text-sand-300">
-              Model kind: {s.forecast.kind.replace(/_/g, ' ')}.{s.forecast.historical ? ' This forecast is for a past period (historical).' : ''}
-            </p>
           </section>
         )}
-
-        <section>
-          <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-sand-400">Where this station is</h3>
-          <p className="text-xs text-sand-300">
-            {s.lat.toFixed(4)}°N, {s.lon.toFixed(4)}°E ({s.coordSource === 'service' ? 'from the station-data service' : 'sourced coordinate list'}).
-          </p>
-          {s.sources.length > 0 && (
-            <ul className="mt-1 list-disc pl-5 text-xs text-sand-300">
-              {s.sources.map((x) => (
-                <li key={x}>{x}</li>
-              ))}
-            </ul>
-          )}
-          {s.singleSource && <p className="mt-2 rounded-lg bg-amber-600/10 p-2 text-xs text-sand-100 hairline">Single source: only one list gives this coordinate, so treat the position as unconfirmed.</p>}
-          {s.note && <p className="mt-1 text-xs text-sand-300">{s.note}</p>}
-        </section>
 
         {zone && (
           <Btn icon={FileText} onClick={() => openReport(zone.id)} className="w-full">
@@ -108,79 +100,79 @@ export function StationsView() {
   const st = useStations();
   const selectedId = useGovStore((s) => s.selectedStationId);
   const select = useGovStore((s) => s.selectStation);
-  const verified = useTwinStore((s) => s.verified);
+  const [filter, setFilter] = useState<'all' | 'working' | 'outdated' | 'unavailable'>('all');
   const c = countStations(st);
   const selected = st.placed.find((s) => s.id === selectedId) ?? null;
+  const shown = useMemo(
+    () =>
+      st.placed.filter((s) => (filter === 'all' ? true : filter === 'working' ? s.status === 'live' : filter === 'outdated' ? s.status === 'outdated' : s.status === 'estimate' || s.status === 'no_feed')),
+    [st.placed, filter],
+  );
 
   return (
-    <div className="mx-auto max-w-5xl p-4 pb-32">
-      <PageTitle title="Monitoring stations" sub="Stations appear only where a sourced coordinate exists. A station with no current reading is never shown as current." />
+    <div className={`mx-auto max-w-3xl px-4 pb-40 pt-6 transition-[margin] duration-300 sm:px-6 ${!!selected ? 'lg:ml-8 lg:mr-[460px] lg:max-w-none' : ''}`}>
+      <PageTitle title="Stations" />
 
-      {st.placed.length === 0 ? (
-        <EmptyState
-          icon={RadioTower}
-          title="Sourced station coordinates not loaded"
-          reason={`${st.notice ?? 'No station can be placed.'} ${st.modelService.status !== 'online' ? 'The station-data service is not reachable either, so there are no station readings ("No data feed").' : ''}`}
-        />
+      {st.placed.length === 0 && st.notPlaced.length === 0 ? (
+        <Card>
+          <EmptyState icon={RadioTower} title="No stations to show" reason="The station list is not available yet." />
+        </Card>
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap gap-2 text-xs">
-            <StatusChip kind="measured" label={`${c.live} measured now`} />
-            <StatusChip kind="outdated" label={`${c.outdated} outdated`} />
-            <StatusChip kind="estimated" label={`${c.estimate} estimated only`} />
-            <StatusChip kind="nofeed" label={`${c.noFeed} no data feed`} />
-          </div>
-          <SectionCard>
-            <Table
-              caption="Monitoring stations"
-              head={['Station', 'Status', 'Last reading', 'Freshness', 'Pollutants', 'Coordinate']}
-              rows={st.placed.map((s) => [
-                <button key="n" type="button" onClick={() => select(s.id)} className="gov-tap min-h-11 text-left font-bold text-accent-300 underline-offset-2 hover:underline">
-                  {s.name}
-                </button>,
-                <StatusChip key="s" kind={chipOf(s.status)} label={STATUS_LABEL[s.status]} />,
-                s.readings.length > 0 ? (
-                  <span key="r">
-                    {s.aqi ? <AqiChip aqi={s.aqi.value} category={s.aqi.category} /> : `${s.readings[0].label} ${s.readings[0].value.toFixed(0)} ${s.readings[0].unit}`}
-                    <span className="mt-1 block text-sand-400">{formatIst(s.lastReadingAt)}</span>
-                  </span>
-                ) : s.estimate ? (
-                  <span key="r">
-                    <AqiChip aqi={s.estimate.aqi} category={s.estimate.category} />
-                    <span className="mt-1 block text-sand-400">model estimate, not a reading</span>
-                  </span>
-                ) : (
-                  'No data feed'
-                ),
-                s.readings.length > 0 ? formatAge(s.ageMs) : 'no reading',
-                s.readings.length > 0 ? s.readings.map((r) => r.label).join(', ') : 'none',
-                <span key="c" className="text-sand-300">
-                  {s.sources.length} source{s.sources.length === 1 ? '' : 's'}
-                  {s.singleSource ? ' (single source)' : ''}
-                </span>,
-              ])}
+          <div className="mb-5">
+            <Pills
+              label="Station status"
+              value={filter}
+              onChange={setFilter}
+              options={[
+                { value: 'all', label: 'All', count: c.total },
+                { value: 'working', label: 'Working', count: c.live },
+                { value: 'outdated', label: 'Outdated', count: c.outdated },
+                { value: 'unavailable', label: 'Unavailable', count: c.estimate + c.noFeed },
+              ]}
             />
-          </SectionCard>
-        </>
-      )}
-
-      <SectionCard title={`Not placed (${st.notPlaced.length})`} className="mt-4">
-        {st.notPlaced.length === 0 ? (
-          <p className="text-xs text-sand-300">{verified?.status === 'loaded' ? 'Every listed station has a sourced coordinate.' : 'The sourced list is not loaded, so no station is listed as not placed either.'}</p>
-        ) : (
-          <>
-            <p className="mb-2 text-xs text-sand-300">These stations are not drawn anywhere because no sourced coordinate exists. They provide no monitoring coverage on the map.</p>
-            <ul className="space-y-1.5 text-xs">
-              {st.notPlaced.map((n) => (
-                <li key={n.name} className="rounded-lg bg-ink-800 px-3 py-2 hairline">
-                  <span className="font-bold text-sand-50">{n.name}</span>
-                  <span className="block text-sand-300">{n.reason}</span>
+          </div>
+          {shown.length === 0 ? (
+            <Card>
+              <EmptyState title="No stations here" reason="No station matches this filter." />
+            </Card>
+          ) : (
+            <ul className="gov-stagger space-y-3">
+              {shown.map((s) => (
+                <li key={s.id}>
+                  <button type="button" onClick={() => select(s.id)} className="gov-card gov-tap flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-ink-800 sm:p-5">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-semibold text-sand-50">{s.name}</span>
+                      <span className="mt-0.5 block text-sm text-sand-300">{s.lastReadingAt ? `Updated ${formatAge(s.ageMs)}` : 'No reading'}</span>
+                    </span>
+                    <span className="flex shrink-0 flex-col items-end gap-1.5">
+                      {s.aqi ? <AqiChip aqi={s.aqi.value} category={s.aqi.category} /> : s.estimate ? <AqiChip aqi={s.estimate.aqi} category={s.estimate.category} /> : null}
+                      <StatusChip kind={s.aqi ? chipOf(s.status) : s.estimate ? 'estimated' : 'nofeed'} label={s.aqi ? STATE_LABEL[s.status] : s.estimate ? 'Estimated' : 'Unavailable'} />
+                    </span>
+                    <ChevronRight size={18} className="shrink-0 text-sand-500" />
+                  </button>
                 </li>
               ))}
             </ul>
-          </>
-        )}
-      </SectionCard>
+          )}
+
+          {st.notPlaced.length > 0 && (
+            <div className="mt-8">
+              <h2 className="gov-eyebrow mb-3">Location not available ({st.notPlaced.length})</h2>
+              <Card className="!p-0">
+                <ul className="divide-y divide-sand-500/12">
+                  {st.notPlaced.map((n) => (
+                    <li key={n.name} className="flex items-center justify-between gap-3 px-5 py-3.5">
+                      <span className="min-w-0 truncate text-[15px] text-sand-100">{n.name}</span>
+                      <StatusChip kind="nofeed" />
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </div>
+          )}
+        </>
+      )}
 
       {selected && <StationDetail key={selected.id} s={selected} onClose={() => select(null)} />}
     </div>

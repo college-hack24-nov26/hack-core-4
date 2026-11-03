@@ -20,12 +20,12 @@ export const STATUS_STYLE: Record<DataStatus, { label: string; cls: string; hint
   MODELED_SCENARIO: {
     label: 'MODELED SCENARIO',
     cls: 'bg-amber-500/15 text-amber-700 ring-amber-500/45',
-    hint: 'What-if estimate from the prototype model, not a forecast.',
+    hint: 'A modelled what-if result, not a forecast.',
   },
   DEMO: {
-    label: 'DEMO',
+    label: 'ESTIMATE',
     cls: 'bg-slate-500/15 text-slate-600 ring-slate-500/40',
-    hint: 'Deterministic, seeded demo value. Not a measurement.',
+    hint: 'Estimated value. Not a measurement.',
   },
 };
 

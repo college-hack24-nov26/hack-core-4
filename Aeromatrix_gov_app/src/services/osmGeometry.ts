@@ -105,14 +105,14 @@ export function elementsToGeometry(elements: OsmElement[]): CityGeometry {
     const intensity = Math.round(28 + 57 * (1 - Math.exp(-area / 0.6)));
     return {
       id: `osm-industry-${z.id.replace('osm-ind-', '')}`,
-      name: z.name === 'Industrial zone' ? `Industrial zone ${i + 1} (DEMO source)` : `${z.name} (DEMO source)`,
+      name: z.name === 'Industrial zone' ? `Industrial area ${i + 1}` : z.name,
       category,
       location: polygonCentroid(z.polygon),
       emissionIntensity: intensity,
       controlEfficiency: Math.round((0.45 + (h % 30) / 100) * 100) / 100,
       mainPollutants: CATEGORY_POLLUTANTS[category],
-      emissionProfile: 'DEMO assumption placed on an OSM industrial zone',
-      status: 'DEMO assumption (OSM zone)',
+      emissionProfile: 'Assumed source placed on a mapped industrial zone',
+      status: 'Assumed source (mapped industrial zone)',
     };
   });
 

@@ -298,7 +298,7 @@ export function planProject(input: PlanInput): PlanOutcome {
   const outNotes = [
     ...notes,
     'Prices are planning inputs from the price table; quantities marked "assumed" are planner assumptions, not quotations.',
-    'Effects are MODELED_SCENARIO results from the uncalibrated prototype rule model on DEMO inputs, not forecasts.',
+    'Effects are modelled scenario results, not forecasts.',
   ];
 
   if (plans.length === 0) {

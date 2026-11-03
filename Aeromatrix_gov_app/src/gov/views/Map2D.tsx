@@ -10,6 +10,7 @@ import type { ZoneRow } from '../lib/airdata';
 import { UNKNOWN_COLOR, colorOf } from '../lib/airdata';
 import type { CoverageResult } from '../lib/coverage';
 import type { Hotspot } from '../lib/hotspots';
+import { simplifyRing } from '../lib/geo';
 import type { StationRow } from '../lib/stations';
 
 export type MapLayerId = 'zones' | 'stations' | 'hotspots' | 'midc' | 'industry' | 'coverage';
@@ -24,6 +25,10 @@ export interface Map2DProps {
   coverage: CoverageResult | null;
   industry: IndustryData | null;
   focus: { lon: number; lat: number; nonce: number } | null;
+  /** the device position, when the Commissioner asked for it (never stored or sent anywhere) */
+  me: { lon: number; lat: number; accuracy: number } | null;
+  /** draw simpler boundaries (phones and weak devices) */
+  simplify: boolean;
   onSelect: (s: MapSelection) => void;
 }
 
@@ -35,7 +40,7 @@ const ring = (r: LonLat[]): L.LatLngExpression[] => r.map(([lon, lat]) => [lat, 
  * their data changes, so a layer the Commissioner never opens costs nothing.
  */
 export function Map2D(props: Map2DProps) {
-  const { base, visible, zones, stations, hotspots, coverage, industry, focus, onSelect } = props;
+  const { base, visible, zones, stations, hotspots, coverage, industry, focus, me, simplify, onSelect } = props;
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const canvasRef = useRef<L.Canvas | null>(null);
@@ -176,7 +181,7 @@ export function Map2D(props: Map2DProps) {
       const g = L.layerGroup();
       for (const a of industry.areas) {
         for (const r of a.rings) {
-          const p = L.polygon(ring(r), { renderer: canvasRef.current ?? undefined, color: '#7a4a1a', weight: 1.5, fillColor: '#c28a3a', fillOpacity: 0.3 });
+          const p = L.polygon(ring(simplify ? simplifyRing(r, 60) : r), { renderer: canvasRef.current ?? undefined, color: '#7a4a1a', weight: 1.5, fillColor: '#c28a3a', fillOpacity: 0.3 });
           p.bindTooltip(`${a.name} (MIDC estate)`, { sticky: true });
           p.on('click', (e) => {
             L.DomEvent.stopPropagation(e);
@@ -186,8 +191,8 @@ export function Map2D(props: Map2DProps) {
         }
       }
       return g;
-    }, industry);
-  }, [visible.midc, industry]);
+    }, [industry, simplify]);
+  }, [visible.midc, industry, simplify]);
 
   // industry markers, clustered
   useEffect(() => {
@@ -245,6 +250,19 @@ export function Map2D(props: Map2DProps) {
   useEffect(() => {
     if (focus && mapRef.current) mapRef.current.flyTo([focus.lat, focus.lon], 14, { duration: 0.8 });
   }, [focus]);
+
+  // "You are here"
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !me) return;
+    const g = L.layerGroup();
+    g.addLayer(L.circle([me.lat, me.lon], { radius: Math.min(me.accuracy, 2000), color: '#2563eb', weight: 1, fillColor: '#2563eb', fillOpacity: 0.12, interactive: false }));
+    g.addLayer(L.circleMarker([me.lat, me.lon], { radius: 8, color: '#ffffff', weight: 3, fillColor: '#2563eb', fillOpacity: 1, interactive: false }));
+    g.addTo(map);
+    return () => {
+      g.remove();
+    };
+  }, [me]);
 
   return <div ref={el} className="absolute inset-0 isolate bg-[#f3efe6]" aria-label="Map of Pune and Pimpri-Chinchwad" role="application" />;
 }

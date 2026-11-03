@@ -396,7 +396,7 @@ export function treeOption(
     effect: `Adds about ${pts.toFixed(2)} points of green cover per zone in ${target.label} (${assumptions.treeCanopyM2} m2 canopy per mature tree).`,
     limitations: [
       'Canopy takes years to grow: the modeled effect is for mature trees, not the first season.',
-      'The prototype engine treats green cover as a small reduction of local PM2.5; it does not model tree species or survival.',
+      'The scenario model treats green cover as a small reduction of local PM2.5; it does not model tree species or survival.',
       'Quantities of compost, labour, transport and watering are planner assumptions (see the cost lines).',
     ],
   };
@@ -450,7 +450,7 @@ export function industryOption(
     patch: { industryIntensityOverrides: overrides },
     effect: `Cuts the modeled emission of ${listJoin(chosen.map((s) => s.name))} by ${Math.round(assumptions.bagFilterCapture * 100)}%.`,
     limitations: [
-      'The industry data has no facility emissions: source intensities are assumptions of the prototype engine.',
+      'The industry data has no facility emissions: source intensities are planning assumptions.',
       'A bag filter captures particulates; the engine scales the whole source (including gases), so the modeled effect is generous for SO2 and NO2.',
       'Bag-filter size and price depend on the unit’s airflow; a site quotation is needed.',
     ],

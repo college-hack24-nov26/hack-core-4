@@ -2,6 +2,7 @@
 import type { GovSavedScenario } from '../govStore';
 import type { SimOutcome } from './measures';
 import { csvEscape } from './format';
+import { isNative, saveAndShare } from './native';
 
 let counter = 0;
 
@@ -58,10 +59,14 @@ export function scenariosCsv(list: GovSavedScenario[]): string {
     ].map(csvEscape),
   );
   const lines = [CSV_HEAD.map(csvEscape), ...rows].map((r) => r.join(','));
-  return `${lines.join('\r\n')}\r\n# All values are Simulation results from an uncalibrated prototype rule model. Dust control effects are not modelled.\r\n`;
+  return `${lines.join('\r\n')}\r\n# All values are Simulation results from a scenario model. The effect of dust control is not modelled.\r\n`;
 }
 
 export function downloadText(filename: string, text: string, mime = 'text/csv;charset=utf-8'): void {
+  if (isNative()) {
+    void saveAndShare(filename, new Blob([text], { type: mime }), filename);
+    return;
+  }
   const url = URL.createObjectURL(new Blob([text], { type: mime }));
   const a = document.createElement('a');
   a.href = url;

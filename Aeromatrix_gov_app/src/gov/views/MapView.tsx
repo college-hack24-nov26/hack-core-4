@@ -1,12 +1,11 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { Box, FileText, Layers, Loader2, Map as MapIcon, SlidersHorizontal } from 'lucide-react';
+import { Box, FileText, Layers, LocateFixed, Loader2, Map as MapIcon, SlidersHorizontal } from 'lucide-react';
 import { useTwinStore } from '../../store/useTwinStore';
 import { useGovStore } from '../govStore';
 import { useAirData, type ZoneRow } from '../lib/airdata';
 import { coverageGaps } from '../lib/coverage';
-import { useHotspots } from '../lib/hotspots';
+import { useHotspots, nearestZone } from '../lib/hotspots';
 import { isCapableDesktop, readDevice } from '../lib/capability';
-import { nearestZone } from '../lib/hotspots';
 import { useStations, STATUS_LABEL, type StationRow } from '../lib/stations';
 import { CATEGORIES, CATEGORY_COLOR } from '../lib/airdata';
 import { formatIst } from '../lib/format';
@@ -35,12 +34,12 @@ function useCapableDesktop(): boolean {
 }
 
 const LAYERS: Array<{ id: MapLayerId; label: string }> = [
-  { id: 'zones', label: 'Zones (model estimate)' },
-  { id: 'stations', label: 'Verified stations' },
-  { id: 'hotspots', label: 'Top hotspots' },
-  { id: 'coverage', label: 'Coverage gaps' },
-  { id: 'midc', label: 'MIDC estates' },
-  { id: 'industry', label: 'Industry markers' },
+  { id: 'zones', label: 'Pollution surface (estimated)' },
+  { id: 'stations', label: 'Monitoring stations' },
+  { id: 'hotspots', label: 'Hotspots' },
+  { id: 'coverage', label: 'Monitoring gaps' },
+  { id: 'midc', label: 'MIDC areas' },
+  { id: 'industry', label: 'Industrial locations' },
 ];
 
 const chipOf = (s: StationRow['status']): ChipKind => (s === 'live' ? 'measured' : s === 'outdated' ? 'outdated' : s === 'estimate' ? 'estimated' : 'nofeed');
@@ -49,36 +48,38 @@ function ZoneCard({ z, rank }: { z: ZoneRow; rank?: number }) {
   const openReport = useGovStore((s) => s.openReport);
   const openSimulator = useGovStore((s) => s.openSimulator);
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
         <AqiChip aqi={z.aqi} category={z.category} />
         <StatusChip kind="estimated" />
         <TrendBadge trend={z.trend} pct={z.trendPct} />
       </div>
-      <p className="text-xs text-sand-300">
-        {rank ? `Hotspot number ${rank}. ` : ''}Model hour {formatIst(z.time)}. An estimate from CAMS model data (about 40 km resolution), not a station reading.
+      <p className="text-sm text-sand-300">
+        {rank ? `Hotspot ${rank}. ` : ''}Model update {formatIst(z.time)}.
       </p>
-      <div>
-        <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-sand-400">Outlook</h3>
+      <section>
+        <h3 className="gov-eyebrow mb-2">Forecast</h3>
         <ForecastStrip days={z.forecast} />
-      </div>
-      <div>
-        <h3 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-sand-400">Possible causes (with evidence)</h3>
-        {z.causes.length === 0 ? (
-          <p className="text-xs text-sand-300">No cause could be shown with evidence.</p>
-        ) : (
-          <ul className="space-y-1 text-xs text-sand-100">
+      </section>
+      {z.causes.length > 0 && (
+        <section>
+          <h3 className="gov-eyebrow mb-2">Likely factors</h3>
+          <ul className="space-y-1.5 text-sm text-sand-100">
             {z.causes.map((c) => (
               <li key={c.key}>
-                <b>{c.label}</b> ({c.strength.toLowerCase()}): {c.evidence[0]}
+                <b>{c.label}</b> <span className="text-sand-300">({c.strength.toLowerCase()})</span>
               </li>
             ))}
           </ul>
-        )}
-      </div>
+        </section>
+      )}
       <div className="flex flex-wrap gap-2">
-        <Btn icon={SlidersHorizontal} onClick={() => openSimulator(z.id)}>Test an action</Btn>
-        <Btn variant="primary" icon={FileText} onClick={() => openReport(z.id)}>Create report</Btn>
+        <Btn icon={SlidersHorizontal} onClick={() => openSimulator(z.id)}>
+          Test an action
+        </Btn>
+        <Btn variant="primary" icon={FileText} onClick={() => openReport(z.id)}>
+          Create report
+        </Btn>
       </div>
     </div>
   );
@@ -94,26 +95,56 @@ export function MapView() {
   const settings = useGovStore((s) => s.settings);
   const setSettings = useGovStore((s) => s.setSettings);
   const openReport = useGovStore((s) => s.openReport);
+  const focusMap = useGovStore((s) => s.focusMap);
   const [selection, setSelection] = useState<MapSelection>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [me, setMe] = useState<{ lon: number; lat: number; accuracy: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateNote, setLocateNote] = useState<string | null>(null);
   const [visible, setVisible] = useState<Record<MapLayerId, boolean>>({ zones: true, stations: true, hotspots: true, coverage: false, midc: false, industry: false });
 
   const capable = useCapableDesktop();
   const show3d = capable && settings.map3d;
   const coverage = useMemo(() => (base ? coverageGaps(base.cells, st.placed) : null), [base, st.placed]);
 
+  /** Asks the device for its position once, only when tapped. Nothing is stored or sent anywhere. */
+  const locate = () => {
+    setLocateNote(null);
+    if (!('geolocation' in navigator)) {
+      setLocateNote('This device cannot give its location.');
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setLocating(false);
+        const here = { lon: p.coords.longitude, lat: p.coords.latitude, accuracy: p.coords.accuracy };
+        setMe(here);
+        focusMap(here.lon, here.lat);
+        const cell = base?.cells.find((c) => here.lon >= c.bounds.west && here.lon < c.bounds.east && here.lat >= c.bounds.south && here.lat <= c.bounds.north);
+        if (!cell) setLocateNote('You are outside the mapped area.');
+        else if (air.zones.some((z) => z.id === cell.id)) setSelection({ kind: 'zone', id: cell.id });
+      },
+      (err) => {
+        setLocating(false);
+        setLocateNote(err.code === err.PERMISSION_DENIED ? 'Location permission was denied.' : 'Your location could not be found.');
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+    );
+  };
+
   if (!base) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-sand-300">
-        <Loader2 className="mr-2 animate-spin" size={16} /> Building the city model…
+        <Loader2 className="mr-2 animate-spin" size={16} /> Loading the map…
       </div>
     );
   }
 
   const disabled: Partial<Record<MapLayerId, string>> = {};
-  if (st.placed.length === 0) disabled.stations = 'Sourced station coordinates not loaded';
-  if (coverage?.disabledReason) disabled.coverage = coverage.disabledReason;
-  if (!industry || industry.status !== 'loaded') disabled.midc = 'Industry dataset not loaded';
+  if (st.placed.length === 0) disabled.stations = 'No station locations';
+  if (coverage?.disabledReason) disabled.coverage = 'No station locations';
+  if (!industry || industry.status !== 'loaded') disabled.midc = 'Not available';
   const industryData = industry?.status === 'loaded' ? industry.data : null;
   const eff = (id: MapLayerId) => visible[id] && !disabled[id];
 
@@ -128,7 +159,13 @@ export function MapView() {
   return (
     <div className="absolute inset-0">
       {show3d ? (
-        <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-sand-300"><Loader2 className="mr-2 animate-spin" size={16} /> Loading the 3D map…</div>}>
+        <Suspense
+          fallback={
+            <div className="flex h-full items-center justify-center text-sm text-sand-300">
+              <Loader2 className="mr-2 animate-spin" size={16} /> Loading the 3D map…
+            </div>
+          }
+        >
           <Map3D />
         </Suspense>
       ) : (
@@ -141,52 +178,63 @@ export function MapView() {
           coverage={coverage}
           industry={industryData}
           focus={focus}
+          me={me}
+          simplify={!capable}
           onSelect={setSelection}
         />
       )}
 
-      {/* top-left: layers and 2D / 3D */}
       <div className="absolute left-3 top-3 z-10 flex max-w-[calc(100%-5rem)] flex-col items-start gap-2">
         <div className="flex gap-2">
           {!show3d && (
-            <Btn icon={Layers} onClick={() => setPanelOpen((v) => !v)} className="!bg-ink-900/95 shadow-lg backdrop-blur" title="Choose map layers">
+            <Btn icon={Layers} onClick={() => setPanelOpen((v) => !v)} className="!bg-ink-900/95 shadow-lg backdrop-blur" ariaLabel="Map layers">
               Layers
             </Btn>
           )}
-          {capable ? (
-            <Btn icon={show3d ? MapIcon : Box} onClick={() => setSettings({ map3d: !show3d })} className="!bg-ink-900/95 shadow-lg backdrop-blur" title="Switch between the light 2D map and the 3D twin">
-              {show3d ? '2D map' : '3D map'}
+          {!show3d && (
+            <Btn icon={locating ? Loader2 : LocateFixed} onClick={locate} disabled={locating} className="!bg-ink-900/95 shadow-lg backdrop-blur" ariaLabel="Show my location">
+              {locating ? 'Locating…' : 'Me'}
             </Btn>
-          ) : null}
+          )}
+          {capable && (
+            <Btn icon={show3d ? MapIcon : Box} onClick={() => setSettings({ map3d: !show3d })} className="!bg-ink-900/95 shadow-lg backdrop-blur">
+              {show3d ? '2D' : '3D'}
+            </Btn>
+          )}
         </div>
+        {locateNote && !show3d && (
+          <p role="status" className="max-w-xs rounded-xl bg-ink-950 p-3 text-sm text-sand-100 shadow-lg">
+            {locateNote}
+          </p>
+        )}
         {panelOpen && !show3d && (
-          <div className="w-72 max-w-full rounded-2xl bg-ink-950 p-3 shadow-2xl hairline">
-            <ul className="space-y-1">
+          <div className="gov-card panel-scroll max-h-[60dvh] w-72 max-w-full !p-3">
+            <ul>
               {LAYERS.map((l) => (
                 <li key={l.id}>
-                  <label className={`gov-tap flex min-h-11 items-center gap-3 text-sm ${disabled[l.id] ? 'opacity-60' : ''}`}>
+                  <label className={`gov-tap flex min-h-11 items-center gap-3 px-2 text-sm ${disabled[l.id] ? 'opacity-55' : ''}`}>
                     <input type="checkbox" className="h-5 w-5 accent-accent-500" checked={visible[l.id] && !disabled[l.id]} disabled={!!disabled[l.id]} onChange={(e) => setVisible({ ...visible, [l.id]: e.target.checked })} />
                     <span className="min-w-0">
                       <span className="block text-sand-50">{l.label}</span>
-                      {disabled[l.id] && <span className="block text-[11px] text-sand-400">{disabled[l.id]}</span>}
+                      {disabled[l.id] && <span className="block text-xs text-sand-400">{disabled[l.id]}</span>}
                     </span>
                   </label>
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-[11px] leading-relaxed text-sand-400">
-              Coverage gaps are hatched: no station with a data feed within {coverage?.radiusKm ?? 3} km of the zone centre. Stations with no feed give no coverage.
-              {coverage && !coverage.disabledReason ? ` ${coverage.gaps.length} of ${coverage.total} zones are gaps${coverage.coveredOnlyByOutdated > 0 ? `; ${coverage.coveredOnlyByOutdated} are covered only by stations whose latest readings are old` : ''}.` : ''}
-            </p>
+            {coverage && !coverage.disabledReason && (
+              <p className="mt-2 border-t border-sand-500/15 px-2 pt-3 text-xs text-sand-300">
+                Hatched areas have no working station within {coverage.radiusKm} km: {coverage.gaps.length} of {coverage.total} areas.
+              </p>
+            )}
           </div>
         )}
       </div>
 
-      {/* legend */}
       {!show3d && (
-        <div className="pointer-events-none absolute bottom-24 right-3 z-10 hidden max-w-[220px] rounded-xl bg-ink-950/95 p-2.5 text-[11px] text-sand-200 shadow-lg hairline sm:block">
-          <div className="mb-1 font-bold text-sand-100">CPCB AQI (estimate)</div>
-          <ul className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+        <div className="pointer-events-none absolute bottom-24 right-3 z-10 hidden max-w-[210px] rounded-2xl bg-ink-950/95 p-3 text-xs text-sand-200 shadow-lg sm:block">
+          <div className="mb-1.5 font-semibold text-sand-100">Air quality (estimated)</div>
+          <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
             {CATEGORIES.map((c) => (
               <li key={c} className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-sm" style={{ background: CATEGORY_COLOR[c] }} />
@@ -194,70 +242,70 @@ export function MapView() {
               </li>
             ))}
           </ul>
-          <div className="mt-1 text-sand-400">Dashed ring: station reading is outdated. Grey: no AQI.</div>
+          <div className="mt-2 text-sand-400">Dots are stations. A dashed ring means the reading is outdated.</div>
         </div>
       )}
 
       {air.zones.length === 0 && !show3d && (
-        <div role="status" className="absolute inset-x-3 top-16 z-10 mx-auto max-w-md rounded-xl bg-ink-950/95 p-3 text-xs text-sand-100 shadow-lg hairline">
-          <b>No data feed for the zone colours.</b> {air.reason ?? 'Open-Meteo model data has not arrived.'} Nothing is shown rather than an invented value.
-        </div>
-      )}
-      {st.placed.length === 0 && !show3d && (
-        <div role="status" className="absolute left-3 top-16 z-10 max-w-xs rounded-xl bg-ink-950/95 p-2.5 text-[11px] text-sand-200 shadow-lg hairline max-sm:hidden">
-          Sourced station coordinates not loaded: no station is drawn and coverage analysis is disabled.
+        <div role="status" className="absolute inset-x-3 top-16 z-10 mx-auto max-w-md rounded-2xl bg-ink-950/95 p-4 text-sm text-sand-100 shadow-lg">
+          <b>No area readings right now.</b> {air.reason ?? 'Model data has not arrived.'}
         </div>
       )}
 
       {zone && (
-        <Sheet title={zone.place} subtitle="Zone" onClose={() => setSelection(null)}>
+        <Sheet title={zone.place} subtitle="Area" onClose={() => setSelection(null)}>
           <ZoneCard z={zone} />
         </Sheet>
       )}
       {hotspot && hotspot.zone && (
-        <Sheet title={hotspot.name} subtitle={hotspot.subtitle} onClose={() => setSelection(null)}>
+        <Sheet title={hotspot.name} subtitle="Hotspot" onClose={() => setSelection(null)}>
           <ZoneCard z={hotspot.zone} rank={hot.zones.findIndex((h) => h.id === hotspot.id) + 1} />
         </Sheet>
       )}
       {station && (
         <Sheet title={station.name} subtitle={[station.agency, station.city].filter(Boolean).join(' · ') || 'Monitoring station'} onClose={() => setSelection(null)} chips={<StatusChip kind={chipOf(station.status)} label={STATUS_LABEL[station.status]} />}>
-          <div className="space-y-3 text-xs text-sand-200">
+          <div className="space-y-5 text-sm text-sand-200">
             {station.aqi ? (
               <div className="flex flex-wrap items-center gap-2">
                 <AqiChip aqi={station.aqi.value} category={station.aqi.category} />
-                <span>{station.status === 'live' ? 'current reading' : `OUTDATED: reading from ${formatIst(station.lastReadingAt)}`}</span>
+                <span>{station.status === 'live' ? 'Current reading' : `Last reading ${formatIst(station.lastReadingAt)}`}</span>
               </div>
             ) : station.estimate ? (
               <div className="flex flex-wrap items-center gap-2">
                 <AqiChip aqi={station.estimate.aqi} category={station.estimate.category} />
                 <StatusChip kind="estimated" />
-                <span>no current reading: model estimate for this place</span>
+                <span>No current reading</span>
               </div>
             ) : (
-              <p>No data feed for this station.</p>
+              <p>No reading available.</p>
             )}
-            {station.singleSource && <p className="text-amber-700">Single-source coordinate: position unconfirmed.</p>}
             {stationZone && (
               <Btn variant="primary" icon={FileText} onClick={() => openReport(stationZone.id)}>
-                Create report for {stationZone.place}
+                Create report
               </Btn>
             )}
           </div>
         </Sheet>
       )}
       {midc && (
-        <Sheet title={midc.name} subtitle="MIDC industrial estate" onClose={() => setSelection(null)}>
-          <p className="text-xs text-sand-300">
-            {midc.category ?? 'Estate'}; {midc.areaHa ? `${midc.areaHa.toFixed(0)} ha` : 'area not stated'}. Boundary and plot status only: the data has no company list and no emissions.
+        <Sheet title={midc.name} subtitle="MIDC area" onClose={() => setSelection(null)}>
+          <p className="text-sm text-sand-300">
+            {midc.category ?? 'Industrial estate'}
+            {midc.areaHa ? ` · ${midc.areaHa.toFixed(0)} ha` : ''}
           </p>
         </Sheet>
       )}
       {gap && (
-        <Sheet title="Coverage gap" subtitle={gapZone?.place ?? 'Zone without monitoring'} onClose={() => setSelection(null)}>
-          <div className="space-y-3 text-xs text-sand-200">
-            <p>No station with a data feed lies within {coverage?.radiusKm} km of this zone.{gap.nearest ? ` The nearest station is ${gap.nearest.name}, ${gap.nearest.km.toFixed(1)} km away.` : ''}</p>
-            <p>Any value for this zone is a model estimate, not monitored.</p>
-            {gapZone && <Btn variant="primary" icon={FileText} onClick={() => openReport(gapZone.id)}>Create report</Btn>}
+        <Sheet title="Monitoring gap" subtitle={gapZone?.place ?? 'Area'} onClose={() => setSelection(null)}>
+          <div className="space-y-4 text-sm text-sand-200">
+            <p>
+              No working station lies within {coverage?.radiusKm} km.{gap.nearest ? ` The nearest is ${gap.nearest.name}, ${gap.nearest.km.toFixed(1)} km away.` : ''}
+            </p>
+            {gapZone && (
+              <Btn variant="primary" icon={FileText} onClick={() => openReport(gapZone.id)}>
+                Create report
+              </Btn>
+            )}
           </div>
         </Sheet>
       )}

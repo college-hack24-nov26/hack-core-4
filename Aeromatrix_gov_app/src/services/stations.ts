@@ -75,13 +75,13 @@ export async function loadVerifiedStations(url: string = VERIFIED_STATIONS_URL):
   } catch {
     return { status: 'not-loaded', reason: 'The verified station coordinate file could not be read.' };
   }
-  if (!res.ok) return { status: 'not-loaded', reason: 'The sourced station coordinate list (station_coordinates_verified.json) is not loaded.' };
+  if (!res.ok) return { status: 'not-loaded', reason: 'Station locations are not available.' };
   try {
     const json: unknown = await res.json();
     if (!validFile(json)) return { status: 'not-loaded', reason: 'station_coordinates_verified.json is not in the expected format.' };
     return { status: 'loaded', file: { ...json, unlocated: Array.isArray(json.unlocated) ? json.unlocated : [] } };
   } catch {
-    return { status: 'not-loaded', reason: 'The sourced station coordinate list (station_coordinates_verified.json) is not loaded.' };
+    return { status: 'not-loaded', reason: 'Station locations are not available.' };
   }
 }
 
