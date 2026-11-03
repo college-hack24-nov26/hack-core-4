@@ -1,100 +1,13 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, FileText, RadioTower } from 'lucide-react';
+import { ChevronRight, RadioTower } from 'lucide-react';
 import { useGovStore } from '../govStore';
-import { useAirData } from '../lib/airdata';
-import { nearestZone } from '../lib/hotspots';
-import { countStations, useStations, type StationRow, type StationStatus } from '../lib/stations';
-import { formatAge, formatIst } from '../lib/format';
-import { AqiChip, Btn, Card, EmptyState, PageTitle, Pills, StatusChip, type ChipKind } from '../ui';
-import { Sheet } from '../Sheet';
+import { countStations, useStations, type StationStatus } from '../lib/stations';
+import { formatAge } from '../lib/format';
+import { AqiChip, Card, EmptyState, PageTitle, Pills, StatusChip, type ChipKind } from '../ui';
+import { StationDetail } from './StationDetail';
 
 const chipOf = (s: StationStatus): ChipKind => (s === 'live' ? 'measured' : s === 'outdated' ? 'outdated' : s === 'estimate' ? 'estimated' : 'nofeed');
 const STATE_LABEL: Record<StationStatus, string> = { live: 'Working', outdated: 'Outdated', estimate: 'Unavailable', no_feed: 'Unavailable' };
-
-function StationDetail({ s, onClose }: { s: StationRow; onClose: () => void }) {
-  const air = useAirData();
-  const openReport = useGovStore((x) => x.openReport);
-  const zone = nearestZone(air.zones, [s.lon, s.lat]);
-  return (
-    <Sheet
-      title={s.name}
-      subtitle={[s.monitoring === 'manual' ? 'Manual station (NAMP)' : 'Continuous station (CAAQMS)', s.agency, s.city].filter(Boolean).join(' · ')}
-      onClose={onClose}
-      chips={<StatusChip kind={chipOf(s.status)} label={STATE_LABEL[s.status]} />}
-    >
-      <div className="space-y-7">
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-5">
-          <div>
-            <dt className="text-xs font-medium text-sand-400">Last updated</dt>
-            <dd className="mt-0.5 text-[15px] text-sand-50">{s.lastReadingAt ? formatIst(s.lastReadingAt) : 'No reading'}</dd>
-          </div>
-          <div>
-            <dt className="text-xs font-medium text-sand-400">Freshness</dt>
-            <dd className="mt-0.5 text-[15px] text-sand-50">{s.lastReadingAt ? formatAge(s.ageMs) : 'No reading'}</dd>
-          </div>
-          <div className="col-span-2">
-            <dt className="text-xs font-medium text-sand-400">Location</dt>
-            <dd className="mt-0.5 text-[15px] text-sand-50">
-              {s.lat.toFixed(4)}°N, {s.lon.toFixed(4)}°E{zone ? ` · near ${zone.place}` : ''}
-            </dd>
-          </div>
-        </dl>
-
-        {s.readings.length > 0 ? (
-          <section>
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="gov-eyebrow">Latest readings</h3>
-              {s.aqi && <AqiChip aqi={s.aqi.value} category={s.aqi.category} />}
-            </div>
-            <ul className="grid grid-cols-2 gap-2">
-              {s.readings.map((r) => (
-                <li key={r.key} className="rounded-xl bg-ink-800 p-3">
-                  <div className="text-xs text-sand-400">{r.label}</div>
-                  <div className="mt-0.5 text-lg font-semibold tabular-nums text-sand-50">
-                    {r.value.toFixed(r.value < 10 ? 2 : 0)} <span className="text-xs font-normal text-sand-300">{r.unit}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            {s.status !== 'live' && <p className="mt-3 text-sm text-amber-700">This reading is from {formatIst(s.lastReadingAt)} and is not current.</p>}
-          </section>
-        ) : (
-          <EmptyState title="No readings" reason="This station has not reported." />
-        )}
-
-        {s.status !== 'live' && s.estimate && (
-          <section className="rounded-xl bg-ink-800 p-4">
-            <h3 className="gov-eyebrow mb-2">Estimate for this place</h3>
-            <div className="flex flex-wrap items-center gap-2">
-              <AqiChip aqi={s.estimate.aqi} category={s.estimate.category} />
-              <StatusChip kind="estimated" />
-            </div>
-            <p className="mt-2 text-sm text-sand-300">Estimated from model data. It is not a station measurement.</p>
-          </section>
-        )}
-
-        {s.forecast && (
-          <section>
-            <h3 className="gov-eyebrow mb-2">PM2.5 forecast</h3>
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusChip kind="forecast" />
-              <span className="text-lg font-semibold tabular-nums text-sand-50">{s.forecast.value.toFixed(0)} µg/m³</span>
-              <span className="text-sm text-sand-300">
-                range {s.forecast.lower.toFixed(0)} to {s.forecast.upper.toFixed(0)}
-              </span>
-            </div>
-          </section>
-        )}
-
-        {zone && (
-          <Btn icon={FileText} onClick={() => openReport(zone.id)} className="w-full">
-            Create report for {zone.place}
-          </Btn>
-        )}
-      </div>
-    </Sheet>
-  );
-}
 
 export function StationsView() {
   const st = useStations();

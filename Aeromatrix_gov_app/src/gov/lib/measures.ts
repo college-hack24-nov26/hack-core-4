@@ -31,6 +31,27 @@ export const TREE_CHOICES: TreeCount[] = [0, 250, 500, 1000, 2000];
 
 export type IndustryMode = 'controls' | 'restrict';
 
+/**
+ * Fine-tuning sliders and weather what-ifs. Each one feeds the same rule engine as the measures above (no separate
+ * model); a missing key means "no change". Percent values are percent, weather values are in their own units.
+ */
+export interface ExtraParams {
+  /** change in vehicle traffic, -50 to +30 % */
+  trafficChange?: number;
+  /** share of vehicles that become electric or low-emission, 0 to 30 % */
+  electric?: number;
+  /** extra emission control on industry, 0 to 50 % */
+  industryControl?: number;
+  /** roadside and park greenery, extra percentage points of cover, 0 to 15 */
+  greenCover?: number;
+  windSpeed?: number;
+  temperature?: number;
+  humidity?: number;
+  rainfall?: number;
+}
+export const EXTRA_KEYS: Array<keyof ExtraParams> = ['trafficChange', 'electric', 'industryControl', 'greenCover', 'windSpeed', 'temperature', 'humidity', 'rainfall'];
+export const hasExtras = (e: ExtraParams | undefined): boolean => !!e && EXTRA_KEYS.some((k) => typeof e[k] === 'number');
+
 export interface MeasureSelection {
   traffic: TrafficMeasure;
   trees: TreeCount;
@@ -41,6 +62,7 @@ export interface MeasureSelection {
   /** share of the closed road's traffic that diverts to a neighbouring road */
   closureDiversion: number;
   dust: boolean;
+  extras?: ExtraParams;
 }
 
 export const NO_MEASURES: MeasureSelection = { traffic: 'off', trees: 0, industry: 0, industryMode: 'controls', closureRoadId: null, closureDiversion: 0.6, dust: false };
@@ -49,7 +71,7 @@ export const NO_MEASURES: MeasureSelection = { traffic: 'off', trees: 0, industr
 export const RESTRICTION_CUT = 0.5;
 
 export const hasMeasures = (s: MeasureSelection): boolean =>
-  s.traffic !== 'off' || s.trees > 0 || s.industry > 0 || s.closureRoadId !== null || s.dust;
+  s.traffic !== 'off' || s.trees > 0 || s.industry > 0 || s.closureRoadId !== null || s.dust || hasExtras(s.extras);
 
 /** Implementation periods in weeks. These are planning assumptions of this app, not quotations. */
 export const WEEKS = { traffic: { standard: 6, intensive: 10 }, trees: 8, industry: 12, closure: 1 } as const;
@@ -208,6 +230,21 @@ export function runMeasures(args: {
     if (closure) params.roadClosures = [{ roadId: closure.roadId, divertToRoadId: closure.divertToRoadId, diversionShare: closure.divertToRoadId ? sel.closureDiversion : 0 }];
     else notes.push('The chosen road is not in the current map data, so the closure was not applied.');
   }
+  const ex = sel.extras;
+  const extrasOn = hasExtras(ex);
+  if (ex && extrasOn) {
+    if (typeof ex.trafficChange === 'number') params.trafficMultiplier = Math.max(0, params.trafficMultiplier * (1 + ex.trafficChange / 100));
+    if (typeof ex.electric === 'number') params.vehicleEmissionControl = Math.min(0.9, params.vehicleEmissionControl + ex.electric / 100);
+    if (typeof ex.industryControl === 'number') params.industrialControl = Math.min(0.95, params.industrialControl + ex.industryControl / 100);
+    if (typeof ex.greenCover === 'number') params.greenCoverDelta = Math.min(60, params.greenCoverDelta + ex.greenCover);
+    params.weather = {
+      ...params.weather,
+      ...(typeof ex.windSpeed === 'number' ? { windSpeed: ex.windSpeed } : {}),
+      ...(typeof ex.temperature === 'number' ? { temperature: ex.temperature } : {}),
+      ...(typeof ex.humidity === 'number' ? { humidity: ex.humidity } : {}),
+      ...(typeof ex.rainfall === 'number' ? { rainfall: ex.rainfall } : {}),
+    };
+  }
   const dust = sel.dust ? dustPlan(base, cell, zoneName) : null;
 
   const result = runScenario(base, params);
@@ -233,7 +270,7 @@ export function runMeasures(args: {
     ...(dust ? ['Dust control by water sprinkling'] : []),
   ];
   const zonesImproved = target.cellIds.length > 0 ? Object.values(result.delta).filter((d) => d.pm25 <= -0.5).length : 0;
-  const modelledEffect = options.length > 0 || closure !== null;
+  const modelledEffect = options.length > 0 || closure !== null || extrasOn;
   if (!modelledEffect && dust) notes.push('Only dust control is selected: its effect is not modelled, so no change in PM2.5 is shown.');
   if (dust) notes.push('Dust control is costed and scheduled; its effect is checked by readings on Day 7 and Day 14, not simulated.');
 
@@ -272,6 +309,33 @@ export function runMeasures(args: {
   };
 }
 
+/** What each chosen change contributes on its own (the same engine, one change at a time). Largest improvement first. */
+export function contributions(args: { base: BaseState; cell: GridCell; zoneName: string; currentPm25: number | null; selection: MeasureSelection }): Array<{ label: string; changePct: number }> {
+  const { selection: s } = args;
+  const parts: Array<{ label: string; sel: MeasureSelection }> = [];
+  const one = (label: string, patch: Partial<MeasureSelection>) => parts.push({ label, sel: { ...NO_MEASURES, ...patch } });
+  if (s.traffic !== 'off') one(`Traffic enforcement (${s.traffic})`, { traffic: s.traffic });
+  if (s.closureRoadId) one('Road closure', { closureRoadId: s.closureRoadId, closureDiversion: s.closureDiversion });
+  if (s.industry > 0) one('Industrial controls', { industry: s.industry, industryMode: s.industryMode });
+  if (s.trees > 0) one(`${s.trees.toLocaleString('en-IN')} trees`, { trees: s.trees });
+  const ex = s.extras ?? {};
+  const ext = (label: string, keys: Array<keyof ExtraParams>) => {
+    const picked: ExtraParams = {};
+    for (const k of keys) if (typeof ex[k] === 'number') picked[k] = ex[k];
+    if (hasExtras(picked)) one(label, { extras: picked });
+  };
+  ext('Traffic volume', ['trafficChange']);
+  ext('Cleaner vehicles', ['electric']);
+  ext('Industry emission control', ['industryControl']);
+  ext('Roadside greenery', ['greenCover']);
+  ext('Weather', ['windSpeed', 'temperature', 'humidity', 'rainfall']);
+  return parts
+    .map((p) => ({ label: p.label, out: runMeasures({ ...args, selection: p.sel }) }))
+    .filter((p): p is { label: string; out: SimOutcome } => !!p.out && p.out.modelledEffect)
+    .map((p) => ({ label: p.label, changePct: p.out.changePct }))
+    .sort((a, b) => a.changePct - b.changePct);
+}
+
 export function measureLabels(sel: MeasureSelection): string[] {
   return [
     ...(sel.traffic !== 'off' ? [`Traffic enforcement (${sel.traffic})`] : []),
@@ -279,5 +343,6 @@ export function measureLabels(sel: MeasureSelection): string[] {
     ...(sel.industry > 0 ? [`Industrial controls (${sel.industry})`] : []),
     ...(sel.trees > 0 ? [`${sel.trees} trees`] : []),
     ...(sel.dust ? ['Dust control'] : []),
+    ...(hasExtras(sel.extras) ? ['Fine-tuned conditions'] : []),
   ];
 }

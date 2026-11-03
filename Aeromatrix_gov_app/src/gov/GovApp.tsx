@@ -16,6 +16,8 @@ import { StationsView } from './views/StationsView';
 import { HotspotsView } from './views/HotspotsView';
 import { SimulatorView } from './views/SimulatorView';
 import { ReportsView } from './views/ReportsView';
+import { SettingsView } from './views/SettingsView';
+import { useAirData, colorOf } from './lib/airdata';
 
 const THEME_KEY = 'aeromatrix.gov.theme';
 type Theme = 'cream' | 'dark';
@@ -49,6 +51,17 @@ export function GovApp() {
   const hasBase = useTwinStore((s) => s.base !== null);
   const init = useTwinStore((s) => s.init);
   const live = useTwinStore((s) => s.live);
+  const ui = useGovStore((s) => s.settings.ui);
+  const selectedZoneId = useGovStore((s) => s.selectedZoneId);
+  const air = useAirData();
+  const accentCategory = (selectedZoneId ? air.zones.find((z) => z.id === selectedZoneId)?.category : null) ?? air.city?.category ?? null;
+
+  // The chosen interface design and the accent that follows the air quality of the place in view.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.ui = ui;
+    root.style.setProperty('--gov-aqi', accentCategory ? colorOf(accentCategory) : '#2563eb');
+  }, [ui, accentCategory]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -120,7 +133,7 @@ export function GovApp() {
         : 'Updating…';
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-ink-950 text-sand-100">
+    <div className="gov-root flex h-dvh flex-col overflow-hidden bg-ink-950 text-sand-100">
       <PwaBar />
       <header className="gov-header flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-sand-500/20 bg-ink-900 py-1">
         <div className="flex min-w-0 items-center gap-2">
@@ -156,6 +169,7 @@ export function GovApp() {
             {view === 'hotspots' && <HotspotsView />}
             {view === 'simulator' && <SimulatorView />}
             {view === 'reports' && <ReportsView />}
+            {view === 'settings' && <SettingsView />}
           </div>
         )}
         <AlertBanner />

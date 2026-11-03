@@ -4,6 +4,7 @@ import '@fontsource-variable/inter';
 import './index.css';
 import './gov/theme.css';
 import './gov/mobile.css';
+import './gov/glass.css';
 import { GovApp } from './gov/GovApp';
 import { registerServiceWorker } from './gov/Pwa';
 import { applyLiteMode } from './gov/lib/perf';

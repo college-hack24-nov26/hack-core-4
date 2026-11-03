@@ -11,15 +11,18 @@ import { UNKNOWN_COLOR, colorOf } from '../lib/airdata';
 import type { CoverageResult } from '../lib/coverage';
 import type { Hotspot } from '../lib/hotspots';
 import { simplifyRing } from '../lib/geo';
+import { createHeatLayer, heatPoints, type HeatMetric } from '../lib/heat';
 import type { StationRow } from '../lib/stations';
 
-export type MapLayerId = 'zones' | 'stations' | 'hotspots' | 'midc' | 'industry' | 'coverage';
+export type MapLayerId = 'heat' | 'zones' | 'stations' | 'hotspots' | 'midc' | 'industry' | 'coverage';
 export type MapSelection = { kind: 'zone' | 'station' | 'hotspot' | 'midc' | 'gap'; id: string } | null;
 
 export interface Map2DProps {
   base: BaseState;
   visible: Record<MapLayerId, boolean>;
   zones: ZoneRow[];
+  /** what the heatmap shows: the AQI or one pollutant's sub-index */
+  metric: HeatMetric;
   stations: StationRow[];
   hotspots: Hotspot[];
   coverage: CoverageResult | null;
@@ -40,7 +43,7 @@ const ring = (r: LonLat[]): L.LatLngExpression[] => r.map(([lon, lat]) => [lat, 
  * their data changes, so a layer the Commissioner never opens costs nothing.
  */
 export function Map2D(props: Map2DProps) {
-  const { base, visible, zones, stations, hotspots, coverage, industry, focus, me, simplify, onSelect } = props;
+  const { base, visible, zones, metric, stations, hotspots, coverage, industry, focus, me, simplify, onSelect } = props;
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const canvasRef = useRef<L.Canvas | null>(null);
@@ -105,6 +108,11 @@ export function Map2D(props: Map2DProps) {
     if (!map.hasLayer(layer)) map.addLayer(layer);
   };
 
+  // the smooth AQI heatmap (zone values interpolated, faded away from the zones)
+  useEffect(() => {
+    sync('heat', visible.heat, () => createHeatLayer(heatPoints(zones, metric)), [zones, metric]);
+  }, [visible.heat, zones, metric]);
+
   // zones coloured by the CAMS estimate
   useEffect(() => {
     sync('zones', visible.zones, () => {
@@ -148,7 +156,11 @@ export function Map2D(props: Map2DProps) {
               title: `${s.name} (manual)`,
               icon: L.divIcon({ className: '', iconSize: [22, 22], iconAnchor: [11, 11], html: `<div style="width:16px;height:16px;margin:3px;transform:rotate(45deg);background:${col};border:2px solid #1c0a10;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div><div style="position:absolute;inset:0;font:700 10px/22px system-ui;text-align:center;color:#1c0a10">M</div>` }),
             })
-          : L.circleMarker([s.lat, s.lon], { renderer: canvasRef.current ?? undefined, radius: 9, color: '#1c0a10', weight: 2, fillColor: col, fillOpacity: 1 });
+          : L.marker([s.lat, s.lon], {
+              keyboard: true,
+              title: s.name,
+              icon: L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17], html: `<div style="width:34px;height:34px;border-radius:50%;background:${col};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.45);color:${s.aqi?.category === 'Poor' || s.aqi?.category === 'Very Poor' || s.aqi?.category === 'Severe' ? '#fff' : '#1c0a10'};font:700 12px/28px system-ui;text-align:center">${s.aqi ? Math.round(s.aqi.value) : s.estimate ? Math.round(s.estimate.aqi) : '–'}</div>` }),
+            });
         m.bindTooltip(`${s.name}${manual ? ' (manual)' : ''}: ${s.status === 'live' ? 'measured' : s.status === 'outdated' ? 'OUTDATED reading' : 'no current reading'}`, { sticky: true });
         m.on('click', (e) => {
           L.DomEvent.stopPropagation(e);

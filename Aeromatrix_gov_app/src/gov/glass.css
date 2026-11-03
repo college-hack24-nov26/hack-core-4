@@ -1,0 +1,158 @@
+/*
+ * Glassmorphism UI (blue and white). It only re-points the colour ramps and adds a frosted surface to cards, so every
+ * screen, sheet and control picks it up without any change in behaviour. The Classic look is the stylesheet without this.
+ * `--gov-aqi` is set from the air quality of the place being looked at and tints the highlights.
+ */
+
+html[data-ui='glass'] {
+  --gov-aqi: #2563eb;
+  --color-accent-50: #eff6ff;
+  --color-accent-100: #dbeafe;
+  --color-accent-200: #bfdbfe;
+  --color-accent-300: #93c5fd;
+  --color-accent-400: #3b82f6;
+  --color-accent-500: #2563eb;
+  --color-accent-600: #1d4ed8;
+  --color-accent-700: #1e40af;
+  --color-accent-800: #1e3a8a;
+  --color-accent-900: #172554;
+}
+
+/* Light glass: the default. */
+html[data-ui='glass'].theme-cream {
+  --glass-page: linear-gradient(160deg, #e6f0ff 0%, #f7faff 45%, #d9e8ff 100%);
+  --color-ink-950: rgb(247 250 255 / 0.94);
+  --color-ink-900: rgb(255 255 255 / 0.64);
+  --color-ink-850: rgb(255 255 255 / 0.5);
+  --color-ink-800: rgb(222 235 255 / 0.72);
+  --color-ink-700: #d3e2fb;
+  --color-ink-600: #bcd2f7;
+
+  --color-sand-50: #0b1f44;
+  --color-sand-100: #14295a;
+  --color-sand-200: #2c4274;
+  --color-sand-300: #49608d;
+  --color-sand-400: #667ca3;
+  --color-sand-500: #8a9cbd;
+  --color-sand-600: #a8b7d1;
+  --color-sand-700: #c6d2e6;
+  --color-sand-800: #d9e2f1;
+  --color-sand-900: #e8eef8;
+  --glass-edge: rgb(255 255 255 / 0.75);
+  --glass-shadow: 0 10px 34px -14px rgb(37 99 235 / 0.35);
+}
+
+/* Dark glass: the same design on deep blue. */
+html[data-ui='glass']:not(.theme-cream) {
+  --glass-page: linear-gradient(160deg, #06122b 0%, #0a1d44 55%, #0b2a63 100%);
+  --color-ink-950: rgb(8 20 46 / 0.94);
+  --color-ink-900: rgb(255 255 255 / 0.07);
+  --color-ink-850: rgb(255 255 255 / 0.05);
+  --color-ink-800: rgb(255 255 255 / 0.1);
+  --color-ink-700: rgb(255 255 255 / 0.16);
+  --color-ink-600: rgb(255 255 255 / 0.24);
+
+  --color-sand-50: #f3f7ff;
+  --color-sand-100: #e1eaff;
+  --color-sand-200: #c4d3f3;
+  --color-sand-300: #9fb3dc;
+  --color-sand-400: #7f95c2;
+  --color-sand-500: #627aa8;
+  --color-sand-600: #4a6089;
+  --color-sand-700: #36496c;
+  --color-sand-800: #263552;
+  --color-sand-900: #1a2640;
+  --glass-edge: rgb(255 255 255 / 0.14);
+  --glass-shadow: 0 12px 36px -14px rgb(0 0 0 / 0.6);
+}
+
+html[data-ui='glass'] .gov-root {
+  background: var(--glass-page);
+  background-attachment: fixed;
+}
+
+html[data-ui='glass'] .gov-card {
+  background: var(--color-ink-900);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
+  border-radius: 24px;
+}
+
+html[data-ui='glass'] .gov-header {
+  background: color-mix(in srgb, var(--color-ink-900) 80%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+  border-bottom: 1px solid var(--glass-edge);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--gov-aqi) 35%, transparent);
+}
+
+html[data-ui='glass'] nav[aria-label='Main'] {
+  background: color-mix(in srgb, var(--color-ink-900) 86%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  backdrop-filter: blur(20px) saturate(1.3);
+  border-top: 1px solid var(--glass-edge);
+}
+
+html[data-ui='glass'] aside[role='dialog'] {
+  background: color-mix(in srgb, var(--color-ink-950) 92%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  backdrop-filter: blur(22px) saturate(1.3);
+  border: 1px solid var(--glass-edge);
+}
+
+html[data-ui='glass'] body {
+  background: var(--glass-page);
+}
+
+/* Soft hover lift on interactive cards. */
+html[data-ui='glass'] .gov-card.gov-tap:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px -14px color-mix(in srgb, var(--gov-aqi) 45%, transparent);
+}
+
+/* Glass home pieces. */
+.glass-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid var(--glass-edge, rgb(255 255 255 / 0.6));
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--gov-aqi) 38%, transparent) 0%, transparent 60%),
+    var(--color-ink-900);
+  box-shadow: var(--glass-shadow, 0 10px 34px -14px rgb(37 99 235 / 0.35));
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  backdrop-filter: blur(20px) saturate(1.3);
+}
+
+.glass-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-sand-400) 20%, transparent);
+  overflow: hidden;
+}
+.glass-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.7s var(--ease-out-soft, ease-out);
+}
+
+/* The person in the AQI card breathes very gently. */
+.glass-face {
+  animation: glass-float 5s ease-in-out infinite;
+}
+@keyframes glass-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Smooth cross-fade when the forecast period changes. */
+.glass-swap {
+  animation: glass-swap 0.35s var(--ease-out-soft, ease-out) both;
+}
+@keyframes glass-swap {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}

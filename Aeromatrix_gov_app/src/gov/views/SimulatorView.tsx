@@ -6,7 +6,8 @@ import { useGovStore } from '../govStore';
 import { colorOf, aqiCategory, useAirData } from '../lib/airdata';
 import { costBreakdown, runningRates } from '../lib/costs';
 import { useHotspots } from '../lib/hotspots';
-import { TREE_CHOICES, closureChoices, hasMeasures, industryUnitsAvailable, runMeasures, type MeasureSelection } from '../lib/measures';
+import { TREE_CHOICES, closureChoices, contributions, hasMeasures, industryUnitsAvailable, runMeasures, type ExtraParams, type MeasureSelection } from '../lib/measures';
+import { subindexFor } from '../../services/cpcbAqi';
 import { downloadText, scenariosCsv, toSavedScenario } from '../lib/scenarios';
 import { formatIst, signed } from '../lib/format';
 import { isLite } from '../lib/perf';
@@ -56,6 +57,32 @@ function Analysing() {
       </p>
     </div>
   );
+}
+
+/** One fine-tuning slider. A value equal to its default is "no change" and is dropped from the selection. */
+function Slide({ label, unit, value, def, min, max, step, onChange }: { label: string; unit: string; value: number | undefined; def: number; min: number; max: number; step: number; onChange: (v: number | undefined) => void }) {
+  const v = value ?? def;
+  const changed = value !== undefined && value !== def;
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <span className="font-medium text-sand-100">{label}</span>
+        <span className={`tabular-nums ${changed ? 'font-semibold text-accent-500' : 'text-sand-300'}`}>
+          {v > 0 && def === 0 ? '+' : ''}
+          {Number.isInteger(step) ? v : v.toFixed(1)}
+          {unit}
+        </span>
+      </div>
+      <input type="range" aria-label={label} min={min} max={max} step={step} value={v} onChange={(e) => onChange(Number(e.target.value) === def ? undefined : Number(e.target.value))} className="h-8 w-full accent-accent-500" />
+    </div>
+  );
+}
+
+/** The predicted AQI: the zone's own sub-indices, with the PM2.5 one recomputed for the simulated PM2.5. */
+function predictedAqi(subs: Array<{ pollutant: string; value: number }>, simPm25: number): number | null {
+  const sub = subindexFor('pm25', simPm25);
+  if (sub.kind !== 'ok') return null;
+  return Math.max(sub.value, ...subs.filter((s) => s.pollutant !== 'pm25').map((s) => s.value));
 }
 
 function Details({ title, children }: { title: string; children: ReactNode }) {
@@ -114,6 +141,8 @@ export function SimulatorView() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runKey]);
+  const contribs = useMemo(() => (base && cell && zone && outcome?.modelledEffect ? contributions({ base, cell, zoneName: zone.place, currentPm25: zone.pm25, selection: measures }) : []), [base, cell, zone, outcome, measures]);
+  const simAqi = zone && outcome?.projectedPm25 != null && outcome.modelledEffect ? predictedAqi(zone.subindices, outcome.projectedPm25) : null;
   const costs = useMemo(() => (outcome ? costBreakdown(outcome.lines) : null), [outcome]);
   const rates = outcome ? runningRates(outcome.recurring, outcome.dust) : null;
 
@@ -129,6 +158,14 @@ export function SimulatorView() {
   }
 
   const set = (p: Partial<MeasureSelection>) => setMeasures(p);
+  const ex = measures.extras ?? {};
+  const setEx = (k: keyof ExtraParams, v: number | undefined) => {
+    const next: ExtraParams = { ...ex };
+    if (v === undefined) delete next[k];
+    else next[k] = v;
+    setMeasures({ extras: Object.keys(next).length > 0 ? next : undefined });
+  };
+  const w = base.weather;
   const toCompare = scenarios.filter((s) => compare.includes(s.id));
   const compareRows = outcome && outcome.modelledEffect && outcome.currentPm25 !== null && outcome.projectedPm25 !== null && outcome.lowPm25 !== null
     ? [
@@ -208,6 +245,32 @@ export function SimulatorView() {
           </div>
         </SectionCard>
 
+        <SectionCard title="Fine-tune">
+          <div className="space-y-2">
+            <Details title="Traffic">
+              <div className="space-y-4">
+                <Slide label="Traffic volume" unit="%" value={ex.trafficChange} def={0} min={-50} max={30} step={5} onChange={(v) => setEx('trafficChange', v)} />
+                <Slide label="Electric and clean vehicles" unit="%" value={ex.electric} def={0} min={0} max={30} step={5} onChange={(v) => setEx('electric', v)} />
+              </div>
+            </Details>
+            <Details title="Industry">
+              <Slide label="Extra emission control" unit="%" value={ex.industryControl} def={0} min={0} max={50} step={5} onChange={(v) => setEx('industryControl', v)} />
+            </Details>
+            <Details title="Green cover">
+              <Slide label="Roadside and park greenery" unit=" pts" value={ex.greenCover} def={0} min={0} max={15} step={1} onChange={(v) => setEx('greenCover', v)} />
+            </Details>
+            <Details title="Weather">
+              <div className="space-y-4">
+                <Slide label="Wind speed" unit=" m/s" value={ex.windSpeed} def={Math.round(w.windSpeed * 10) / 10} min={0} max={12} step={0.5} onChange={(v) => setEx('windSpeed', v)} />
+                <Slide label="Temperature" unit="°C" value={ex.temperature} def={Math.round(w.temperature)} min={5} max={45} step={1} onChange={(v) => setEx('temperature', v)} />
+                <Slide label="Humidity" unit="%" value={ex.humidity} def={Math.round(w.humidity)} min={10} max={100} step={5} onChange={(v) => setEx('humidity', v)} />
+                <Slide label="Rainfall" unit=" mm" value={ex.rainfall} def={Math.round(w.rainfall)} min={0} max={100} step={5} onChange={(v) => setEx('rainfall', v)} />
+              </div>
+            </Details>
+            <p className="px-1 pt-1 text-xs text-sand-400">Construction activity is not modelled. Dust control above is costed only.</p>
+          </div>
+        </SectionCard>
+
         {!outcome ? (
           <Card>
             <EmptyState title="Choose an intervention" reason="The result appears here." />
@@ -226,7 +289,36 @@ export function SimulatorView() {
                   </span>
                   <span className="pb-1 text-sm text-sand-300">PM2.5, range {signed(outcome.lowPct, 0)}% to {signed(outcome.changePct, 0)}%</span>
                 </div>
+                {zone && simAqi !== null && (
+                  <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-ink-800 p-3.5">
+                    <AqiChip aqi={zone.aqi} category={zone.category} />
+                    <span className="text-sand-400">→</span>
+                    <AqiChip aqi={simAqi} category={aqiCategory(simAqi)} />
+                    <span className={`ml-auto text-sm font-semibold ${simAqi < zone.aqi ? 'text-emerald-600' : 'text-sand-200'}`}>{simAqi - zone.aqi === 0 ? 'No change' : `${simAqi - zone.aqi > 0 ? '+' : ''}${simAqi - zone.aqi} AQI`}</span>
+                  </div>
+                )}
+                {zone && simAqi !== null && simAqi === zone.aqi && zone.dominant && zone.dominant !== 'pm25' && (
+                  <p className="mt-2 text-xs text-sand-400">The AQI here is set by {zone.dominant.toUpperCase()}, which these changes do not affect, so it stays the same while PM2.5 falls.</p>
+                )}
                 <CompareChart rows={compareRows} unit="µg/m³" />
+                {contribs.length > 0 && (
+                  <div className="mt-5">
+                    <h3 className="gov-eyebrow mb-2">What helps most</h3>
+                    <ul className="space-y-2.5">
+                      {contribs.map((c) => (
+                        <li key={c.label}>
+                          <div className="flex items-center justify-between gap-2 text-sm">
+                            <span className="text-sand-100">{c.label}</span>
+                            <span className={`tabular-nums font-semibold ${c.changePct < 0 ? 'text-emerald-600' : 'text-red-600'}`}>{signed(c.changePct, 1)}%</span>
+                          </div>
+                          <div className="mt-1 h-2 overflow-hidden rounded-full bg-ink-800">
+                            <div className="gov-bar-grow h-full rounded-full" style={{ width: `${Math.max(4, Math.min(100, (Math.abs(c.changePct) / Math.max(0.1, Math.abs(contribs[0].changePct))) * 100))}%`, background: c.changePct < 0 ? '#2fae8b' : '#d9372f' }} />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </>
             ) : (
               <p className="text-[15px] text-sand-100">The selected intervention has no modelled effect on PM2.5. It is costed and scheduled below.</p>

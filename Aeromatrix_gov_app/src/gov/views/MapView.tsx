@@ -1,16 +1,18 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { Box, FileText, Layers, LocateFixed, Loader2, Map as MapIcon, SlidersHorizontal } from 'lucide-react';
+import { Box, FileText, Layers, LocateFixed, Loader2, Map as MapIcon, Search, SlidersHorizontal } from 'lucide-react';
 import { useTwinStore } from '../../store/useTwinStore';
 import { useGovStore } from '../govStore';
 import { useAirData, type ZoneRow } from '../lib/airdata';
 import { coverageGaps } from '../lib/coverage';
-import { useHotspots, nearestZone } from '../lib/hotspots';
+import { useHotspots } from '../lib/hotspots';
 import { isCapableDesktop, readDevice } from '../lib/capability';
-import { useStations, STATUS_LABEL, type StationRow } from '../lib/stations';
-import { CATEGORIES, CATEGORY_COLOR } from '../lib/airdata';
+import { useStations } from '../lib/stations';
+import { CATEGORIES, CATEGORY_COLOR, POLLUTANT_KEYS, POLLUTANT_NAME } from '../lib/airdata';
+import type { HeatMetric } from '../lib/heat';
 import { formatIst } from '../lib/format';
-import { AqiChip, Btn, ForecastStrip, StatusChip, TrendBadge, type ChipKind } from '../ui';
+import { AqiChip, Btn, ForecastStrip, StatusChip, TrendBadge } from '../ui';
 import { Sheet } from '../Sheet';
+import { StationDetail } from './StationDetail';
 import { Map2D, type MapLayerId, type MapSelection } from './Map2D';
 
 const Map3D = lazy(() => import('./Map3D'));
@@ -34,6 +36,7 @@ function useCapableDesktop(): boolean {
 }
 
 const LAYERS: Array<{ id: MapLayerId; label: string }> = [
+  { id: 'heat', label: 'AQI heatmap' },
   { id: 'zones', label: 'Pollution surface (estimated)' },
   { id: 'stations', label: 'Monitoring stations (continuous and manual)' },
   { id: 'hotspots', label: 'Hotspots' },
@@ -42,7 +45,6 @@ const LAYERS: Array<{ id: MapLayerId; label: string }> = [
   { id: 'industry', label: 'Industrial locations' },
 ];
 
-const chipOf = (s: StationRow['status']): ChipKind => (s === 'live' ? 'measured' : s === 'outdated' ? 'outdated' : s === 'estimate' ? 'estimated' : 'nofeed');
 
 function ZoneCard({ z, rank }: { z: ZoneRow; rank?: number }) {
   const openReport = useGovStore((s) => s.openReport);
@@ -111,11 +113,14 @@ export function MapView() {
   const focusMap = useGovStore((s) => s.focusMap);
   const [selection, setSelection] = useState<MapSelection>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [metric, setMetric] = useState<HeatMetric>('aqi');
+  const [query, setQuery] = useState('');
   const [me, setMe] = useState<{ lon: number; lat: number; accuracy: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locateNote, setLocateNote] = useState<string | null>(null);
-  const [visible, setVisible] = useState<Record<MapLayerId, boolean>>({ zones: true, stations: true, hotspots: true, coverage: false, midc: false, industry: false });
+  const [visible, setVisible] = useState<Record<MapLayerId, boolean>>({ heat: true, zones: false, stations: false, hotspots: true, coverage: false, midc: false, industry: false });
 
+  const mode: 'heat' | 'stations' = visible.heat ? 'heat' : 'stations';
   const capable = useCapableDesktop();
   const show3d = capable && settings.map3d;
   const coverage = useMemo(() => (base ? coverageGaps(base.cells, st.placed) : null), [base, st.placed]);
@@ -167,7 +172,6 @@ export function MapView() {
   const midc = selection?.kind === 'midc' ? industryData?.areas.find((a) => String(a.code) === selection.id) : undefined;
   const gap = selection?.kind === 'gap' ? coverage?.gaps.find((g) => g.id === selection.id) : undefined;
   const gapZone = gap ? air.zones.find((z) => z.id === gap.id) : undefined;
-  const stationZone = station ? nearestZone(air.zones, [station.lon, station.lat]) : null;
 
   return (
     <div className="absolute inset-0">
@@ -184,8 +188,9 @@ export function MapView() {
       ) : (
         <Map2D
           base={base}
-          visible={{ zones: eff('zones'), stations: eff('stations'), hotspots: eff('hotspots'), coverage: eff('coverage'), midc: eff('midc'), industry: eff('industry') }}
+          visible={{ heat: eff('heat'), zones: eff('zones'), stations: eff('stations'), hotspots: eff('hotspots'), coverage: eff('coverage'), midc: eff('midc'), industry: eff('industry') }}
           zones={air.zones}
+          metric={metric}
           stations={st.placed}
           hotspots={hot.zones}
           coverage={coverage}
@@ -197,24 +202,82 @@ export function MapView() {
         />
       )}
 
-      <div className="absolute left-3 top-3 z-10 flex max-w-[calc(100%-5rem)] flex-col items-start gap-2">
-        <div className="flex gap-2">
+      <div className="absolute inset-x-3 top-3 z-10 flex flex-col items-start gap-2">
+        {!show3d && (
+          <div className="relative w-full max-w-md">
+            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sand-400" />
+            <input
+              type="search"
+              list="map-places"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                const z = air.zones.find((x) => x.place.toLowerCase() === e.target.value.trim().toLowerCase());
+                if (z) {
+                  focusMap(z.location[0], z.location[1]);
+                  setSelection({ kind: 'zone', id: z.id });
+                }
+              }}
+              placeholder="Search a place"
+              aria-label="Search a place"
+              className="gov-tap h-11 w-full rounded-2xl border border-white/60 bg-ink-900/95 pl-10 pr-3 text-sm text-sand-50 shadow-lg backdrop-blur placeholder:text-sand-500"
+            />
+            <datalist id="map-places">
+              {[...new Set(air.zones.map((z) => z.place))].sort().map((p) => (
+                <option key={p} value={p} />
+              ))}
+            </datalist>
+          </div>
+        )}
+        <div className="flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
           {!show3d && (
-            <Btn icon={Layers} onClick={() => setPanelOpen((v) => !v)} className="!bg-ink-900/95 shadow-lg backdrop-blur" ariaLabel="Map layers">
+            <div role="radiogroup" aria-label="Map view" className="flex shrink-0 rounded-2xl bg-ink-900/95 p-1 shadow-lg backdrop-blur">
+              {(['heat', 'stations'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === m}
+                  onClick={() => setVisible({ ...visible, heat: m === 'heat', stations: m === 'stations' })}
+                  className={`gov-tap min-h-9 rounded-xl px-3.5 text-sm font-semibold transition-colors ${mode === m ? 'bg-accent-500 text-white' : 'text-sand-200'}`}
+                >
+                  {m === 'heat' ? 'Heatmap' : 'Stations'}
+                </button>
+              ))}
+            </div>
+          )}
+          {!show3d && (
+            <Btn icon={Layers} onClick={() => setPanelOpen((v) => !v)} className="shrink-0 !bg-ink-900/95 shadow-lg backdrop-blur" ariaLabel="Map layers">
               Layers
             </Btn>
           )}
           {!show3d && (
-            <Btn icon={locating ? Loader2 : LocateFixed} onClick={locate} disabled={locating} className="!bg-ink-900/95 shadow-lg backdrop-blur" ariaLabel="Show my location">
+            <Btn icon={locating ? Loader2 : LocateFixed} onClick={locate} disabled={locating} className="shrink-0 !bg-ink-900/95 shadow-lg backdrop-blur" ariaLabel="Show my location">
               {locating ? 'Locating…' : 'Me'}
             </Btn>
           )}
           {capable && (
-            <Btn icon={show3d ? MapIcon : Box} onClick={() => setSettings({ map3d: !show3d })} className="!bg-ink-900/95 shadow-lg backdrop-blur">
+            <Btn icon={show3d ? MapIcon : Box} onClick={() => setSettings({ map3d: !show3d })} className="shrink-0 !bg-ink-900/95 shadow-lg backdrop-blur">
               {show3d ? '2D' : '3D'}
             </Btn>
           )}
         </div>
+        {!show3d && mode === 'heat' && (
+          <div role="tablist" aria-label="Pollutant" className="flex max-w-full gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
+            {(['aqi', ...POLLUTANT_KEYS] as HeatMetric[]).map((k) => (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                aria-selected={metric === k}
+                onClick={() => setMetric(k)}
+                className={`gov-tap min-h-9 shrink-0 rounded-full px-3.5 text-sm font-semibold shadow-md backdrop-blur ${metric === k ? 'bg-accent-500 text-white' : 'bg-ink-900/95 text-sand-100'}`}
+              >
+                {k === 'aqi' ? 'AQI' : POLLUTANT_NAME[k]}
+              </button>
+            ))}
+          </div>
+        )}
         {locateNote && !show3d && (
           <p role="status" className="max-w-xs rounded-xl bg-ink-950 p-3 text-sm text-sand-100 shadow-lg">
             {locateNote}
@@ -266,7 +329,7 @@ export function MapView() {
       )}
 
       {air.zones.length === 0 && !show3d && (
-        <div role="status" className="absolute inset-x-3 top-16 z-10 mx-auto max-w-md rounded-2xl bg-ink-950/95 p-4 text-sm text-sand-100 shadow-lg">
+        <div role="status" className="absolute inset-x-3 top-44 z-10 mx-auto max-w-md rounded-2xl bg-ink-950/95 p-4 text-sm text-sand-100 shadow-lg">
           <b>No area readings right now.</b> {air.reason ?? 'Model data has not arrived.'}
         </div>
       )}
@@ -281,31 +344,7 @@ export function MapView() {
           <ZoneCard z={hotspot.zone} rank={hot.zones.findIndex((h) => h.id === hotspot.id) + 1} />
         </Sheet>
       )}
-      {station && (
-        <Sheet title={station.name} subtitle={[station.agency, station.city].filter(Boolean).join(' · ') || 'Monitoring station'} onClose={() => setSelection(null)} chips={<StatusChip kind={chipOf(station.status)} label={STATUS_LABEL[station.status]} />}>
-          <div className="space-y-5 text-sm text-sand-200">
-            {station.aqi ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <AqiChip aqi={station.aqi.value} category={station.aqi.category} />
-                <span>{station.status === 'live' ? 'Current reading' : `Last reading ${formatIst(station.lastReadingAt)}`}</span>
-              </div>
-            ) : station.estimate ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <AqiChip aqi={station.estimate.aqi} category={station.estimate.category} />
-                <StatusChip kind="estimated" />
-                <span>No current reading</span>
-              </div>
-            ) : (
-              <p>No reading available.</p>
-            )}
-            {stationZone && (
-              <Btn variant="primary" icon={FileText} onClick={() => openReport(stationZone.id)}>
-                Create report
-              </Btn>
-            )}
-          </div>
-        </Sheet>
-      )}
+      {station && <StationDetail key={station.id} s={station} onClose={() => setSelection(null)} />}
       {midc && (
         <Sheet title={midc.name} subtitle="MIDC area" onClose={() => setSelection(null)}>
           <p className="text-sm text-sand-300">

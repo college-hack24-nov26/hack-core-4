@@ -15,6 +15,8 @@ export function ZoneCauses() {
   const names = useTwinStore((s) => s.placeNames);
   const live = useTwinStore((s) => s.live);
   const select = useTwinStore((s) => s.selectCell);
+  const baseline = useTwinStore((s) => s.baseline);
+  const zonePm = id ? baseline.find((b) => b.cellId === id)?.pm25 : undefined;
   const cell = id ? base?.cells.find((c) => c.id === id) : undefined;
   const causes = useMemo(() => {
     if (!base || !cell) return [];
@@ -25,13 +27,18 @@ export function ZoneCauses() {
 
   return (
     <Section
-      title={`Why the air is like this: ${zoneLabel(cell, names)}`}
+      title={`Why ${zoneLabel(cell, names)} is polluted`}
       action={
         <button type="button" onClick={() => select(null)} aria-label="Clear the selected zone" className="flex h-8 w-8 items-center justify-center rounded-lg text-sand-400 hover:bg-ink-800">
           <X size={14} />
         </button>
       }
     >
+      {zonePm !== undefined && (
+        <p className="mb-2 text-xs text-sand-300">
+          This zone: <strong className="text-sand-50">{zonePm.toFixed(1)} ug/m3</strong> PM2.5, against a city average of {(baseline.reduce((a, b) => a + b.pm25, 0) / Math.max(1, baseline.length)).toFixed(1)}.
+        </p>
+      )}
       {causes.length === 0 ? (
         <p className="rounded-xl bg-ink-850 p-3 text-xs text-sand-300 hairline">No cause is supported by the available data for this zone.</p>
       ) : (

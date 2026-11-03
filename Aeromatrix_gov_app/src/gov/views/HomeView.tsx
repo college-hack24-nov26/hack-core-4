@@ -7,6 +7,7 @@ import { useHotspots } from '../lib/hotspots';
 import { countStations, useStations } from '../lib/stations';
 import { formatAge, formatIst } from '../lib/format';
 import { ForecastChart } from '../charts';
+import { GlassHome } from './GlassHome';
 import { AqiChip, Btn, CategoryScale, Card, EmptyState, Gauge, Skeleton, StatusChip, TrendBadge } from '../ui';
 
 const SEV_COLOR: Record<AlertSeverity, string> = { critical: '#d9372f', high: '#f08c1a', watch: '#e0b100', info: '#9a8a80' };
@@ -14,6 +15,11 @@ const SEV_COLOR: Record<AlertSeverity, string> = { critical: '#d9372f', high: '#
 const timeOnly = (ms: number) => formatIst(ms).replace(/^.*?, /, '');
 
 export function HomeView() {
+  const ui = useGovStore((s) => s.settings.ui);
+  return ui === 'glass' ? <GlassHome /> : <ClassicHome />;
+}
+
+function ClassicHome() {
   const air = useAirData();
   const stations = useStations();
   const { alerts, bySeverity } = useAlerts();

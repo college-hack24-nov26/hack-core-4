@@ -79,7 +79,7 @@ function Overview() {
   return (
     <>
       <div className="flex items-end justify-between gap-3 pt-3">
-        <Stat label="City mean PM2.5" value={fmt(stats.mean)} unit="ug/m3" />
+        <Stat label="City average PM2.5" value={fmt(stats.mean)} unit="ug/m3" />
         <span
           className="mb-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
           style={{ background: RISK_COLOR[meanRisk] }}
@@ -88,11 +88,11 @@ function Overview() {
         </span>
       </div>
 
-      <ZoneCauses />
-
       <Section title="Air quality now">
         <LiveStrip />
       </Section>
+
+      <ZoneCauses />
 
       <Section title="Risk distribution">
         <ul className="space-y-1.5">

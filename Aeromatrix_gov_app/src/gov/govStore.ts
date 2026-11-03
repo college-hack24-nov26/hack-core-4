@@ -2,8 +2,11 @@ import { create } from 'zustand';
 import type { MeasureSelection } from './lib/measures';
 import { NO_MEASURES } from './lib/measures';
 
-export type GovView = 'home' | 'alerts' | 'map' | 'stations' | 'hotspots' | 'simulator' | 'reports';
-export const GOV_VIEWS: GovView[] = ['home', 'alerts', 'map', 'stations', 'hotspots', 'simulator', 'reports'];
+export type GovView = 'home' | 'alerts' | 'map' | 'stations' | 'hotspots' | 'simulator' | 'reports' | 'settings';
+export const GOV_VIEWS: GovView[] = ['home', 'alerts', 'map', 'stations', 'hotspots', 'simulator', 'reports', 'settings'];
+
+/** Classic is the original look; glass is the blue and white glassmorphism look. */
+export type UiTheme = 'classic' | 'glass';
 
 export type AlertStatus = 'new' | 'acknowledged' | 'assigned' | 'resolved';
 
@@ -47,6 +50,8 @@ export interface GovSavedScenario {
 export interface GovSettings {
   /** show the Cesium 3D map instead of the 2D map (only offered on capable desktops) */
   map3d: boolean;
+  /** the interface design; the data and features are identical in both */
+  ui: UiTheme;
 }
 
 export const ALERTS_KEY = 'aeromatrix.gov.alerts.v1';
@@ -138,7 +143,7 @@ export const useGovStore = create<GovState>((set, get) => {
     reportScenarioId: null,
     alertRecords: read<Record<string, AlertRecord>>(ALERTS_KEY, {}, validRecords),
     scenarios: read<GovSavedScenario[]>(SCENARIOS_KEY, [], validScenarios),
-    settings: { map3d: false, ...read<Partial<GovSettings>>(SETTINGS_KEY, {}, isObject) },
+    settings: { map3d: false, ui: 'classic', ...read<Partial<GovSettings>>(SETTINGS_KEY, {}, isObject) },
     mapFocus: null,
 
     setView: (view) => set({ view }),
