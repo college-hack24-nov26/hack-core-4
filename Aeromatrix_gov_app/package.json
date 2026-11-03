@@ -1,0 +1,43 @@
+{
+  "name": "enr01-urban-digital-twin",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "copy-cesium": "node scripts/copy-cesium.mjs",
+    "predev": "npm run copy-cesium",
+    "dev": "vite",
+    "prebuild": "npm run copy-cesium",
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --dir src",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mapbox/vector-tile": "^3.0.0",
+    "cesium": "^1.145.0",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
+    "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
+    "lucide-react": "^0.468.0",
+    "pbf": "^5.1.2",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "recharts": "^3.10.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@types/leaflet": "^1.9.12",
+    "@types/leaflet.markercluster": "^1.5.4",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.0",
+    "vite": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}

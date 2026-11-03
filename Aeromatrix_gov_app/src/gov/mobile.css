@@ -1,0 +1,64 @@
+/* Phone rules for the Commissioner app: no sideways scrolling at 375 px, 44 px touch targets, 16 px inputs, safe areas. */
+
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.gov-header {
+  padding-top: env(safe-area-inset-top);
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+.gov-view {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* A hatched coverage-gap rectangle keeps its pattern fill from the SVG defs. */
+.gov-gap {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.leaflet-container {
+  font-family: inherit;
+}
+
+@media (max-width: 767px) {
+  /* 16 px inputs stop iOS from zooming on focus. */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Interactive controls reach 44 px. */
+  .gov-tap {
+    min-height: 44px;
+  }
+
+  [role='tab'],
+  [role='radio'] {
+    min-height: 44px;
+  }
+
+  /* Wide content scrolls inside its own card, never the page. */
+  table {
+    max-width: none;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-ring,
+  .animate-sheet-up {
+    animation: none !important;
+  }
+}

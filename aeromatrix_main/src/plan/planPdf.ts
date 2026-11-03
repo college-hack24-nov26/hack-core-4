@@ -4,10 +4,24 @@
  * (formatINRPdf). Only plain Latin text is written: curly quotes and dashes are mapped to ASCII.
  */
 import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import * as autoTableModule from 'jspdf-autotable';
 import type { Plan, PlanOutcome } from './planEngine';
 import { OBJECTIVE_LABEL } from './planEngine';
 import { INTERVENTION_LABEL, PRICES, formatINRPdf } from './costModel';
+
+type AutoTableFn = (doc: jsPDF, options: Record<string, unknown>) => void;
+
+/**
+ * jspdf-autotable ships both a default and a named export, and the browser bundler can wrap the CommonJS default one
+ * level deeper than Node does. Take whichever of them is the function.
+ */
+function resolveAutoTable(): AutoTableFn {
+  const m = autoTableModule as unknown as Record<string, unknown>;
+  const d = m.default as Record<string, unknown> | AutoTableFn | undefined;
+  const found = [m.default, m.autoTable, typeof d === 'object' ? d?.default : undefined, typeof d === 'object' ? d?.autoTable : undefined].find((f) => typeof f === 'function');
+  if (!found) throw new Error('The PDF table library could not be loaded.');
+  return found as AutoTableFn;
+}
 
 /** Characters outside the standard PDF font range are replaced so nothing renders as a garbled glyph. */
 export function pdfSafe(s: string): string {
@@ -99,6 +113,7 @@ export function planPdfContent(outcome: PlanOutcome, plan: Plan, generated: Date
 export function buildPlanPdf(outcome: PlanOutcome, plan: Plan, generated: Date = new Date()): jsPDF {
   const c = planPdfContent(outcome, plan, generated);
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const autoTable = resolveAutoTable();
   const margin = 14;
   let y = 18;
 
