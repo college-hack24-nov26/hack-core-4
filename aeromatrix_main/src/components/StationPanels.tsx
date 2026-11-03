@@ -98,7 +98,7 @@ export function StationsTab() {
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-sand-50">{s.name}</span>
                   <span className="block truncate text-[10px] text-sand-500">
-                    {[s.agency, s.city].filter(Boolean).join(' · ') || s.id}
+                    {[s.monitoring === 'manual' ? 'Manual (NAMP)' : 'Continuous (CAAQMS)', s.agency, s.city].filter(Boolean).join(' · ')}
                     {s.lat === null ? ' · not drawn: no sourced coordinate' : s.singleSource ? ' · single source' : ''}
                   </span>
                 </span>
@@ -121,6 +121,10 @@ export function StationsTab() {
             {catalog.unlocated.map((u) => (
               <li key={u.name} className="rounded-lg bg-ink-850 p-2 text-[11px] hairline">
                 <span className="font-semibold text-sand-100">{u.name}</span>
+                <span className="block text-sand-500">
+                  {u.monitoring === 'manual' ? 'Manual (NAMP)' : 'Continuous'}
+                  {u.city ? ` · ${u.city}` : ''}
+                </span>
                 <span className="block text-sand-400">{u.reason}</span>
               </li>
             ))}

@@ -5,3 +5,4 @@ public/cesium
 *.tsbuildinfo
 android/
 apk/
+.vercel

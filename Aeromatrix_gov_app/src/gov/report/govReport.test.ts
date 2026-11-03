@@ -80,6 +80,7 @@ const outdated = (): StationRow => ({
   lat: 18.45,
   lon: 73.86,
   status: 'outdated',
+  monitoring: 'continuous',
   hasFeed: true,
   lastReadingAt: Date.parse('2025-12-17T10:00:00+05:30'),
   ageMs: GEN.getTime() - Date.parse('2025-12-17T10:00:00+05:30'),

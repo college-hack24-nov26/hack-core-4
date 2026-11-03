@@ -337,7 +337,7 @@ function Results() {
                 {[...new Set(chosen.options.flatMap((o) => o.limitations))].map((l) => (
                   <li key={l}>{l}</li>
                 ))}
-                <li>A hypothetical estimate from the uncalibrated prototype rule model on DEMO inputs: not a forecast and not a guarantee.</li>
+                <li>A hypothetical estimate: not a forecast and not a guarantee.</li>
               </ul>
             </div>
           </Section>

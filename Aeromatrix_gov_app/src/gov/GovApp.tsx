@@ -4,7 +4,8 @@ import { LogoMark } from '../components/Brand';
 import { startLiveDataWhenReady } from '../services/liveData';
 import { useTwinStore } from '../store/useTwinStore';
 import { GOV_VIEWS, useGovStore, type GovView } from './govStore';
-import { GovOrbit, VIEW_LABEL } from './GovOrbit';
+import { BottomNav, VIEW_LABEL } from './BottomNav';
+import { AlertBanner, AlertBell } from './AlertBell';
 import { PwaBar } from './Pwa';
 import { formatIst } from './lib/format';
 import { installBackButton } from './lib/native';
@@ -132,6 +133,7 @@ export function GovApp() {
           <span className={`hidden rounded-full px-2.5 py-1 text-[11px] font-semibold sm:inline ${live.status === 'offline' ? 'bg-amber-600/20 text-amber-700' : 'bg-ink-800 text-sand-300'}`} title="Open-Meteo CAMS model data">
             {liveText}
           </span>
+          <AlertBell />
           <button
             type="button"
             onClick={() => setTheme(theme === 'cream' ? 'dark' : 'cream')}
@@ -147,7 +149,7 @@ export function GovApp() {
         {view === 'map' ? (
           <MapView />
         ) : (
-          <div className="gov-view panel-scroll absolute inset-0 overflow-x-hidden overflow-y-auto">
+          <div key={view} className="gov-view gov-page panel-scroll absolute inset-0 overflow-x-hidden overflow-y-auto">
             {view === 'home' && <HomeView />}
             {view === 'alerts' && <AlertsView />}
             {view === 'stations' && <StationsView />}
@@ -156,7 +158,7 @@ export function GovApp() {
             {view === 'reports' && <ReportsView />}
           </div>
         )}
-        {hasBase && <GovOrbit />}
+        <AlertBanner />
         {loading && !hasBase && (
           <div role="status" className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-ink-950/70">
             <div className="flex items-center gap-3 rounded-2xl bg-ink-900 px-5 py-3 text-sm text-sand-100 hairline">
@@ -178,6 +180,7 @@ export function GovApp() {
           </div>
         )}
       </main>
+      {hasBase && <BottomNav />}
     </div>
   );
 }

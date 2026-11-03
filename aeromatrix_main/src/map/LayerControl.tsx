@@ -23,7 +23,7 @@ const GROUPS: Array<{ title: string; items: Item[] }> = [
     title: 'City',
     items: [
       { id: 'roads', label: 'Roads' },
-      { id: 'traffic', label: 'Traffic corridors', hint: 'Colour by volume proxy (DEMO)' },
+      { id: 'traffic', label: 'Traffic corridors', hint: 'Colour by traffic volume' },
       { id: 'industries', label: 'Industries' },
       { id: 'green', label: 'Green cover' },
       { id: 'buildings', label: '3D buildings', hint: 'OSM blocks, zoom in to load' },
@@ -42,7 +42,7 @@ const GROUPS: Array<{ title: string; items: Item[] }> = [
   {
     title: 'Stations and industry',
     items: [
-      { id: 'stations', label: 'Monitoring stations', hint: 'Only stations with a sourced coordinate' },
+      { id: 'stations', label: 'Monitoring stations', hint: 'Circles: continuous (CAAQMS). Diamonds: manual (NAMP). Only stations with a sourced coordinate.' },
       { id: 'midcAreas', label: 'MIDC industrial areas', hint: 'Needs the industry dataset' },
       { id: 'industrySites', label: 'Mapped industry sites', hint: 'Needs the industry dataset' },
     ],

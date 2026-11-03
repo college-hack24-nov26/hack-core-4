@@ -13,7 +13,7 @@ export interface Recommendation {
 export const NEAR_TIE = 0.05;
 
 const MODEL_CAVEAT =
-  'Prototype model on DEMO inputs: use it to compare sites against each other, not as a permit-grade assessment.';
+  'Use this to compare sites against each other, not as a permit-grade assessment.';
 
 const describe = (s: SiteMetrics) =>
   `+${fmt(s.meanIncrease, 2)} ug/m3 city mean PM2.5, ${fmtInt(s.exposedPopulation)} people exposed to increases`;

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, Download, FileText, Save, Trash2 } from 'lucide-react';
 import { useTwinStore } from '../../store/useTwinStore';
 import { formatINR } from '../../plan/costModel';
@@ -9,6 +9,7 @@ import { useHotspots } from '../lib/hotspots';
 import { TREE_CHOICES, closureChoices, hasMeasures, industryUnitsAvailable, runMeasures, type MeasureSelection } from '../lib/measures';
 import { downloadText, scenariosCsv, toSavedScenario } from '../lib/scenarios';
 import { formatIst, signed } from '../lib/format';
+import { isLite } from '../lib/perf';
 import { CompareChart } from '../charts';
 import { AqiChip, Btn, Card, EmptyState, Field, PageTitle, SectionCard, StatusChip, Table, inputCls } from '../ui';
 
@@ -32,6 +33,27 @@ function Choice<T extends string | number>({ label, value, options, onChange, di
           </button>
         );
       })}
+    </div>
+  );
+}
+
+const STEPS = ['Running the scenario', 'Estimating the effect on PM2.5', 'Costing the interventions'];
+
+/** About two seconds of quiet motion while the scenario is worked out. */
+function Analysing() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((n) => Math.min(STEPS.length - 1, n + 1)), 600);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div role="status" aria-live="polite" className="py-6">
+      <div className="h-1.5 overflow-hidden rounded-full bg-ink-800">
+        <div className="gov-analyse h-full w-full" />
+      </div>
+      <p key={i} className="gov-reveal mt-4 text-sm text-sand-300">
+        {STEPS[i]}…
+      </p>
     </div>
   );
 }
@@ -64,6 +86,7 @@ export function SimulatorView() {
   const setReportScenario = useGovStore((s) => s.setReportScenario);
   const setView = useGovStore((s) => s.setView);
   const [name, setName] = useState('');
+  const [analysing, setAnalysing] = useState(false);
   const [compare, setCompare] = useState<string[]>([]);
 
   const zoneById = useMemo(() => new Map(air.zones.map((z) => [z.id, z])), [air.zones]);
@@ -74,6 +97,23 @@ export function SimulatorView() {
   const outcome = useMemo(() => (base && cell && zone ? runMeasures({ base, cell, zoneName: zone.place, currentPm25: zone.pm25, selection: measures }) : null), [base, cell, zone, measures]);
   const closures = useMemo(() => (base && cell ? closureChoices(base, cell) : []), [base, cell]);
   const units = base && cell ? industryUnitsAvailable(base, cell) : 0;
+  // A short "analysing" moment whenever the area or the interventions change, then the result is revealed.
+  const runKey = `${targetId}|${JSON.stringify(measures)}`;
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    if (!hasMeasures(measures)) {
+      setAnalysing(false);
+      return;
+    }
+    setAnalysing(true);
+    const t = setTimeout(() => setAnalysing(false), isLite() ? 0 : 1800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runKey]);
   const costs = useMemo(() => (outcome ? costBreakdown(outcome.lines) : null), [outcome]);
   const rates = outcome ? runningRates(outcome.recurring, outcome.dust) : null;
 
@@ -174,6 +214,10 @@ export function SimulatorView() {
           </Card>
         ) : (
           <SectionCard title="Result" action={<StatusChip kind="simulation" />}>
+            {analysing ? (
+              <Analysing />
+            ) : (
+              <div className="gov-reveal">
             {compareRows ? (
               <>
                 <div className="flex items-end gap-3">
@@ -290,6 +334,8 @@ export function SimulatorView() {
                 Create report
               </Btn>
             </div>
+              </div>
+            )}
           </SectionCard>
         )}
 

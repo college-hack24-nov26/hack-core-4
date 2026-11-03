@@ -35,7 +35,7 @@ function useCapableDesktop(): boolean {
 
 const LAYERS: Array<{ id: MapLayerId; label: string }> = [
   { id: 'zones', label: 'Pollution surface (estimated)' },
-  { id: 'stations', label: 'Monitoring stations' },
+  { id: 'stations', label: 'Monitoring stations (continuous and manual)' },
   { id: 'hotspots', label: 'Hotspots' },
   { id: 'coverage', label: 'Monitoring gaps' },
   { id: 'midc', label: 'MIDC areas' },
@@ -61,18 +61,28 @@ function ZoneCard({ z, rank }: { z: ZoneRow; rank?: number }) {
         <h3 className="gov-eyebrow mb-2">Forecast</h3>
         <ForecastStrip days={z.forecast} />
       </section>
-      {z.causes.length > 0 && (
-        <section>
-          <h3 className="gov-eyebrow mb-2">Likely factors</h3>
-          <ul className="space-y-1.5 text-sm text-sand-100">
+      <section>
+        <h3 className="gov-eyebrow mb-3">Why the air is like this</h3>
+        {z.causes.length === 0 ? (
+          <p className="text-sm text-sand-300">No cause is supported by the available data.</p>
+        ) : (
+          <ul className="space-y-3">
             {z.causes.map((c) => (
-              <li key={c.key}>
-                <b>{c.label}</b> <span className="text-sand-300">({c.strength.toLowerCase()})</span>
+              <li key={c.key} className="rounded-xl bg-ink-800 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[15px] font-medium text-sand-50">{c.label}</span>
+                  <span className="rounded-full bg-ink-700 px-2.5 py-0.5 text-xs font-medium text-sand-100">{c.strength}</span>
+                </div>
+                <ul className="mt-2 space-y-1 text-sm text-sand-300">
+                  {c.evidence.map((e, i) => (
+                    <li key={i}>{e}</li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>
-        </section>
-      )}
+        )}
+      </section>
       <div className="flex flex-wrap gap-2">
         <Btn icon={SlidersHorizontal} onClick={() => openSimulator(z.id)}>
           Test an action
@@ -242,7 +252,13 @@ export function MapView() {
               </li>
             ))}
           </ul>
-          <div className="mt-2 text-sand-400">Dots are stations. A dashed ring means the reading is outdated.</div>
+          <div className="mt-2 flex items-center gap-2 text-sand-300">
+            <span className="h-3 w-3 rounded-full border-2 border-ink-950 bg-sand-400" /> Continuous station
+          </div>
+          <div className="mt-1 flex items-center gap-2 text-sand-300">
+            <span className="h-2.5 w-2.5 rotate-45 border-2 border-ink-950 bg-sand-400" /> Manual station
+          </div>
+          <div className="mt-1 text-sand-400">A dashed ring means the reading is outdated.</div>
         </div>
       )}
 

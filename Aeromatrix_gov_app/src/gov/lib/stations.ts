@@ -12,7 +12,7 @@ import { API_POLLUTANT_LABEL, isMeasured, isMeasuredValue, isForecast, isPredict
 import { liveValue } from '../../services/liveData';
 import type { LiveAirPoint } from '../../services/liveState';
 import type { ModelServiceState } from '../../services/modelService';
-import type { PlacedStation, StationCatalog, UnlocatedStation } from '../../services/stations';
+import type { MonitoringType, PlacedStation, StationCatalog, UnlocatedStation } from '../../services/stations';
 import { haversineKm } from '../../utils/geo';
 import type { LonLat } from '../../types';
 
@@ -53,6 +53,8 @@ export interface StationRow {
   lat: number;
   lon: number;
   status: StationStatus;
+  /** continuous (automatic) or manual (NAMP) monitoring */
+  monitoring: MonitoringType;
   /** the service has this station (a data feed exists, even if its newest reading is old) */
   hasFeed: boolean;
   lastReadingAt: number | null;
@@ -149,6 +151,7 @@ export function buildStationRow(s: PlacedStation, svc: ModelServiceState, live: 
     lat: s.lat,
     lon: s.lon,
     status,
+    monitoring: s.monitoring,
     hasFeed: s.api !== null && readings.length > 0,
     lastReadingAt: newest,
     ageMs: age,
@@ -172,7 +175,7 @@ export function buildStationRows(catalog: StationCatalog, svc: ModelServiceState
   // Catalog stations with no coordinate are never drawn; they join the not-placed list.
   const noCoord = catalog.stations
     .filter((s) => s.lat === null || s.lon === null)
-    .map((s): UnlocatedStation => ({ name: s.name, reason: 'The model service lists this station but gives no coordinate and the sourced list has none.' }));
+    .map((s): UnlocatedStation => ({ name: s.name, monitoring: s.monitoring, reason: 'The model service lists this station but gives no coordinate and the sourced list has none.' }));
   return {
     placed,
     notPlaced: [...catalog.unlocated, ...noCoord],

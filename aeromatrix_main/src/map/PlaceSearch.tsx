@@ -1,18 +1,14 @@
 import { useMemo, useState } from 'react';
-import { LocateFixed, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { PUNE_LOCALITIES } from '../data/geojson/puneLocalities';
 import { useTwinStore } from '../store/useTwinStore';
-import { cellAtLonLat } from '../utils/grid';
 
-/** Typeahead over the known localities; flies the camera there. "My zone" jumps to the user's location. */
+/** Typeahead over the known localities; flies the camera there. */
 export function PlaceSearch() {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const flyTo = useTwinStore((s) => s.flyTo);
-  const base = useTwinStore((s) => s.base);
-  const focusCell = useTwinStore((s) => s.focusCell);
-  const setNotice = useTwinStore((s) => s.setNotice);
 
   const matches = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -26,23 +22,6 @@ export function PlaceSearch() {
     flyTo(p.center[0], p.center[1], 3500);
     setQ(p.name);
     setOpen(false);
-  };
-
-  const myZone = () => {
-    if (!base) return;
-    if (!('geolocation' in navigator)) {
-      setNotice('Your browser cannot share a location.');
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const cell = cellAtLonLat(base, pos.coords.longitude, pos.coords.latitude);
-        if (cell) focusCell(cell.id);
-        else setNotice('Your location is outside the Pune analysis area.');
-      },
-      () => setNotice('Location permission was not granted, so "My zone" is unavailable.'),
-      { timeout: 8000 },
-    );
   };
 
   return (
@@ -101,16 +80,6 @@ export function PlaceSearch() {
           </ul>
         )}
       </div>
-      <button
-        type="button"
-        onClick={myZone}
-        title="Jump to my zone"
-        aria-label="My zone"
-        className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-ink-900/90 px-3 text-xs font-semibold text-sand-100 shadow-lg backdrop-blur hairline hover:bg-ink-700 md:h-10"
-      >
-        <LocateFixed size={15} />
-        <span className="max-sm:hidden">My zone</span>
-      </button>
     </div>
   );
 }

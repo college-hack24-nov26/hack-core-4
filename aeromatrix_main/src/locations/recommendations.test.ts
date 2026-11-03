@@ -54,7 +54,7 @@ describe('buildRecommendations', () => {
     expect(text).toMatch(/at least two candidates/);
     expect(text).toMatch(/sensitive receptors/);
     expect(text).toMatch(/green buffer/i);
-    expect(text).toMatch(/Prototype model/);
+    expect(text).toMatch(/compare sites against each other/);
     expect(one[0].headline).toMatch(/^Site A:/);
   });
 

@@ -61,7 +61,7 @@ export function useIndustryDrawer(): DrawerContent | null {
             ['Location', `${ind.location[1].toFixed(4)}°N ${ind.location[0].toFixed(4)}°E`],
           ]}
         />
-        <p className="text-[11px] text-sand-400">{ind.emissionProfile}. Intensities are DEMO assumptions, not reported emissions.</p>
+        <p className="text-[11px] text-sand-400">{ind.emissionProfile}. Intensities are assumptions, not reported emissions.</p>
         {!isRemoved && (
           <label className="block text-xs font-semibold text-sand-100">
             Re-rate intensity: {fmt(intensity, 0)}
@@ -129,7 +129,7 @@ export function useRoadDrawer(): DrawerContent | null {
           ]}
         />
         <p className="text-[11px] text-sand-400">
-          Volume is a DEMO proxy from the road class, not a traffic count. Closing a road moves its traffic in the model only.
+          Volume is estimated from the road class, not a traffic count. Closing a road moves its traffic in the model only.
         </p>
         {closure ? (
           <>

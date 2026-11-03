@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CloudSun, RefreshCw, WifiOff } from 'lucide-react';
-import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useTwinStore } from '../store/useTwinStore';
-import { Section, StatusBadge } from './ui';
+import { Section } from './ui';
+import { AqiCard } from './AqiCard';
 import { CHART } from './chartTheme';
 import {
   LIVE_REFRESH_MINUTES,
@@ -15,9 +16,9 @@ import {
   type LiveAirPoint,
 } from '../services/liveData';
 import { dailyForecast, aqiTrend, istDate } from '../services/forecast';
-import { fmtIst, fmtIstTime, resolveCurrent } from '../services/pollutantData';
-import { AQI_COLORS, aqiLabel, type AqiCategory } from '../services/cpcbAqi';
-import { isForecast, isMeasured, isPredicted, type ApiPollutantKey } from '../services/aeromatrixApi';
+import { fmtIstTime, resolveCurrent } from '../services/pollutantData';
+import { AQI_COLORS, aqiCategory, aqiLabel, type AqiCategory, type AqiResult } from '../services/cpcbAqi';
+import { isForecast, isPredicted, type ApiPollutantKey } from '../services/aeromatrixApi';
 import { POLLUTANT_LABEL, POLLUTANT_UNIT } from '../utils/colors';
 import { cellAtLonLat } from '../utils/grid';
 import { zoneLabel } from '../utils/zones';
@@ -53,6 +54,21 @@ function AqiPill({ category, text }: { category: AqiCategory | null; text: strin
   );
 }
 
+/** The headline card for a city AQI estimate plus the live weather. */
+function CityAqiCard({ est, weather }: { est: AqiResult; weather: ReturnType<typeof useTwinStore.getState>['live']['weather'] }) {
+  const dom = est.dominant_pollutant;
+  const sub = dom ? est.subindices[dom] : undefined;
+  return (
+    <AqiCard
+      value={est.value}
+      category={est.category}
+      mainPollutant={dom ? POLLUTANT_LABEL[dom] : null}
+      concentration={sub && dom ? `${fmt(sub.concentration, dom === 'co' ? 2 : 1)} ${POLLUTANT_UNIT[dom]}` : null}
+      weather={weather ? { temperature: weather.temperature, windKmh: weather.windSpeed === null ? null : weather.windSpeed * 3.6, humidity: weather.humidity } : null}
+    />
+  );
+}
+
 function RefreshButton() {
   const live = useTwinStore((s) => s.live);
   const now = useNow(15000);
@@ -75,8 +91,6 @@ function RefreshButton() {
 /** Overview: the live strip (city AQI estimate from Open-Meteo, freshness, stations, next-24 h trend). */
 export function LiveStrip() {
   const live = useTwinStore((s) => s.live);
-  const svc = useTwinStore((s) => s.modelService);
-  const catalog = useTwinStore((s) => s.catalog);
   const setMode = useTwinStore((s) => s.setDisplayMode);
   const now = useNow();
   const fresh = isLiveFresh(live, now);
@@ -88,54 +102,28 @@ export function LiveStrip() {
     return c ? aqiTrend(dailyForecast(c), istDate(now / 1000)) : null;
   }, [fresh, live.points, now]);
 
-  const outdated = Object.values(svc.measured).filter((m) => isMeasured(m) && m.historical).length;
-  const withFeed = catalog.stations.filter((s) => s.api).length;
-
   return (
-    <div className="rounded-2xl bg-ink-850 p-3 hairline" aria-label="Live city air quality">
-      <div className="flex items-center justify-between gap-2">
-        <StatusBadge status="MODEL_DATA" />
-        <RefreshButton />
-      </div>
+    <div aria-label="Live city air quality" className="space-y-2">
       {fresh && est ? (
         <>
-          <div className="mt-2 flex items-center gap-2">
-            <AqiPill category={est.category} text={est.value === null ? 'AQI unavailable' : `AQI ${aqiLabel(est)}`} />
-            {est.dominant_pollutant && <span className="text-[11px] text-sand-400">dominant {est.dominant_pollutant.toUpperCase()}</span>}
+          <CityAqiCard est={est} weather={live.weather} />
+          <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-sand-400">
+            <span>
+              Updated {live.lastUpdated ? fmtIstTime(live.lastUpdated) : '-'}
+              {trend && <> · tomorrow {trend.direction}</>}
+            </span>
+            <RefreshButton />
           </div>
-          {est.status === 'UNAVAILABLE' && est.reason && <p className="mt-1 text-[11px] text-sand-400">{est.reason}</p>}
-          <p className="mt-1 text-[10px] leading-snug text-sand-500">
-            City AQI estimate from the Open-Meteo CAMS model: estimated, about 40 km resolution, not an official station AQI.
-          </p>
-          <p className="mt-1 text-[11px] text-sand-300">
-            Updated {live.lastUpdated ? fmtIstTime(live.lastUpdated) : '-'} · model data as of {est.period_end ? fmtIstTime(est.period_end) : '-'}
-            {trend && (
-              <>
-                {' '}
-                · next day {trend.direction} ({trend.delta > 0 ? '+' : ''}
-                {trend.delta})
-              </>
-            )}
-          </p>
+          <button type="button" onClick={() => setMode('current')} className="min-h-10 w-full rounded-xl bg-accent-500 text-xs font-bold text-sand-50 hover:bg-accent-400">
+            Show on map
+          </button>
         </>
       ) : (
-        <div className="mt-2 flex gap-2 text-xs text-sand-300" role="status">
+        <div className="flex gap-2 rounded-2xl bg-ink-850 p-3 text-xs text-sand-300 hairline" role="status">
           <WifiOff size={15} className="mt-0.5 shrink-0" />
-          <p>
-            {live.status === 'loading' || live.status === 'idle'
-              ? 'Loading Open-Meteo model data…'
-              : `Live model data unavailable${live.lastUpdated ? ` (last updated ${fmtIst(live.lastUpdated)})` : ''}. ${live.reason ?? ''} No numbers are shown rather than stale ones.`}
-          </p>
+          <p>{live.status === 'loading' || live.status === 'idle' ? 'Loading live air quality…' : 'Live air quality is not available right now. Please try again shortly.'}</p>
         </div>
       )}
-      <p className="mt-2 text-[11px] text-sand-400">
-        Stations: {catalog.stations.length} listed · {svc.status === 'online' ? `${withFeed} with a feed · ${outdated} Outdated` : 'model service offline (no data feed)'}
-      </p>
-      <div className="mt-2 flex gap-1.5">
-        <button type="button" onClick={() => setMode('current')} className="min-h-8 rounded-lg bg-ink-700 px-2.5 text-[11px] font-semibold text-sand-50 hover:bg-ink-600">
-          Show on map
-        </button>
-      </div>
     </div>
   );
 }
@@ -159,76 +147,80 @@ export function LiveNowTab() {
     return p.times.map((t, i) => ({ t: t * 1000, label: fmtIstTime(t * 1000).replace(' IST', ''), value: p.hourly[pollutant][i] }));
   }, [fresh, zone?.point, pollutant]);
 
+  const est = useMemo(() => (fresh ? cityAqiEstimate(live.points, now) : null), [fresh, live.points, now]);
+
   return (
     <div className="space-y-3 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          <StatusBadge status="MODEL_DATA" />
-          <span className="text-[11px] text-sand-400">Open-Meteo CAMS, ~40 km</span>
-        </div>
-        <RefreshButton />
-      </div>
-      <p className="text-[11px] text-sand-300">
-        {live.lastUpdated ? `Updated ${fmtIstTime(live.lastUpdated)}` : 'Not updated yet'} · refreshes every {LIVE_REFRESH_MINUTES} min
-      </p>
-
       {!fresh ? (
         <p className="flex gap-2 rounded-xl bg-ink-850 p-3 text-xs text-sand-300 hairline" role="status">
           <WifiOff size={15} className="mt-0.5 shrink-0" />
-          {live.status === 'loading' || live.status === 'idle'
-            ? 'Loading Open-Meteo model data…'
-            : `Offline: ${live.reason ?? 'Open-Meteo could not be reached.'} ${live.lastUpdated ? `Last updated ${fmtIst(live.lastUpdated)}. ` : ''}Nothing stale is shown as current.`}
+          {live.status === 'loading' || live.status === 'idle' ? 'Loading live air quality…' : 'Live air quality is not available right now. Please try again shortly.'}
         </p>
       ) : (
         zone && (
           <>
-            <p className="text-xs text-sand-200">
-              <strong>{zone.name}</strong> · requested {zone.cell.center[1].toFixed(3)}°N {zone.cell.center[0].toFixed(3)}°E
-              {zone.point && <> · model grid point {zone.point.grid[1].toFixed(2)}°N {zone.point.grid[0].toFixed(2)}°E</>}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {records.map((r) => {
-                const active = r.pollutant === pollutant;
-                return (
-                  <button
-                    key={r.pollutant}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setPollutant(r.pollutant)}
-                    className={`min-h-[72px] rounded-xl p-2.5 text-left hairline ${active ? 'bg-accent-500 text-sand-50' : 'bg-ink-850 hover:bg-ink-800'}`}
-                  >
-                    <div className="text-xs font-bold">{r.label}</div>
-                    {r.live ? (
-                      <div className="font-display text-lg font-bold leading-tight">
-                        {fmt(r.live.value, r.pollutant === 'co' ? 2 : 1)} <span className="text-[10px] font-medium opacity-80">{POLLUTANT_UNIT[r.pollutant]}</span>
-                      </div>
-                    ) : (
-                      <div className="text-[11px] opacity-80">{r.liveReason}</div>
-                    )}
-                    <div className="text-[10px] opacity-70">model data</div>
-                  </button>
-                );
-              })}
+            {est && <CityAqiCard est={est} weather={live.weather} />}
+            <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-sand-400">
+              <span>
+                {zone.name} · updated {live.lastUpdated ? fmtIstTime(live.lastUpdated) : '-'}
+              </span>
+              <RefreshButton />
             </div>
 
-            <Section title={`${POLLUTANT_LABEL[pollutant]} by hour (past day and forecast)`}>
-              <div className="h-[160px]" aria-label="Hourly model values">
+            <Section title="Pollutants">
+              <div className="grid grid-cols-2 gap-2">
+                {records.map((r) => {
+                  const active = r.pollutant === pollutant;
+                  const sub = est?.subindices[r.pollutant];
+                  const level = sub ? AQI_COLORS[aqiCategory(sub.value)] : '#b8a99a';
+                  return (
+                    <button
+                      key={r.pollutant}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setPollutant(r.pollutant)}
+                      className={`relative overflow-hidden rounded-2xl p-3 pl-4 text-left shadow-sm transition-all hairline ${active ? 'bg-ink-900 ring-2 ring-accent-500' : 'bg-ink-850 hover:-translate-y-0.5 hover:bg-ink-900'}`}
+                    >
+                      <span className="absolute inset-y-0 left-0 w-1.5" style={{ background: level }} aria-hidden />
+                      <div className="text-xs font-semibold text-sand-300">{r.label}</div>
+                      {r.live ? (
+                        <div className="mt-0.5 font-display text-xl font-bold leading-tight text-sand-50">
+                          {fmt(r.live.value, r.pollutant === 'co' ? 2 : 1)}
+                          <span className="ml-1 text-[10px] font-medium text-sand-400">{POLLUTANT_UNIT[r.pollutant]}</span>
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-sand-400">No reading</div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </Section>
+
+            <Section title={`${POLLUTANT_LABEL[pollutant]} through the day`}>
+              <div className="h-[170px] [&_*]:outline-none" aria-label="Hourly values">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={series} margin={{ left: -14, right: 6, top: 4, bottom: 0 }}>
-                    <CartesianGrid stroke={CHART.gridOnCream} vertical={false} />
-                    <XAxis dataKey="label" tick={CHART.tick} tickLine={false} interval={5} />
-                    <YAxis tick={CHART.tick} tickLine={false} axisLine={false} />
+                  <AreaChart data={series} margin={{ left: -18, right: 8, top: 8, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="hourFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#a3263f" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#a3263f" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke={CHART.gridOnCream} vertical={false} strokeDasharray="3 4" />
+                    <XAxis dataKey="label" tick={CHART.tick} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(series.length / 5))} />
+                    <YAxis tick={CHART.tick} tickLine={false} axisLine={false} width={40} />
                     <Tooltip {...CHART.tooltip} formatter={(v) => [`${v == null ? 'n/a' : Number(v).toFixed(1)} ${POLLUTANT_UNIT[pollutant]}`, POLLUTANT_LABEL[pollutant]]} />
                     <ReferenceLine x={series.find((s) => s.t > now)?.label} stroke="#a3263f" strokeDasharray="3 3" />
-                    <Line type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={2} dot={false} isAnimationActive={false} connectNulls={false} />
-                  </LineChart>
+                    <Area type="monotone" dataKey="value" stroke="#a3263f" strokeWidth={2.5} fill="url(#hourFill)" dot={false} isAnimationActive={false} connectNulls={false} />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
-              <p className="text-[10px] text-sand-500">Hours before the dashed line are the past day; after it, the model forecast. MODEL_DATA, not measurements.</p>
+              <p className="text-[10px] text-sand-500">The dashed line marks now. Left is the past day, right is the next hours.</p>
             </Section>
 
             {live.weather && (
-              <Section title="Weather" action={<StatusBadge status="MODEL_DATA" />}>
+              <Section title="Weather">
                 <dl className="grid grid-cols-2 gap-2 text-xs">
                   {[
                     ['Temperature', live.weather.temperature === null ? 'n/a' : `${fmt(live.weather.temperature)} °C`],
@@ -243,7 +235,6 @@ export function LiveNowTab() {
                     </div>
                   ))}
                 </dl>
-                <p className="mt-1 text-[10px] text-sand-500">Source: Open-Meteo Forecast API at the city centre.</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -264,8 +255,8 @@ export function LiveNowTab() {
                 </button>
               </Section>
             )}
-            <button type="button" onClick={() => setMode('current')} className="min-h-9 w-full rounded-xl bg-accent-500 text-xs font-bold text-sand-50 hover:bg-accent-400">
-              Show Current (model data) on the map
+            <button type="button" onClick={() => setMode('current')} className="min-h-10 w-full rounded-xl bg-accent-500 text-xs font-bold text-sand-50 hover:bg-accent-400">
+              Show on map
             </button>
           </>
         )
@@ -289,9 +280,9 @@ export function ForecastTab() {
 
   return (
     <div className="space-y-3 py-2">
-      <Section title={`Daily AQI estimate${zone ? ` · ${zone.name}` : ''}`} action={<StatusBadge status="MODEL_DATA" />}>
+      <Section title={`Next days${zone ? ` · ${zone.name}` : ''}`}>
         {!fresh ? (
-          <p className="rounded-xl bg-ink-850 p-3 text-xs text-sand-300 hairline">Live model data is unavailable, so there is no forecast to show.</p>
+          <p className="rounded-xl bg-ink-850 p-3 text-xs text-sand-300 hairline">Live air quality is not available right now, so there is no forecast to show.</p>
         ) : (
           <>
             <ul className="space-y-1">
@@ -307,17 +298,14 @@ export function ForecastTab() {
                 </li>
               ))}
             </ul>
-            <p className="mt-1 text-[10px] leading-snug text-sand-500">
-              Estimated from the CAMS model (about 40 km), IST dates. A day needs 16 valid hours per pollutant. Not an official station AQI.
-            </p>
           </>
         )}
       </Section>
 
-      <Section title={`Trained model +24 h · ${POLLUTANT_LABEL[pollutant]}`} action={<StatusBadge status="MODEL_PREDICTION" />}>
+      <Section title={`Next 24 hours · ${POLLUTANT_LABEL[pollutant]}`}>
         {svc.status !== 'online' ? (
           <p className="rounded-xl bg-ink-850 p-3 text-xs text-sand-300 hairline" role="status">
-            No data feed: the trained model service is not connected{svc.reason ? ` (${svc.reason})` : ''}. No forecast is invented.
+            Station forecasts are not available right now.
           </p>
         ) : (
           <ul className="space-y-1">
@@ -335,7 +323,7 @@ export function ForecastTab() {
                           {fmt(p.value)} <span className="text-[10px] text-sand-500">({fmt(p.lower, 0)}-{fmt(p.upper, 0)}){p.historical ? ' hist.' : ''}</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] text-sand-400">UNAVAILABLE</span>
+                        <span className="text-[10px] text-sand-400">Not available</span>
                       )}
                     </button>
                   </li>
@@ -343,11 +331,8 @@ export function ForecastTab() {
               })}
           </ul>
         )}
-        <p className="mt-1 text-[10px] text-sand-500">
-          Bundled readings are historical, so a current forecast is UNAVAILABLE until "Include historical forecast" is turned on in a station's details.
-        </p>
         <button type="button" onClick={() => setMode('forecast')} className="mt-2 min-h-9 w-full rounded-xl bg-ink-700 text-xs font-bold text-sand-50 hover:bg-ink-600">
-          Show Forecast on the map
+          Show on map
         </button>
       </Section>
     </div>

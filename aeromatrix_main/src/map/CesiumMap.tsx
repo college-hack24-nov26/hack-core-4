@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Building2, ArrowDownToDot, LocateFixed, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { TwinMap, type CursorInfo } from './TwinMap';
 import { bindMapToStore } from './mapSync';
 import { handleMapClick } from './mapInteractions';
@@ -13,20 +13,6 @@ const MODE_HINT: Record<Exclude<InteractionMode, 'select'>, string> = {
   'select-area': 'Click zones to add or remove them. Shift-click selects a range.',
   'pick-candidate': 'Click the map to add candidate sites (up to five).',
 };
-
-function MapButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={label}
-      aria-label={label}
-      className="flex h-11 w-11 items-center justify-center rounded-xl bg-ink-900/90 text-sand-100 shadow-lg hairline backdrop-blur transition-colors hover:bg-ink-700"
-    >
-      {children}
-    </button>
-  );
-}
 
 export function CesiumMap() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -97,15 +83,6 @@ export function CesiumMap() {
         <div className="relative">
           <LayerControl rightOffset={rightOffset} />
         </div>
-        <MapButton label="Reset view" onClick={() => mapRef.current?.resetView()}>
-          <LocateFixed size={20} />
-        </MapButton>
-        <MapButton label="Top-down view" onClick={() => mapRef.current?.topDown()}>
-          <ArrowDownToDot size={20} />
-        </MapButton>
-        <MapButton label="City 3D view" onClick={() => mapRef.current?.city3D()}>
-          <Building2 size={20} />
-        </MapButton>
       </div>
 
       {mode !== 'select' && (

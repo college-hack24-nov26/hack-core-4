@@ -45,7 +45,7 @@ import {
   fetchAqiHistory,
   type ModelServiceState,
 } from '../services/modelService';
-import { buildStationCatalog, loadVerifiedStations, type StationCatalog, type VerifiedLoad } from '../services/stations';
+import { buildStationCatalog, loadAllVerified, type StationCatalog, type VerifiedLoad } from '../services/stations';
 import { initialLive, type LiveState } from '../services/liveState';
 import {
   fitCalibration,
@@ -840,13 +840,13 @@ export const useTwinStore = create<TwinState>((set, get) => {
     // ---- V3: model service and stations ----
 
     async loadStationCatalog() {
-      const verified = await loadVerifiedStations();
+      const verified = await loadAllVerified();
       set({ verified, catalog: buildStationCatalog(get().modelService.stations, verified) });
     },
 
     async connectModelService() {
       set({ modelService: { ...get().modelService, status: 'connecting', reason: null } });
-      const [svc, verified] = await Promise.all([connectModel(get().allowHistoricalForecast), loadVerifiedStations()]);
+      const [svc, verified] = await Promise.all([connectModel(get().allowHistoricalForecast), loadAllVerified()]);
       set({ modelService: svc, verified, catalog: buildStationCatalog(svc.stations, verified) });
     },
 

@@ -53,7 +53,7 @@ export function MapLegend() {
             <span>0</span>
             <span>+{scale.toFixed(sdp)}</span>
           </div>
-          <div className="mt-1 text-[10px] text-sand-400">{POLLUTANT_UNIT[pollutant]}: blue = modeled decrease, rose = increase</div>
+          <div className="mt-1 text-[10px] text-sand-400">{POLLUTANT_UNIT[pollutant]}: blue = decrease, rose = increase</div>
           <div className="mt-1 text-[10px] text-sand-400">Outlined zones changed by 0.5 ug/m3 PM2.5 or more.</div>
         </>
       ) : (

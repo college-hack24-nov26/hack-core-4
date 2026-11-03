@@ -218,7 +218,7 @@ const placed = (id: string, name: string, lat: number | null, lon: number | null
   lon,
   coordSource: lat === null ? null : 'verified',
   sources: ['CPCB CAAQMS list'],
-  singleSource: false,
+  singleSource: false, monitoring: 'continuous',
   note: null,
   api: hasApi ? ({ station: id, station_name: name, name, aliases: [], latitude: lat, longitude: lon, source_files: '' } as PlacedStation['api']) : null,
 });

@@ -162,7 +162,7 @@ function useCellDrawer(): DrawerContent | null {
         <CompareSection cellId={cell.id} />
 
         <p className="rounded-xl bg-ink-850 p-3 text-[11px] leading-relaxed text-sand-300 hairline">
-          {showDelta ? 'MODELED_SCENARIO values' : 'DEMO values'} from seeded inputs and an uncalibrated rule-based model. Not an observation.
+          Modelled estimates, not direct observations.
         </p>
       </>
     ),

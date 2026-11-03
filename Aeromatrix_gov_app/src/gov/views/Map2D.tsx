@@ -140,8 +140,16 @@ export function Map2D(props: Map2DProps) {
         if (s.status === 'outdated') {
           g.addLayer(L.circleMarker([s.lat, s.lon], { renderer: canvasRef.current ?? undefined, radius: 15, color: '#7a2a2a', weight: 2, dashArray: '4 4', fill: false, interactive: false }));
         }
-        const m = L.circleMarker([s.lat, s.lon], { renderer: canvasRef.current ?? undefined, radius: 9, color: '#1c0a10', weight: 2, fillColor: col, fillOpacity: 1 });
-        m.bindTooltip(`${s.name}: ${s.status === 'live' ? 'measured' : s.status === 'outdated' ? 'OUTDATED reading' : 'no current reading'}`, { sticky: true });
+        const manual = s.monitoring === 'manual';
+        // manual (NAMP) stations are diamonds marked M; continuous (CAAQMS) stations are circles
+        const m = manual
+          ? L.marker([s.lat, s.lon], {
+              keyboard: true,
+              title: `${s.name} (manual)`,
+              icon: L.divIcon({ className: '', iconSize: [22, 22], iconAnchor: [11, 11], html: `<div style="width:16px;height:16px;margin:3px;transform:rotate(45deg);background:${col};border:2px solid #1c0a10;box-shadow:0 1px 3px rgba(0,0,0,.4)"></div><div style="position:absolute;inset:0;font:700 10px/22px system-ui;text-align:center;color:#1c0a10">M</div>` }),
+            })
+          : L.circleMarker([s.lat, s.lon], { renderer: canvasRef.current ?? undefined, radius: 9, color: '#1c0a10', weight: 2, fillColor: col, fillOpacity: 1 });
+        m.bindTooltip(`${s.name}${manual ? ' (manual)' : ''}: ${s.status === 'live' ? 'measured' : s.status === 'outdated' ? 'OUTDATED reading' : 'no current reading'}`, { sticky: true });
         m.on('click', (e) => {
           L.DomEvent.stopPropagation(e);
           select.current({ kind: 'station', id: s.id });

@@ -29,16 +29,9 @@ export const STATUS_STYLE: Record<DataStatus, { label: string; cls: string; hint
   },
 };
 
-export function StatusBadge({ status, className = '' }: { status: DataStatus; className?: string }) {
-  const s = STATUS_STYLE[status];
-  return (
-    <span
-      title={s.hint}
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider ring-1 ring-inset ${s.cls} ${className}`}
-    >
-      {s.label}
-    </span>
-  );
+/** Data-status chips are no longer shown in the interface; the call sites stay so the status still travels with the data. */
+export function StatusBadge(_props: { status: DataStatus; className?: string }) {
+  return null;
 }
 
 export interface SegmentedOption<T extends string | number> {

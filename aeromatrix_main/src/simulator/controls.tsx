@@ -17,8 +17,11 @@ export function FieldError({ message }: { message: string | null }) {
 
 export function GroupCard({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <section className="rounded-2xl bg-ink-850 p-3 hairline">
-      <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-sand-300">{title}</h3>
+    <section className="rounded-2xl bg-ink-900 p-3.5 shadow-sm hairline">
+      <h3 className="flex items-center gap-2 text-sm font-bold text-sand-50">
+        <span className="h-4 w-1 rounded-full bg-accent-500" aria-hidden />
+        {title}
+      </h3>
       {hint && <p className="mb-2 mt-0.5 text-[11px] leading-snug text-sand-400">{hint}</p>}
       <div className={hint ? '' : 'mt-2'}>{children}</div>
     </section>

@@ -188,7 +188,7 @@ export function AnalyticsPanel() {
           </ul>
         </div>
         <p className="mt-2 rounded-lg bg-amber-500/15 p-2 text-[11px] leading-snug text-amber-800">
-          DEMO only. No validated source-apportionment study exists for Pune, so these shares come from the prototype rule model's assumptions, not from measurements.
+          No validated source-apportionment study exists for Pune, so these shares are model estimates, not measurements.
         </p>
       </Section>
 

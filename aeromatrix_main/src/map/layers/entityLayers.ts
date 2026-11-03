@@ -315,8 +315,8 @@ export interface StationStyle {
 
 const stationIconCache = new Map<string, string>();
 
-function stationIcon(color: string, selected: boolean, outdated: boolean): string {
-  const key = `${color}|${selected}|${outdated}`;
+function stationIcon(color: string, selected: boolean, outdated: boolean, manual = false): string {
+  const key = `${color}|${selected}|${outdated}|${manual}`;
   const hit = stationIconCache.get(key);
   if (hit) return hit;
   const s = 64;
@@ -327,17 +327,33 @@ function stationIcon(color: string, selected: boolean, outdated: boolean): strin
   if (!ctx) return '';
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(32, 32, 20, 0, Math.PI * 2);
+  if (manual) {
+    // manual (NAMP) stations are diamonds with an M; continuous (CAAQMS) stations are circles with an antenna
+    ctx.moveTo(32, 8);
+    ctx.lineTo(56, 32);
+    ctx.lineTo(32, 56);
+    ctx.lineTo(8, 32);
+    ctx.closePath();
+  } else {
+    ctx.arc(32, 32, 20, 0, Math.PI * 2);
+  }
   ctx.fill();
   ctx.lineWidth = selected ? 6 : 4;
   ctx.strokeStyle = selected ? '#a3263f' : '#ffffff';
   ctx.stroke();
-  // inner antenna mark: a monitoring station
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(30, 20, 4, 24);
-  ctx.beginPath();
-  ctx.arc(32, 20, 5, 0, Math.PI * 2);
-  ctx.fill();
+  if (manual) {
+    ctx.font = '700 22px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('M', 32, 34);
+  } else {
+    // inner antenna mark: a monitoring station
+    ctx.fillRect(30, 20, 4, 24);
+    ctx.beginPath();
+    ctx.arc(32, 20, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
   if (outdated) {
     // a clock tick on the rim marks "Outdated"
     ctx.strokeStyle = '#1c0a10';
@@ -360,7 +376,7 @@ export class StationLayer {
 
   /** Only stations that have a sourced coordinate are drawn. */
   setData(
-    stations: Array<{ id: string; name: string; lat: number | null; lon: number | null }>,
+    stations: Array<{ id: string; name: string; lat: number | null; lon: number | null; monitoring?: 'continuous' | 'manual' }>,
     style: Record<string, StationStyle & { outdated: boolean }>,
     selectedId: string | null,
   ) {
@@ -374,7 +390,7 @@ export class StationLayer {
         id: s.id.startsWith('obsmark:') ? s.id : `stn:${s.id}`,
         position: Cartesian3.fromDegrees(s.lon, s.lat),
         billboard: {
-          image: stationIcon(st.color, selectedId === s.id, st.outdated),
+          image: stationIcon(st.color, selectedId === s.id, st.outdated, s.monitoring === 'manual'),
           width: 34,
           height: 34,
           heightReference: HeightReference.CLAMP_TO_GROUND,
@@ -382,7 +398,7 @@ export class StationLayer {
           scaleByDistance: new NearFarScalar(1500, 1.15, 40000, 0.65),
         },
         label: {
-          text: s.name,
+          text: s.monitoring === 'manual' ? `${s.name} (manual)` : s.name,
           font: '600 12px sans-serif',
           fillColor: Color.WHITE,
           outlineColor: Color.fromCssColorString('#1c0a10'),

@@ -18,7 +18,7 @@ function StationDetail({ s, onClose }: { s: StationRow; onClose: () => void }) {
   return (
     <Sheet
       title={s.name}
-      subtitle={[s.agency, s.city].filter(Boolean).join(' · ') || 'Monitoring station'}
+      subtitle={[s.monitoring === 'manual' ? 'Manual station (NAMP)' : 'Continuous station (CAAQMS)', s.agency, s.city].filter(Boolean).join(' · ')}
       onClose={onClose}
       chips={<StatusChip kind={chipOf(s.status)} label={STATE_LABEL[s.status]} />}
     >
@@ -143,7 +143,9 @@ export function StationsView() {
                   <button type="button" onClick={() => select(s.id)} className="gov-card gov-tap flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-ink-800 sm:p-5">
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[15px] font-semibold text-sand-50">{s.name}</span>
-                      <span className="mt-0.5 block text-sm text-sand-300">{s.lastReadingAt ? `Updated ${formatAge(s.ageMs)}` : 'No reading'}</span>
+                      <span className="mt-0.5 block text-sm text-sand-300">
+                        {s.monitoring === 'manual' ? 'Manual' : 'Continuous'} · {s.lastReadingAt ? `Updated ${formatAge(s.ageMs)}` : 'No reading'}
+                      </span>
                     </span>
                     <span className="flex shrink-0 flex-col items-end gap-1.5">
                       {s.aqi ? <AqiChip aqi={s.aqi.value} category={s.aqi.category} /> : s.estimate ? <AqiChip aqi={s.estimate.aqi} category={s.estimate.category} /> : null}
@@ -163,7 +165,13 @@ export function StationsView() {
                 <ul className="divide-y divide-sand-500/12">
                   {st.notPlaced.map((n) => (
                     <li key={n.name} className="flex items-center justify-between gap-3 px-5 py-3.5">
-                      <span className="min-w-0 truncate text-[15px] text-sand-100">{n.name}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-[15px] text-sand-100">{n.name}</span>
+                        <span className="block text-xs text-sand-400">
+                          {n.monitoring === 'manual' ? 'Manual (NAMP)' : 'Continuous'}
+                          {n.city ? ` · ${n.city}` : ''}
+                        </span>
+                      </span>
                       <StatusChip kind="nofeed" />
                     </li>
                   ))}

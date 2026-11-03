@@ -27,6 +27,7 @@ import { AnalyticsPanel } from './AnalyticsPanel';
 import { IndustryPanel } from './IndustryPanels';
 import { ForecastTab, LiveNowTab, LiveStrip } from './LivePanels';
 import { StationsTab } from './StationPanels';
+import { ZoneCauses } from './ZoneCauses';
 
 const RISKS: RiskLevel[] = ['LOW', 'MODERATE', 'HIGH', 'VERY_HIGH'];
 
@@ -87,7 +88,9 @@ function Overview() {
         </span>
       </div>
 
-      <Section title="Live air quality (model data)">
+      <ZoneCauses />
+
+      <Section title="Air quality now">
         <LiveStrip />
       </Section>
 
@@ -129,7 +132,7 @@ function Overview() {
         </ol>
       </Section>
 
-      <Section title="Weather (city mean)" action={<StatusBadge status="DEMO" />}>
+      <Section title="Weather">
         <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
           {[
             ['Temperature', `${fmt(w.temperature, 0)} °C`],
@@ -146,11 +149,6 @@ function Overview() {
         </dl>
       </Section>
 
-      <p className="mb-2 rounded-xl bg-ink-850 p-3 text-xs leading-relaxed text-sand-300 hairline">
-        <strong className="text-sand-100">Data status:</strong> every value here is DEMO. Inputs are seeded demo
-        features of Pune run through an uncalibrated rule-based model. They are not measurements and not a validated
-        forecast.
-      </p>
     </>
   );
 }
@@ -190,7 +188,7 @@ function ModelTab() {
 
   return (
     <>
-      <Section title="Pollutants" action={<StatusBadge status="DEMO" />}>
+      <Section title="Pollutants">
         <div className="grid grid-cols-2 gap-2">
           {summary.map(({ p, mean, max }) => {
             const active = p === pollutant;
@@ -277,12 +275,12 @@ function AirQuality() {
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'now', label: 'Now (model data)' },
-          { value: 'stations', label: 'Monitoring stations' },
+          { value: 'now', label: 'Now' },
+          { value: 'stations', label: 'Stations' },
           { value: 'forecast', label: 'Forecast' },
-          { value: 'model', label: 'Rule model' },
+          { value: 'model', label: 'Areas' },
         ]}
-        className="max-w-full flex-wrap"
+        className="grid w-full grid-cols-4"
       />
       {tab === 'now' && <LiveNowTab />}
       {tab === 'stations' && <StationsTab />}

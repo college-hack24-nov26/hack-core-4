@@ -17,11 +17,18 @@ export interface VerifiedStation {
   sources: string[];
   single_source?: boolean;
   note?: string;
+  /** continuous (CAAQMS, automatic) or manual (NAMP) monitoring */
+  monitoring?: MonitoringType;
+  code?: string | null;
 }
+
+export type MonitoringType = 'continuous' | 'manual';
 
 export interface UnlocatedStation {
   name: string;
   reason: string;
+  monitoring?: MonitoringType;
+  city?: string;
 }
 
 export interface VerifiedStationFile {
@@ -49,6 +56,8 @@ export interface PlacedStation {
   sources: string[];
   singleSource: boolean;
   note: string | null;
+  /** continuous (automatic) or manual (NAMP) monitoring */
+  monitoring: MonitoringType;
   /** the model-service entry, when the service knows this station (it has a data feed) */
   api: ApiStation | null;
 }
@@ -85,7 +94,70 @@ export async function loadVerifiedStations(url: string = VERIFIED_STATIONS_URL):
   }
 }
 
-const keysOf = (s: { station?: string; name?: string; station_name?: string; aliases?: string[] }) =>
+/** The station registry built from the supplied CPCB, NAMP and MPCB documents. Rows with a published coordinate are placed; the rest are listed as not placed. */
+export const REGISTRY_URL = '/data/monitoring_stations.json';
+
+interface RegistryRow {
+  id: string;
+  name: string;
+  city: string;
+  region?: string;
+  monitoring: MonitoringType;
+  agency: string;
+  code?: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  sources: string[];
+  note?: string;
+}
+
+/** Reads the registry; only the Pune and Pimpri-Chinchwad rows are used by the map. A missing file is a normal "not loaded" state. */
+export async function loadRegistry(url: string = REGISTRY_URL): Promise<VerifiedLoad> {
+  try {
+    const res = await fetch(url, { cache: 'no-cache' });
+    if (!res.ok || (res.headers.get('content-type') ?? '').includes('text/html')) return { status: 'not-loaded', reason: 'Station list not available.' };
+    const json = (await res.json()) as { _sources?: Record<string, string>; stations?: RegistryRow[] };
+    if (!Array.isArray(json.stations)) return { status: 'not-loaded', reason: 'Station list not available.' };
+    const stations: VerifiedStation[] = [];
+    const unlocated: UnlocatedStation[] = [];
+    for (const r of json.stations) {
+      if (r.region !== 'pune') continue;
+      if (typeof r.latitude === 'number' && typeof r.longitude === 'number') {
+        stations.push({ station: r.id, name: r.name, agency: r.agency, city: r.city, latitude: r.latitude, longitude: r.longitude, sources: r.sources, monitoring: r.monitoring, code: r.code ?? null, note: r.note });
+      } else {
+        unlocated.push({ name: r.name, reason: r.note ?? 'No published coordinate.', monitoring: r.monitoring, city: r.city });
+      }
+    }
+    return { status: 'loaded', file: { _sources: json._sources, stations, unlocated } };
+  } catch {
+    return { status: 'not-loaded', reason: 'Station list not available.' };
+  }
+}
+
+/** Registry first, then anything the drop-in coordinate file adds (same station never listed twice). */
+export function mergeVerified(drop: VerifiedLoad, registry: VerifiedLoad): VerifiedLoad {
+  if (registry.status !== 'loaded') return drop;
+  if (drop.status !== 'loaded') return registry;
+  const seen = new Set(registry.file.stations.map((s) => norm(s.name)));
+  const extra = drop.file.stations.filter((s) => !seen.has(norm(s.name)));
+  const placedNames = new Set([...seen, ...extra.map((s) => norm(s.name))]);
+  return {
+    status: 'loaded',
+    file: {
+      _sources: { ...(registry.file._sources ?? {}), ...(drop.file._sources ?? {}) },
+      stations: [...registry.file.stations, ...extra],
+      unlocated: [...registry.file.unlocated, ...drop.file.unlocated].filter((u, i, a) => !placedNames.has(norm(u.name)) && a.findIndex((x) => norm(x.name) === norm(u.name)) === i),
+    },
+  };
+}
+
+/** Both sources, merged. */
+export async function loadAllVerified(): Promise<VerifiedLoad> {
+  const [drop, registry] = await Promise.all([loadVerifiedStations(), loadRegistry()]);
+  return mergeVerified(drop, registry);
+}
+
+const keysOf =(s: { station?: string; name?: string; station_name?: string; aliases?: string[] }) =>
   [s.station, s.name, s.station_name, ...(s.aliases ?? [])].filter((x): x is string => !!x).map(norm);
 
 /** Merge service stations with the verified file into one catalog. */
@@ -110,6 +182,7 @@ export function buildStationCatalog(apiStations: ApiStation[], verified: Verifie
       sources: v?.sources ?? [],
       singleSource: !!v?.single_source,
       note: v?.note ?? null,
+      monitoring: v?.monitoring ?? 'continuous',
       api,
     });
   }
@@ -127,6 +200,7 @@ export function buildStationCatalog(apiStations: ApiStation[], verified: Verifie
       sources: v.sources,
       singleSource: !!v.single_source,
       note: v.note ?? null,
+      monitoring: v.monitoring ?? 'continuous',
       api: null,
     });
   }

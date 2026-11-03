@@ -486,8 +486,8 @@ export function WhatIfPanel() {
       </GroupCard>
 
       <GroupCard
-        title="Monitoring region (trained model)"
-        hint="Apply this scenario's relative change to the trained model's baseline for a monitoring station. Hypothetical."
+        title="Effect at a station"
+        hint="See what this scenario could mean at one monitoring station."
       >
         <select
           value={regionId}
@@ -505,7 +505,7 @@ export function WhatIfPanel() {
             ))}
         </select>
         {catalog.stations.every((s) => !s.api) && (
-          <p className="mt-1 text-[11px] text-sand-400">No data feed: the trained model service is not connected.</p>
+          <p className="mt-1 text-[11px] text-sand-400">Station data is not available right now.</p>
         )}
         <div className="mt-2">
           <RegionScenarioSection stationId={regionId || null} />

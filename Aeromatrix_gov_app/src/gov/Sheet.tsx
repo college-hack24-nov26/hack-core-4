@@ -43,7 +43,7 @@ export function Sheet({ title, subtitle, onClose, children, chips }: { title: st
       role="dialog"
       aria-label={title}
       style={dy > 0 ? { transform: `translateY(${dy}px)`, transition: 'none' } : undefined}
-      className="animate-sheet-up fixed inset-x-0 bottom-0 z-20 flex max-h-[82dvh] flex-col rounded-t-3xl bg-ink-950 shadow-2xl hairline lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-16 lg:max-h-none lg:w-[420px] lg:rounded-2xl"
+      className="animate-sheet-up fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 flex max-h-[78dvh] flex-col rounded-t-3xl bg-ink-950 shadow-2xl hairline lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-16 lg:max-h-none lg:w-[420px] lg:rounded-2xl"
     >
       <div
         className="flex h-6 shrink-0 cursor-grab touch-none items-center justify-center lg:hidden"
@@ -65,7 +65,7 @@ export function Sheet({ title, subtitle, onClose, children, chips }: { title: st
           <X size={18} />
         </button>
       </header>
-      <div className="panel-scroll min-h-0 flex-1 p-4 pb-28 lg:pb-6">{children}</div>
+      <div className="panel-scroll min-h-0 flex-1 p-4 pb-8 lg:pb-6">{children}</div>
     </aside>
   );
 }

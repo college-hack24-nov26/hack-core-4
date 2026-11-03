@@ -12,7 +12,7 @@ function Tip({ active, payload, unit }: { active?: boolean; payload?: Array<{ pa
     <div className="rounded-lg border border-sand-500/20 bg-ink-950 px-3 py-2 text-xs text-sand-100 shadow-lg">
       <div className="font-semibold">{p.name}</div>
       <div>
-        {Math.round(p.value)}
+        {Number.isInteger(p.value) ? p.value : p.value.toFixed(1)}
         {unit ? ` ${unit}` : ''}
         {p.sub ? ` · ${p.sub}` : ''}
       </div>
@@ -75,23 +75,29 @@ export interface CompareRow {
   color: string;
 }
 
-/** Existing against simulated values side by side. */
+/** Existing against simulated values side by side. The scale starts below the lowest value so differences are visible, and says so. */
 export function CompareChart({ rows, unit, height = 180 }: { rows: CompareRow[]; unit: string; height?: number }) {
+  const lo = Math.min(...rows.map((r) => r.value));
+  const hi = Math.max(...rows.map((r) => r.value));
+  const base = hi > 0 && lo / hi > 0.5 ? Math.max(0, Math.floor(lo - (hi - lo) * 1.2)) : 0;
   return (
-    <div style={{ height }} className="text-sand-100">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 40, bottom: 4, left: 8 }}>
-          <XAxis type="number" hide domain={[0, (max: number) => Math.ceil(max * 1.1)]} />
-          <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={110} tick={axis} />
-          <Tooltip cursor={{ fill: 'currentColor', opacity: 0.06 }} content={<Tip unit={unit} />} />
-          <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={22} isAnimationActive={!isLite()} animationDuration={700}>
-            {rows.map((r) => (
-              <Cell key={r.name} fill={r.color} />
-            ))}
-            <LabelList dataKey="value" position="right" formatter={(v: unknown) => (typeof v === 'number' ? v.toFixed(1) : String(v ?? ''))} style={{ fill: 'currentColor', fontSize: 12, fontWeight: 600 }} />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="text-sand-100">
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows} layout="vertical" margin={{ top: 4, right: 40, bottom: 4, left: 8 }}>
+            <XAxis type="number" hide domain={[base, Math.ceil(hi * 1.05)]} allowDataOverflow />
+            <YAxis type="category" dataKey="name" tickLine={false} axisLine={false} width={110} tick={axis} />
+            <Tooltip cursor={{ fill: 'currentColor', opacity: 0.06 }} content={<Tip unit={unit} />} />
+            <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={22} isAnimationActive={!isLite()} animationDuration={900}>
+              {rows.map((r) => (
+                <Cell key={r.name} fill={r.color} />
+              ))}
+              <LabelList dataKey="value" position="right" formatter={(v: unknown) => (typeof v === 'number' ? v.toFixed(1) : String(v ?? ''))} style={{ fill: 'currentColor', fontSize: 12, fontWeight: 600 }} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      {base > 0 && <p className="mt-1 text-[11px] text-sand-400">Bars start at {base} {unit} so the differences are easy to see.</p>}
     </div>
   );
 }

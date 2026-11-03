@@ -23,7 +23,7 @@ export function actionInsight(base: BaseState, ev: ActionEvaluation, names: Reco
   const total = gains.reduce((a, e) => a + -e.d, 0);
   const top3Share = total > 0 ? gains.slice(0, 3).reduce((a, e) => a + -e.d, 0) / total : 0;
 
-  if (gains.length === 0 && rises.length === 0) return 'Little measurable change in the prototype model.';
+  if (gains.length === 0 && rises.length === 0) return 'Little measurable change.';
 
   switch (ev.action.id) {
     case 'road-diversion': {

@@ -103,3 +103,61 @@ h3 {
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
+
+/* Page change: a short fade and rise. */
+.gov-page {
+  animation: rise 0.32s var(--ease-out-soft) both;
+}
+
+/* The More menu opens with a small pop. */
+.gov-pop {
+  transform-origin: bottom right;
+  animation: gov-pop 0.18s var(--ease-out-soft) both;
+}
+@keyframes gov-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The bell rings once for a new alert. */
+.gov-ring {
+  transform-origin: 50% 10%;
+  animation: gov-ring 0.9s ease-in-out 1;
+}
+@keyframes gov-ring {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(8deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(3deg); }
+}
+
+/* "Analysing" shimmer bar and the result reveal in the What if screen. */
+.gov-analyse {
+  background: linear-gradient(90deg, transparent, var(--color-accent-400), transparent);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  animation: gov-sweep 1s ease-in-out infinite;
+}
+@keyframes gov-sweep {
+  from { background-position: -60% 0; }
+  to { background-position: 160% 0; }
+}
+.gov-reveal {
+  animation: rise 0.5s var(--ease-out-soft) both;
+}
+.gov-bar-grow {
+  transform-origin: left center;
+  animation: gov-grow 0.8s var(--ease-out-soft) both;
+}
+@keyframes gov-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}

@@ -135,10 +135,7 @@ export function IntroOverlay() {
           ))}
         </div>
         <p className="mt-4 rounded-xl bg-ink-850 p-3 text-xs leading-relaxed text-sand-300 hairline">
-          Every value carries a label: <strong className="text-sand-100">DEMO</strong> (prototype model),{' '}
-          <strong className="text-sand-100">OBSERVED</strong>, <strong className="text-sand-100">MODEL DATA</strong>,{' '}
-          <strong className="text-sand-100">MODEL PREDICTION</strong> or{' '}
-          <strong className="text-sand-100">MODELED SCENARIO</strong>. What-if results are hypothetical, not forecasts.
+          What-if results are hypothetical estimates, not forecasts.
         </p>
         <button
           ref={primaryRef}
