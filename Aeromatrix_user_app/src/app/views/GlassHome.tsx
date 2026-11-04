@@ -228,7 +228,13 @@ function Spark({ points, color }: { points: number[]; color: string }) {
   );
 }
 
+/** A temperature in the unit the user chose. */
+function showTemp(c: number, unit: 'c' | 'f', digits: number): string {
+  return unit === 'f' ? `${(c * 1.8 + 32).toFixed(digits)}°F` : `${c.toFixed(digits)}°C`;
+}
+
 function Forecast({ loc }: { loc: Loc }) {
+  const unit = useUserStore((s) => s.settings.tempUnit);
   const [hours, setHours] = useState<24 | 48 | 72>(24);
   const days = loc.forecast;
   const cur = days.find((d) => d.hours === hours);
@@ -273,7 +279,7 @@ function Forecast({ loc }: { loc: Loc }) {
               </span>
               <span>
                 {cur.pm25 !== null ? `PM2.5 ${Math.round(cur.pm25)}` : ''}
-                {w && w.temperature !== null ? ` · ${Math.round(w.temperature)}°C` : ''}
+                {w && w.temperature !== null ? ` · ${showTemp(w.temperature, unit, 0)}` : ''}
               </span>
             </div>
           </div>
@@ -287,10 +293,11 @@ function Forecast({ loc }: { loc: Loc }) {
 
 /** Temperature, humidity, wind, pressure and rain, in small glass tiles. */
 function Conditions({ loc }: { loc: Loc }) {
+  const unit = useUserStore((s) => s.settings.tempUnit);
   const w = loc.weather;
   if (!w) return null;
   const tiles: Array<{ icon: typeof Wind; label: string; value: string }> = [
-    { icon: Thermometer, label: 'Temperature', value: w.temperature === null ? '-' : `${w.temperature.toFixed(1)} °C` },
+    { icon: Thermometer, label: 'Temperature', value: w.temperature === null ? '-' : showTemp(w.temperature, unit, 1) },
     { icon: Droplets, label: 'Humidity', value: w.humidity === null ? '-' : `${Math.round(w.humidity)} %` },
     { icon: Wind, label: 'Wind', value: w.windSpeed === null ? '-' : `${Math.round(w.windSpeed * 3.6)} km/h` },
     { icon: GaugeIcon, label: 'Pressure', value: w.pressure === null ? '-' : `${Math.round(w.pressure)} hPa` },

@@ -20,21 +20,15 @@
     <title>AeroMatrix For Users</title>
     <style>
       /* Shown until the app has loaded, so a phone never starts on a blank page. */
-      #boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #fbf6ec; color: #3a1a23; font: 600 15px 'Inter Variable', system-ui, sans-serif; }
-      #boot svg { animation: boot-pulse 1.6s ease-in-out infinite; }
-      @keyframes boot-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.94); opacity: 0.75; } }
-      @media (prefers-reduced-motion: reduce) { #boot svg { animation: none; } }
+      #boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #eaf3ff; color: #14295a; font: 600 15px 'Inter Variable', system-ui, sans-serif; }
+            @keyframes boot-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.94); opacity: 0.75; } }
+      @media (prefers-reduced-motion: reduce) { #boot img { animation: none !important; } }
     </style>
   </head>
   <body>
     <div id="root">
       <div id="boot" role="status" aria-live="polite">
-        <svg width="72" height="72" viewBox="0 0 64 64" aria-hidden="true">
-          <circle cx="32" cy="32" r="30" fill="#a3263f" />
-          <circle cx="32" cy="32" r="22" fill="none" stroke="#fbf5e9" stroke-width="2.5" opacity="0.55" />
-          <path d="M14 36c6-12 12-12 18 0s12 12 18 0" fill="none" stroke="#fbf5e9" stroke-width="4" stroke-linecap="round" />
-          <circle cx="32" cy="22" r="3.2" fill="#fbf5e9" />
-        </svg>
+        <img src="/aeromatrix-logo.png" width="72" height="72" alt="" style="animation: boot-pulse 1.6s ease-in-out infinite" />
         <span>AeroMatrix</span>
         <noscript>This app needs JavaScript.</noscript>
       </div>
@@ -42,10 +36,11 @@
     <script>
       // Match the splash to a saved or system theme before the app starts.
       try {
-        var t = localStorage.getItem('aeromatrix.user.theme');
-        var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var s = JSON.parse(localStorage.getItem('aeromatrix.user.settings.v1') || '{}');
+        var t = s.theme;
+        var dark = t === 'dark' || (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
         var b = document.getElementById('boot');
-        if (dark && b) { b.style.background = '#1c0a10'; b.style.color = '#f4ead7'; }
+        if (dark && b) { b.style.background = '#06122b'; b.style.color = '#e1eaff'; }
       } catch (e) {}
     </script>
     <script type="module" src="/src/main.tsx"></script>

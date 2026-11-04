@@ -4,6 +4,7 @@ import { LogoMark } from '../components/Brand';
 import { startLiveDataWhenReady } from '../services/liveData';
 import { useTwinStore } from '../store/useTwinStore';
 import { USER_VIEWS, useUserStore, type UserView } from './userStore';
+import { effectiveTheme } from './lib/theme';
 import { BottomNav, VIEW_LABEL } from './BottomNav';
 import { PwaBar } from './Pwa';
 import { formatIst } from './lib/format';
@@ -15,22 +16,22 @@ import { ShopView } from './views/ShopView';
 import { SettingsView } from './views/SettingsView';
 import { useAirData, colorOf } from './lib/airdata';
 
-const THEME_KEY = 'aeromatrix.user.theme';
-type Theme = 'cream' | 'dark';
-
-/** The saved choice, else the phone's own light / dark setting. */
-export function readTheme(): Theme {
-  try {
-    const saved = localStorage.getItem(THEME_KEY);
-    if (saved === 'dark' || saved === 'cream') return saved;
-  } catch {
-    /* fall through to the system setting */
-  }
-  try {
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'cream';
-  } catch {
-    return 'cream';
-  }
+function useSystemDark(): boolean {
+  const [dark, setDark] = useState(() => {
+    try {
+      return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    const mq = window.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!mq) return;
+    const on = (e: MediaQueryListEvent) => setDark(e.matches);
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, []);
+  return dark;
 }
 
 const hashView = (hash: string): UserView | null => {
@@ -39,7 +40,10 @@ const hashView = (hash: string): UserView | null => {
 };
 
 export function UserApp() {
-  const [theme, setTheme] = useState<Theme>(readTheme);
+  const choice = useUserStore((s) => s.settings.theme);
+  const setSettings = useUserStore((s) => s.setSettings);
+  const systemDark = useSystemDark();
+  const theme = effectiveTheme(choice, systemDark);
   const view = useUserStore((s) => s.view);
   const setView = useUserStore((s) => s.setView);
   const loading = useTwinStore((s) => s.loading);
@@ -62,12 +66,7 @@ export function UserApp() {
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle('theme-cream', theme === 'cream');
-    try {
-      localStorage.setItem(THEME_KEY, theme);
-    } catch {
-      /* the choice just does not persist */
-    }
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'cream' ? '#a3263f' : '#1c0a10');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'cream' ? '#2563eb' : '#06122b');
   }, [theme]);
 
   useEffect(() => {
@@ -146,7 +145,7 @@ export function UserApp() {
           </span>
           <button
             type="button"
-            onClick={() => setTheme(theme === 'cream' ? 'dark' : 'cream')}
+            onClick={() => setSettings({ theme: theme === 'cream' ? 'dark' : 'light' })}
             aria-label={theme === 'cream' ? 'Switch to the dark theme' : 'Switch to the light theme'}
             className="gov-tap flex h-11 w-11 items-center justify-center rounded-xl text-sand-200 hover:bg-ink-800"
           >

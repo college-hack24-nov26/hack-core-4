@@ -6,3 +6,4 @@ public/cesium
 android/
 apk/
 .vercel
+.env*

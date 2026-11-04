@@ -79,3 +79,29 @@ describe('what the user app contains', () => {
     expect(Object.values(VIEW_LABEL)).toContain('Stations');
   });
 });
+
+describe('settings', () => {
+  it('follows the phone unless the user chose light or dark', async () => {
+    const { effectiveTheme } = await import('./lib/theme');
+    expect(effectiveTheme('system', true)).toBe('dark');
+    expect(effectiveTheme('system', false)).toBe('cream');
+    expect(effectiveTheme('light', true)).toBe('cream');
+    expect(effectiveTheme('dark', false)).toBe('dark');
+  });
+
+  it('keeps the defaults a new user needs, and clearing data puts them back', async () => {
+    const { DEFAULT_SETTINGS, useUserStore } = await import('./userStore');
+    expect(DEFAULT_SETTINGS).toMatchObject({ ui: 'glass-adv', theme: 'system', tempUnit: 'c', homeZoneId: null });
+    const s = useUserStore.getState();
+    s.setSettings({ theme: 'dark', tempUnit: 'f', homeZoneId: 'g10-r6c7' });
+    s.addComplaint({ id: 'c1', stationId: 's', stationName: 'Alandi', text: 'The display is blank.', files: [], createdAt: 1, state: 'queued' });
+    s.setDevice({ deviceId: 'AMX-TEST-0001', label: 'Balcony', addedAt: 1, state: 'saved', lastSyncAt: null, reading: null });
+    expect(useUserStore.getState().settings.tempUnit).toBe('f');
+    useUserStore.getState().clearMyData();
+    const after = useUserStore.getState();
+    expect(after.settings).toEqual(DEFAULT_SETTINGS);
+    expect(after.complaints).toEqual([]);
+    expect(after.device).toBeNull();
+    expect(after.selectedZoneId).toBeNull();
+  });
+});

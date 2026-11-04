@@ -28,6 +28,54 @@ function setFlag(key: string) {
   }
 }
 
+/**
+ * The browser fires `beforeinstallprompt` once, early. It is captured here at load so the Settings page can offer the
+ * same Install button even when the event came before that page was opened.
+ */
+let deferred: InstallEvent | null = null;
+const subscribers = new Set<() => void>();
+const notifyAll = () => subscribers.forEach((f) => f());
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferred = e as InstallEvent;
+    notifyAll();
+  });
+  window.addEventListener('appinstalled', () => {
+    deferred = null;
+    notifyAll();
+  });
+}
+
+/** What the install experience can do right now. */
+export function useInstall() {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const f = () => tick((n) => n + 1);
+    subscribers.add(f);
+    return () => {
+      subscribers.delete(f);
+    };
+  }, []);
+  const standalone = isNative() || (typeof window !== 'undefined' && isStandalone({ matchMedia: window.matchMedia?.bind(window), navigator: navigator as { standalone?: boolean } }));
+  const ios = typeof navigator !== 'undefined' && isIosSafari(navigator.userAgent, navigator.maxTouchPoints);
+  return {
+    standalone,
+    ios,
+    canPrompt: deferred !== null,
+    /** Opens the browser's own install dialog. */
+    async prompt(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
+      if (!deferred) return 'unavailable';
+      const ev = deferred;
+      await ev.prompt();
+      const choice = await ev.userChoice;
+      deferred = null;
+      notifyAll();
+      return choice.outcome;
+    },
+  };
+}
+
 const barBtn = 'gov-tap inline-flex min-h-11 items-center justify-center gap-1 rounded-lg px-3 text-xs font-bold';
 
 /**
@@ -36,32 +84,21 @@ const barBtn = 'gov-tap inline-flex min-h-11 items-center justify-center gap-1 r
  */
 export function PwaBar() {
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
-  const [installEvent, setInstallEvent] = useState<InstallEvent | null>(null);
   const [hidden, setHidden] = useState(() => flag(INSTALL_HIDDEN_KEY));
   const [iosHidden, setIosHidden] = useState(() => flag(IOS_HINT_HIDDEN_KEY));
   const [update, setUpdate] = useState<ServiceWorker | null>(null);
-  const standalone = isNative() || (typeof window !== 'undefined' && isStandalone({ matchMedia: window.matchMedia?.bind(window), navigator: navigator as { standalone?: boolean } }));
-  const ios = typeof navigator !== 'undefined' && isIosSafari(navigator.userAgent, navigator.maxTouchPoints);
+  const { standalone, ios, canPrompt, prompt } = useInstall();
 
   useEffect(() => {
     const on = () => setOnline(true);
     const off = () => setOnline(false);
-    const before = (e: Event) => {
-      e.preventDefault();
-      setInstallEvent(e as InstallEvent);
-    };
-    const installed = () => setInstallEvent(null);
     const upd = (e: Event) => setUpdate((e as CustomEvent<ServiceWorker>).detail);
     window.addEventListener('online', on);
     window.addEventListener('offline', off);
-    window.addEventListener('beforeinstallprompt', before);
-    window.addEventListener('appinstalled', installed);
     window.addEventListener(UPDATE_EVENT, upd);
     return () => {
       window.removeEventListener('online', on);
       window.removeEventListener('offline', off);
-      window.removeEventListener('beforeinstallprompt', before);
-      window.removeEventListener('appinstalled', installed);
       window.removeEventListener(UPDATE_EVENT, upd);
     };
   }, []);
@@ -87,7 +124,7 @@ export function PwaBar() {
           </button>
         </div>
       )}
-      {!standalone && installEvent && !hidden && (
+      {!standalone && canPrompt && !hidden && (
         <div className="flex items-center justify-between gap-2 bg-ink-800 px-3 py-1 text-xs text-sand-100">
           <span>Install AeroMatrix on this phone for one-tap access.</span>
           <span className="flex items-center gap-1">
@@ -95,8 +132,7 @@ export function PwaBar() {
               type="button"
               className={`${barBtn} bg-accent-500 text-white`}
               onClick={() => {
-                void installEvent.prompt();
-                setInstallEvent(null);
+                void prompt();
               }}
             >
               <Download size={14} /> Install

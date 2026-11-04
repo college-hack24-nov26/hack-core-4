@@ -6,8 +6,16 @@ export const USER_VIEWS: UserView[] = ['home', 'map', 'stations', 'shop', 'setti
 /** Classic is the warm original look; glass and glass-adv are the blue and white frosted designs. */
 export type UiTheme = 'classic' | 'glass' | 'glass-adv';
 
+export type ThemeChoice = 'system' | 'light' | 'dark';
+export type TempUnit = 'c' | 'f';
+
 export interface UserSettings {
   ui: UiTheme;
+  /** light, dark, or follow the phone */
+  theme: ThemeChoice;
+  tempUnit: TempUnit;
+  /** the area Home opens on (null = the whole city) */
+  homeZoneId: string | null;
 }
 
 export type ComplaintState = 'sent' | 'queued';
@@ -52,6 +60,9 @@ export interface DeviceReading {
 export const SETTINGS_KEY = 'aeromatrix.user.settings.v1';
 export const COMPLAINTS_KEY = 'aeromatrix.user.complaints.v1';
 export const DEVICE_KEY = 'aeromatrix.user.device.v1';
+export const OLD_THEME_KEY = 'aeromatrix.user.theme';
+
+export const DEFAULT_SETTINGS: UserSettings = { ui: 'glass-adv', theme: 'system', tempUnit: 'c', homeZoneId: null };
 
 function read<T>(key: string, fallback: T, valid: (x: unknown) => boolean): T {
   try {
@@ -94,16 +105,20 @@ export interface UserState {
   setSettings: (patch: Partial<UserSettings>) => void;
   addComplaint: (c: ComplaintRecord) => void;
   updateComplaint: (id: string, patch: Partial<ComplaintRecord>) => void;
+  /** forget everything this app keeps on the phone: settings, complaints and the device */
+  clearMyData: () => void;
   setDevice: (d: DeviceRecord | null) => void;
   patchDevice: (patch: Partial<DeviceRecord>) => void;
 }
 
+const initial: UserSettings = { ...DEFAULT_SETTINGS, ...read<Partial<UserSettings>>(SETTINGS_KEY, {}, isObject) };
+
 export const useUserStore = create<UserState>((set, get) => ({
   view: 'home',
   selectedStationId: null,
-  selectedZoneId: null,
+  selectedZoneId: initial.homeZoneId,
   mapFocus: null,
-  settings: { ui: 'glass-adv', ...read<Partial<UserSettings>>(SETTINGS_KEY, {}, isObject) },
+  settings: initial,
   complaints: read<ComplaintRecord[]>(COMPLAINTS_KEY, [], validComplaints),
   device: read<DeviceRecord | null>(DEVICE_KEY, null, validDevice),
 
@@ -125,6 +140,10 @@ export const useUserStore = create<UserState>((set, get) => ({
     const next = get().complaints.map((c) => (c.id === id ? { ...c, ...patch } : c));
     write(COMPLAINTS_KEY, next);
     set({ complaints: next });
+  },
+  clearMyData() {
+    for (const k of [SETTINGS_KEY, COMPLAINTS_KEY, DEVICE_KEY, OLD_THEME_KEY]) write(k, null);
+    set({ settings: { ...DEFAULT_SETTINGS }, complaints: [], device: null, selectedZoneId: null, selectedStationId: null });
   },
   setDevice(d) {
     write(DEVICE_KEY, d);
