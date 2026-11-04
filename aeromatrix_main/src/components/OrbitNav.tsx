@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Factory, Grid3x3, LayoutDashboard, ListChecks, MapPinned, RadioTower, SlidersHorizontal, Wind, type LucideIcon } from 'lucide-react';
-import { LogoMark } from './Brand';
 import { useTwinStore } from '../store/useTwinStore';
 import type { Section } from '../types';
 
@@ -129,7 +128,7 @@ export function OrbitNav() {
             aria-label={SECTION_LABEL[item.id]}
             aria-current={active ? 'page' : undefined}
             onClick={() => choose(item.id)}
-            className={`group absolute flex items-center justify-center rounded-full shadow-xl hairline transition-all duration-300 ease-out-soft ${
+            className={`group absolute flex items-center justify-center rounded-full shadow-xl hairline transition-all duration-300 ease-out-soft hover:z-20 focus-visible:z-20 ${
               active ? 'bg-accent-500 text-sand-50' : 'bg-ink-900 text-sand-100 hover:bg-ink-700'
             } ${open ? 'scale-100 opacity-100' : 'pointer-events-none invisible scale-50 opacity-0'}`}
             style={{
@@ -141,7 +140,15 @@ export function OrbitNav() {
             }}
           >
             <Icon size={20} />
-            <span className="pointer-events-none absolute left-full top-1/2 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md bg-ink-900 px-2 py-1 text-xs font-semibold text-sand-100 opacity-0 shadow-lg hairline transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            {/* The name sits on the outer side of the arc (away from the launcher and the other icons), so it never covers a neighbour. */}
+            <span
+              className="pointer-events-none absolute whitespace-nowrap rounded-md bg-ink-900 px-2 py-1 text-xs font-semibold text-sand-100 opacity-0 shadow-lg hairline transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+              style={{
+                left: '50%',
+                top: '50%',
+                transform: `translate(calc(-50% + ${Math.cos(rad) * 50}% + ${Math.cos(rad) * (ITEM / 2 + 8)}px), calc(-50% + ${Math.sin(rad) * 50}% + ${Math.sin(rad) * (ITEM / 2 + 8)}px))`,
+              }}
+            >
               {SECTION_LABEL[item.id]}
             </span>
           </button>
@@ -155,11 +162,11 @@ export function OrbitNav() {
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={toggle}
-        className={`absolute inset-0 flex items-center justify-center overflow-hidden rounded-full bg-ink-950 shadow-2xl ring-2 ring-sand-400/30 transition-transform ${
-          open ? 'rotate-90' : 'animate-pulse-ring'
+        className={`absolute inset-0 z-30 flex aspect-square items-center justify-center overflow-hidden rounded-full bg-[#fcf1e6] shadow-2xl ring-2 transition-all ${
+          open ? 'scale-95 ring-accent-500' : 'animate-pulse-ring ring-accent-500/50'
         }`}
       >
-        <LogoMark size={LAUNCHER - 8} />
+        <img src="/aeromatrix-logo.png" alt="" width={LAUNCHER} height={LAUNCHER} draggable={false} className="h-[70%] w-[70%] object-contain" />
       </button>
     </div>
   );

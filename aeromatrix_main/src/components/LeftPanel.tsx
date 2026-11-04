@@ -81,17 +81,19 @@ function Overview() {
     const counts: Record<RiskLevel, number> = { LOW: 0, MODERATE: 0, HIGH: 0, VERY_HIGH: 0 };
     adj.forEach((r) => (counts[r.state.risk] += 1));
     const top = [...adj].sort((a, b) => b.state.pm25 - a.state.pm25).slice(0, 5);
-    return { mean, counts, top, total: adj.length };
+    return { mean, counts, top, total: adj.length, byId: new Map(adj.map((r) => [r.cell.id, { pm25: r.state.pm25, risk: r.state.risk, name: r.name }])) };
   }, [rows, live, base0, baseline0]);
   if (!base) return null;
   const w = base.weather;
-  const shownMean = stats.mean;
-  const meanRisk = riskFromPm25(shownMean);
+  // With a zone chosen, the figures at the top and the air quality card are that zone's; otherwise the city's.
+  const zoneStat = selectedCellId ? stats.byId.get(selectedCellId) : undefined;
+  const shownMean = zoneStat ? zoneStat.pm25 : stats.mean;
+  const meanRisk = zoneStat ? zoneStat.risk : riskFromPm25(shownMean);
 
   return (
     <>
       <div className="flex items-end justify-between gap-3 pt-3">
-        <Stat label="City average PM2.5" value={fmt(shownMean)} unit="ug/m3" />
+        <Stat label={zoneStat ? `${zoneStat.name} PM2.5` : 'City average PM2.5'} value={fmt(shownMean)} unit="ug/m3" />
         <span
           className="mb-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
           style={{ background: RISK_COLOR[meanRisk] }}
@@ -101,10 +103,10 @@ function Overview() {
       </div>
 
       <Section title="Air quality now">
-        <LiveStrip />
+        <LiveStrip cityPm25={stats.mean} zoneName={zoneStat?.name} />
       </Section>
 
-      <ZoneCauses />
+      <ZoneCauses zonePm25={zoneStat?.pm25} cityAvg={stats.mean} />
 
       <Section title="Risk distribution">
         <ul className="space-y-1.5">

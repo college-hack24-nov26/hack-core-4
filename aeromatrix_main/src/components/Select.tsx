@@ -73,13 +73,18 @@ export function Select({ value, onChange, children, className = '', disabled, id
       setOpen(false);
     };
     const close = () => setOpen(false);
+    // Scrolling the menu itself must not close it; scrolling the page behind it does.
+    const onScroll = (e: Event) => {
+      if (list.current && e.target instanceof Node && list.current.contains(e.target)) return;
+      setOpen(false);
+    };
     document.addEventListener('pointerdown', down);
     window.addEventListener('resize', close);
-    window.addEventListener('scroll', close, true);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('pointerdown', down);
       window.removeEventListener('resize', close);
-      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('scroll', onScroll, true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);

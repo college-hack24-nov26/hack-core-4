@@ -9,14 +9,12 @@ import { Section } from './ui';
 const STRENGTH: Record<string, string> = { Strong: 'bg-accent-500 text-white', Moderate: 'bg-amber-500/25 text-amber-800', Weak: 'bg-ink-700 text-sand-200' };
 
 /** "Why the air is like this here": the likely causes of the selected zone, with their evidence. Nothing shows until a zone is selected. */
-export function ZoneCauses() {
+export function ZoneCauses({ zonePm25, cityAvg }: { zonePm25?: number; cityAvg?: number }) {
   const base = useTwinStore((s) => s.base);
   const id = useTwinStore((s) => s.selectedCellId);
   const names = useTwinStore((s) => s.placeNames);
   const live = useTwinStore((s) => s.live);
   const select = useTwinStore((s) => s.selectCell);
-  const baseline = useTwinStore((s) => s.baseline);
-  const zonePm = id ? baseline.find((b) => b.cellId === id)?.pm25 : undefined;
   const cell = id ? base?.cells.find((c) => c.id === id) : undefined;
   const causes = useMemo(() => {
     if (!base || !cell) return [];
@@ -34,9 +32,9 @@ export function ZoneCauses() {
         </button>
       }
     >
-      {zonePm !== undefined && (
+      {zonePm25 !== undefined && cityAvg !== undefined && (
         <p className="mb-2 text-xs text-sand-300">
-          This zone: <strong className="text-sand-50">{zonePm.toFixed(1)} ug/m3</strong> PM2.5, against a city average of {(baseline.reduce((a, b) => a + b.pm25, 0) / Math.max(1, baseline.length)).toFixed(1)}.
+          This zone: <strong className="text-sand-50">{zonePm25.toFixed(1)} ug/m3</strong> PM2.5, against a city average of {cityAvg.toFixed(1)}.
         </p>
       )}
       {causes.length === 0 ? (

@@ -4,13 +4,15 @@ import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Too
 import { useTwinStore } from '../store/useTwinStore';
 import { Section } from './ui';
 import { AqiCard } from './AqiCard';
-import { localFactors } from '../services/localVariation';
+import { localFactors, scalePoint } from '../services/localVariation';
+import { aqiForPoint } from '../services/openMeteo';
 import { CHART } from './chartTheme';
 import {
   LIVE_REFRESH_MINUTES,
   cityAqiEstimate,
   cityHourly,
   isLiveFresh,
+  liveValue,
   nextRefreshAt,
   refreshLiveNow,
   zonePointId,
@@ -55,16 +57,42 @@ function AqiPill({ category, text }: { category: AqiCategory | null; text: strin
   );
 }
 
-/** The headline card for a city AQI estimate plus the live weather. */
-function CityAqiCard({ est, weather }: { est: AqiResult; weather: ReturnType<typeof useTwinStore.getState>['live']['weather'] }) {
+/**
+ * The live air quality of the place in view: the chosen zone (its model point scaled by the zone's local factor, the same
+ * numbers as the zone panel and the map), or the whole city when no zone is chosen.
+ */
+function useAirNow(cellId: string | null) {
+  const live = useTwinStore((s) => s.live);
+  const base = useTwinStore((s) => s.base);
+  const baseline = useTwinStore((s) => s.baseline);
+  const now = useNow();
+  const fresh = isLiveFresh(live, now);
+  return useMemo(() => {
+    if (!fresh) return null;
+    if (cellId && base) {
+      const raw = live.points[zonePointId(cellId)];
+      if (raw) {
+        const point = scalePoint(raw, localFactors(base, live.points, baseline)[cellId] ?? 1);
+        const est = aqiForPoint(point.times, point.hourly, now).aqi;
+        if (est && est.value !== null) return { est, point, zone: true };
+      }
+    }
+    const est = cityAqiEstimate(live.points, now);
+    return est ? { est, point: null as LiveAirPoint | null, zone: false } : null;
+  }, [fresh, cellId, base, baseline, live.points, now]);
+}
+
+/** The headline card for an AQI estimate plus the live weather. `current` is the dominant pollutant's value right now. */
+function CityAqiCard({ est, weather, current }: { est: AqiResult; weather: ReturnType<typeof useTwinStore.getState>['live']['weather']; current?: number | null }) {
   const dom = est.dominant_pollutant;
   const sub = dom ? est.subindices[dom] : undefined;
+  const conc = current ?? sub?.concentration ?? null;
   return (
     <AqiCard
       value={est.value}
       category={est.category}
       mainPollutant={dom ? POLLUTANT_LABEL[dom] : null}
-      concentration={sub && dom ? `${fmt(sub.concentration, dom === 'co' ? 2 : 1)} ${POLLUTANT_UNIT[dom]}` : null}
+      concentration={conc !== null && dom ? `${fmt(conc, dom === 'co' ? 2 : 1)} ${POLLUTANT_UNIT[dom]}` : null}
       weather={weather ? { temperature: weather.temperature, windKmh: weather.windSpeed === null ? null : weather.windSpeed * 3.6, humidity: weather.humidity } : null}
     />
   );
@@ -90,24 +118,30 @@ function RefreshButton() {
 }
 
 /** Overview: the live strip (city AQI estimate from Open-Meteo, freshness, stations, next-24 h trend). */
-export function LiveStrip() {
+export function LiveStrip({ cityPm25, zoneName }: { cityPm25?: number; zoneName?: string }) {
   const live = useTwinStore((s) => s.live);
+  const selected = useTwinStore((s) => s.selectedCellId);
   const setMode = useTwinStore((s) => s.setDisplayMode);
   const now = useNow();
   const fresh = isLiveFresh(live, now);
 
-  const est = useMemo(() => (fresh ? cityAqiEstimate(live.points, now) : null), [fresh, live.points, now]);
+  const air = useAirNow(selected);
+  const est = air?.est ?? null;
+  const dom = est?.dominant_pollutant ?? null;
+  // the value shown beside the main pollutant matches the number in the zone panel (or the city average above)
+  const current = !air ? null : air.zone ? (dom && air.point ? liveValue(air.point, dom, now) : null) : dom === 'pm25' ? (cityPm25 ?? null) : null;
   const trend = useMemo(() => {
     if (!fresh) return null;
-    const c = cityHourly(live.points);
+    const c = air?.point ?? cityHourly(live.points);
     return c ? aqiTrend(dailyForecast(c), istDate(now / 1000)) : null;
-  }, [fresh, live.points, now]);
+  }, [fresh, air?.point, live.points, now]);
 
   return (
     <div aria-label="Live city air quality" className="space-y-2">
       {fresh && est ? (
         <>
-          <CityAqiCard est={est} weather={live.weather} />
+          {air?.zone && zoneName && <p className="px-1 text-xs font-semibold text-sand-200">{zoneName}</p>}
+          <CityAqiCard est={est} weather={live.weather} current={current} />
           <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-sand-400">
             <span>
               Updated {live.lastUpdated ? fmtIstTime(live.lastUpdated) : '-'}
@@ -155,7 +189,10 @@ export function LiveNowTab() {
     return p.times.map((t, i) => ({ t: t * 1000, label: fmtIstTime(t * 1000).replace(' IST', ''), value: p.hourly[pollutant][i] === null ? null : (p.hourly[pollutant][i] as number) * factor }));
   }, [fresh, zone?.point, pollutant, factor]);
 
-  const est = useMemo(() => (fresh ? cityAqiEstimate(live.points, now) : null), [fresh, live.points, now]);
+  const selectedId = useTwinStore((s) => s.selectedCellId);
+  const air = useAirNow(selectedId);
+  const est = air?.est ?? null;
+  const estDom = est?.dominant_pollutant ?? null;
 
   return (
     <div className="space-y-3 py-2">
@@ -167,7 +204,7 @@ export function LiveNowTab() {
       ) : (
         zone && (
           <>
-            {est && <CityAqiCard est={est} weather={live.weather} />}
+            {est && <CityAqiCard est={est} weather={live.weather} current={air?.zone && estDom && air.point ? liveValue(air.point, estDom, now) : null} />}
             <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-sand-400">
               <span>
                 {zone.name} · updated {live.lastUpdated ? fmtIstTime(live.lastUpdated) : '-'}
@@ -284,7 +321,13 @@ export function ForecastTab() {
   const zone = useLiveZone();
   const now = useNow();
   const fresh = isLiveFresh(live, now);
-  const days = useMemo(() => (fresh && zone?.point ? dailyForecast(zone.point) : []), [fresh, zone?.point]);
+  const base = useTwinStore((s) => s.base);
+  const baseline = useTwinStore((s) => s.baseline);
+  const days = useMemo(() => {
+    if (!fresh || !zone?.point) return [];
+    const f = base && zone ? (localFactors(base, live.points, baseline)[zone.cell.id] ?? 1) : 1;
+    return dailyForecast(scalePoint(zone.point, f));
+  }, [fresh, zone, base, baseline, live.points]);
 
   return (
     <div className="space-y-3 py-2">
