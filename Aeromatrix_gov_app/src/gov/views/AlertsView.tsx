@@ -8,6 +8,7 @@ import { STATUS_LABEL } from '../lib/stations';
 import { AqiChip, Btn, EmptyState, Field, PageTitle, Pills, StatusChip, inputCls, type ChipKind } from '../ui';
 import { Sheet } from '../Sheet';
 import { InstructionComposer } from './InstructionComposer';
+import { Select } from '../../components/Select';
 
 const SEV_COLOR: Record<AlertSeverity, string> = { critical: '#d9372f', high: '#f08c1a', watch: '#e0b100', info: '#9a8a80' };
 const STATUS_TEXT: Record<AlertStatus, string> = { new: 'New', acknowledged: 'Acknowledged', assigned: 'Assigned', resolved: 'Resolved' };
@@ -254,14 +255,14 @@ export function AlertsView() {
             { value: 'resolved', label: 'Resolved', count: count('resolved') },
           ]}
         />
-        <select value={severity} onChange={(e) => setSeverity(e.target.value as AlertSeverity | 'all')} aria-label="Severity" className={`${inputCls} sm:!w-auto`}>
+        <Select value={severity} onChange={(e) => setSeverity(e.target.value as AlertSeverity | 'all')} aria-label="Severity" className={`${inputCls} sm:!w-auto`}>
           <option value="all">All severities</option>
           {(['critical', 'high', 'watch', 'info'] as AlertSeverity[]).map((s) => (
             <option key={s} value={s}>
               {SEVERITY_LABEL[s]}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {shown.length === 0 ? (

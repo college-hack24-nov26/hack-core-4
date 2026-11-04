@@ -10,6 +10,7 @@ import { builtUpCells } from '../scenarios/actions';
 import { cellAreaKm2 } from '../utils/geo';
 import { fmt } from '../utils/format';
 import type { IndustryCategory } from '../types';
+import { Select } from '../components/Select';
 
 const CATEGORIES: IndustryCategory[] = ['Manufacturing', 'Chemical', 'Power', 'Metal', 'Processing'];
 const selectCls = 'h-9 w-full rounded-lg bg-ink-950 px-2 text-xs text-sand-50 hairline';
@@ -170,7 +171,7 @@ export function WhatIfPanel() {
         />
         <label className="block text-[11px] text-sand-400">
           Road to close
-          <select value={closeId} onChange={(e) => setCloseId(e.target.value)} className={selectCls}>
+          <Select value={closeId} onChange={(e) => setCloseId(e.target.value)} className={selectCls}>
             <option value="">Choose a road…</option>
             {roads
               .filter((r) => !closedIds.has(r.id))
@@ -179,11 +180,11 @@ export function WhatIfPanel() {
                   {r.name} ({r.roadClass ?? 'road'})
                 </option>
               ))}
-          </select>
+          </Select>
         </label>
         <label className="mt-1.5 block text-[11px] text-sand-400">
           Divert traffic to (optional)
-          <select value={divertId} onChange={(e) => setDivertId(e.target.value)} className={selectCls}>
+          <Select value={divertId} onChange={(e) => setDivertId(e.target.value)} className={selectCls}>
             <option value="">No diversion (traffic spills onto local streets)</option>
             {base.roads
               .filter((r) => r.id !== closeId && !closedIds.has(r.id) && r.volume >= 50)
@@ -193,7 +194,7 @@ export function WhatIfPanel() {
                   {r.name} ({r.roadClass ?? 'road'})
                 </option>
               ))}
-          </select>
+          </Select>
         </label>
         {divertId && (
           <ParamSlider
@@ -249,7 +250,7 @@ export function WhatIfPanel() {
         <div className="grid grid-cols-2 gap-2">
           <label className="text-[11px] text-sand-400">
             New unit type
-            <select
+            <Select
               value={pending.category}
               onChange={(e) => setPending({ category: e.target.value as IndustryCategory })}
               className={selectCls}
@@ -257,7 +258,7 @@ export function WhatIfPanel() {
               {CATEGORIES.map((c) => (
                 <option key={c}>{c}</option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="text-[11px] text-sand-400">
             Intensity (0-100)
@@ -489,7 +490,7 @@ export function WhatIfPanel() {
         title="Effect at a station"
         hint="See what this scenario could mean at one monitoring station."
       >
-        <select
+        <Select
           value={regionId}
           onChange={(e) => setRegionId(e.target.value)}
           aria-label="Monitoring region"
@@ -503,7 +504,7 @@ export function WhatIfPanel() {
                 {s.name}
               </option>
             ))}
-        </select>
+        </Select>
         {catalog.stations.every((s) => !s.api) && (
           <p className="mt-1 text-[11px] text-sand-400">Station data is not available right now.</p>
         )}

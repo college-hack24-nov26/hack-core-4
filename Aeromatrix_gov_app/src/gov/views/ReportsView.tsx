@@ -15,6 +15,7 @@ import { reportContent, reportFileName, type ReportInput } from '../report/govRe
 import { downloadReport, reportBlob } from '../report/reportActions';
 import { ReportPreview } from '../report/ReportPreview';
 import { Btn, Card, EmptyState, Field, PageTitle, SectionCard, Skeleton, inputCls } from '../ui';
+import { Select } from '../../components/Select';
 
 let apportionmentCache: Promise<ApportionmentLoad> | null = null;
 const apportionment = () => (apportionmentCache ??= loadApportionment());
@@ -135,7 +136,7 @@ export function ReportsView() {
         <SectionCard title="Report for">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Area">
-              <select
+              <Select
                 value={targetId ?? ''}
                 onChange={(e) => {
                   setSimTarget(e.target.value);
@@ -144,22 +145,22 @@ export function ReportsView() {
                 className={inputCls}
                 disabled={!!scenario}
               >
-                {hot.zones.map((h) => (
-                  <option key={h.id} value={h.zone!.id}>
-                    {h.name} · AQI {h.aqi}
+                {[...air.zones].sort((x, y) => y.aqi - x.aqi || x.place.localeCompare(y.place)).map((z) => (
+                  <option key={z.id} value={z.id}>
+                    {z.place} · AQI {z.aqi}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field label="Plan">
-              <select value={reportScenarioId ?? ''} onChange={(e) => setReportScenario(e.target.value || null)} className={inputCls}>
+              <Select value={reportScenarioId ?? ''} onChange={(e) => setReportScenario(e.target.value || null)} className={inputCls}>
                 <option value="">Current Simulator selection{hasMeasures(measures) ? ` (${measureLabels(measures).join(', ')})` : ''}</option>
                 {scenarios.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
           </div>
           <div className="mt-4">

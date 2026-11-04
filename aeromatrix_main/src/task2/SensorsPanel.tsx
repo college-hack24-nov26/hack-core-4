@@ -33,6 +33,7 @@ import {
 } from './task2Api';
 import { fmt } from '../utils/format';
 import { haversineKm } from '../utils/geo';
+import { Select } from '../components/Select';
 
 type Svc = { status: 'checking' } | { status: 'offline'; reason: string } | { status: 'online'; stations: Array<{ id: string; name: string }>; cases: T2Cases };
 
@@ -228,11 +229,11 @@ export function SensorsPanel() {
           <div className="space-y-2">
             <label className="block text-xs text-sand-300">
               Station
-              <select value={station} onChange={(e) => setStation(e.target.value)} className={sel}>
+              <Select value={station} onChange={(e) => setStation(e.target.value)} className={sel}>
                 {offered.map((s) => (
                   <option key={s.id} value={s.id}>{s.name} ({shortName(s.id)})</option>
                 ))}
-              </select>
+              </Select>
             </label>
             <div className="grid grid-cols-2 gap-2">
               <label className="text-xs text-sand-300">
@@ -241,11 +242,11 @@ export function SensorsPanel() {
               </label>
               <label className="text-xs text-sand-300">
                 Hour (IST)
-                <select value={hour} onChange={(e) => setHour(Number(e.target.value))} className={sel}>
+                <Select value={hour} onChange={(e) => setHour(Number(e.target.value))} className={sel}>
                   {Array.from({ length: 24 }, (_, h) => (
                     <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
                   ))}
-                </select>
+                </Select>
               </label>
             </div>
             <Section title="Deliberate sensor loss">
@@ -256,19 +257,19 @@ export function SensorsPanel() {
               <div className="grid grid-cols-2 gap-2">
                 <label className="text-xs text-sand-300">
                   Pattern
-                  <select value={pattern} onChange={(e) => setPattern(e.target.value as T2Pattern)} className={sel}>
+                  <Select value={pattern} onChange={(e) => setPattern(e.target.value as T2Pattern)} className={sel}>
                     {T2_PATTERNS.map((p) => (
                       <option key={p.value} value={p.value} title={p.hint}>{p.label}</option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
                 <label className="text-xs text-sand-300">
                   Seed
-                  <select value={seed} onChange={(e) => setSeed(Number(e.target.value))} className={sel}>
+                  <Select value={seed} onChange={(e) => setSeed(Number(e.target.value))} className={sel}>
                     {T2_SEEDS.map((s) => (
                       <option key={s}>{s}</option>
                     ))}
-                  </select>
+                  </Select>
                 </label>
               </div>
               <Toggle label="Treat the station as unseen (use its excluded-station model)" checked={unseen} onChange={setUnseen} />

@@ -26,6 +26,7 @@ import {
 import { RELOCATION_SITE } from '../scenarios/actions';
 import { fmt, fmtInt } from '../utils/format';
 import type { Industry } from '../types';
+import { Select } from './Select';
 
 function useIndustry(): IndustryData | null {
   return useTwinStore((s) => (s.industry?.status === 'loaded' ? s.industry.data : null));
@@ -109,12 +110,12 @@ function ActionBox({ sources, areaCode }: { sources: Industry[]; areaCode: numbe
           <div className="grid grid-cols-2 gap-2">
             <label className="text-[11px] text-sand-400">
               Fuel
-              <select value={fuel} onChange={(e) => setFuel(e.target.value)} className="h-9 w-full rounded-lg bg-ink-950 px-2 text-xs text-sand-50 hairline">
+              <Select value={fuel} onChange={(e) => setFuel(e.target.value)} className="h-9 w-full rounded-lg bg-ink-950 px-2 text-xs text-sand-50 hairline">
                 <option value="">Choose…</option>
                 {fuels.map((f) => (
                   <option key={f.fuel} value={f.fuel}>{f.fuel}</option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="text-[11px] text-sand-400">
               Quantity {factor ? `(${factor.denominator.split('/')[1] ?? 'units'})` : ''}

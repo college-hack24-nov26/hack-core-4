@@ -17,6 +17,7 @@ import { emptyDataset, observedSeries, summariseStations, validateModel, type Fi
 import { fmtIst } from '../services/pollutantData';
 import { POLLUTANT_LABEL, POLLUTANT_UNIT } from '../utils/colors';
 import { fmt, fmtInt } from '../utils/format';
+import { Select } from './Select';
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
@@ -239,13 +240,13 @@ function ObservationsSection() {
           </Section>
 
           <Section title={`Observed ${POLLUTANT_LABEL[pollutant]} by hour`} action={<StatusBadge status="OBSERVED" />}>
-            <select value={stationId} onChange={(e) => setChartStation(e.target.value)} aria-label="Station for the chart" className="mb-2 h-9 w-full rounded-lg bg-ink-950 px-2 text-xs text-sand-50 hairline">
+            <Select value={stationId} onChange={(e) => setChartStation(e.target.value)} aria-label="Station for the chart" className="mb-2 h-9 w-full rounded-lg bg-ink-950 px-2 text-xs text-sand-50 hairline">
               {ds.stations.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
               ))}
-            </select>
+            </Select>
             {series.length === 0 ? (
               <p className="text-xs text-sand-400">This station has no {POLLUTANT_LABEL[pollutant]} readings.</p>
             ) : (

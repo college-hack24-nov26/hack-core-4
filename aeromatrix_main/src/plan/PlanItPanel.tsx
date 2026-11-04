@@ -7,6 +7,7 @@ import { INTERVENTION_LABEL, PRICES, formatINR, type InterventionType } from './
 import { downloadPlanPdf } from './planPdf';
 import { zoneLabel } from '../utils/zones';
 import { fmt } from '../utils/format';
+import { Select } from '../components/Select';
 
 const BUDGET_PRESETS = [500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000];
 const TYPES: InterventionType[] = ['trees', 'industry', 'traffic'];
@@ -57,24 +58,24 @@ function Form() {
       </Section>
 
       <Section title="Target">
-        <select value={plan.targetId} onChange={(e) => patch({ targetId: e.target.value })} aria-label="Target" className={inputCls}>
+        <Select value={plan.targetId} onChange={(e) => patch({ targetId: e.target.value })} aria-label="Target" className={inputCls}>
           <option value="city">The whole city</option>
           {base.cells.map((c) => (
             <option key={c.id} value={c.id}>
               {zoneLabel(c, names)} ({c.id})
             </option>
           ))}
-        </select>
+        </Select>
       </Section>
 
       <Section title="Operational limits">
         <label className="block text-xs text-sand-300">
           Measures allowed in one plan
-          <select value={plan.limits.maxInterventions} onChange={(e) => patch({ limits: { ...plan.limits, maxInterventions: Number(e.target.value) } })} className={`${inputCls} mt-1`}>
+          <Select value={plan.limits.maxInterventions} onChange={(e) => patch({ limits: { ...plan.limits, maxInterventions: Number(e.target.value) } })} className={`${inputCls} mt-1`}>
             {[1, 2, 3].map((n) => (
               <option key={n}>{n}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <fieldset className="mt-2">
           <legend className="text-[11px] text-sand-400">Not available (cannot be done here)</legend>

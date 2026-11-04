@@ -135,7 +135,8 @@ export function GovApp() {
   return (
     <div className="gov-root flex h-dvh flex-col overflow-hidden bg-ink-950 text-sand-100">
       <PwaBar />
-      <header className="gov-header relative z-30 flex min-h-12 shrink-0 items-center justify-between gap-3 border border-sand-500/20 bg-ink-900/95 py-1 backdrop-blur">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+      <header className="gov-header absolute inset-x-0 top-0 z-30 flex min-h-12 shrink-0 items-center justify-between gap-3 border border-sand-500/20 bg-ink-900/95 py-1 backdrop-blur">
         <div className="flex min-w-0 items-center gap-2">
           <LogoMark size={26} />
           <span className="truncate font-display text-[15px] font-bold tracking-tight text-sand-50">
@@ -158,7 +159,7 @@ export function GovApp() {
         </div>
       </header>
 
-      <main className="relative min-h-0 flex-1 overflow-hidden" aria-label={VIEW_LABEL[view]}>
+      <main className="absolute inset-0 overflow-hidden" aria-label={VIEW_LABEL[view]}>
         {view === 'map' ? (
           <MapView />
         ) : (
@@ -195,6 +196,7 @@ export function GovApp() {
         )}
       </main>
       {hasBase && <BottomNav />}
+      </div>
     </div>
   );
 }

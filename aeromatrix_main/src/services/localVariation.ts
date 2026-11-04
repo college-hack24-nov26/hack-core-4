@@ -8,6 +8,13 @@ import type { BaseState, CellState } from '../types';
 import type { LiveAirPoint } from './liveData';
 import { zonePointId } from './liveData';
 
+/** The same model point with every concentration scaled by a zone's local factor. */
+export function scalePoint(p: LiveAirPoint, f: number): LiveAirPoint {
+  if (f === 1) return p;
+  const hourly = Object.fromEntries(Object.entries(p.hourly).map(([k, arr]) => [k, (arr as Array<number | null>).map((v) => (typeof v === 'number' ? v * f : v))])) as LiveAirPoint['hourly'];
+  return { ...p, hourly };
+}
+
 const gridKey = (p: LiveAirPoint): string => `${p.grid[1].toFixed(2)},${p.grid[0].toFixed(2)}`;
 
 export function localFactors(base: BaseState, points: Record<string, LiveAirPoint>, baseline: CellState[]): Record<string, number> {

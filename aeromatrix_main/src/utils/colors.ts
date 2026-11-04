@@ -150,3 +150,30 @@ export function deltaScaleFor(p: Pollutant, values: number[]): number {
   const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
   return step * mag;
 }
+
+/** Colour of a US AQI value (0-500): green, yellow, orange, red, purple, maroon, blended between the band edges. */
+const AQI_RAMP: Array<[number, RGB]> = [
+  [0, [47, 174, 139]],
+  [50, [47, 174, 139]],
+  [100, [232, 193, 0]],
+  [150, [240, 140, 26]],
+  [200, [217, 55, 47]],
+  [300, [140, 29, 94]],
+  [500, [94, 21, 53]],
+];
+export function aqiColor(v: number): RGB {
+  const x = Math.max(0, Math.min(500, v));
+  for (let i = 1; i < AQI_RAMP.length; i++) {
+    if (x <= AQI_RAMP[i][0]) {
+      const [a, ca] = AQI_RAMP[i - 1];
+      const [b, cb] = AQI_RAMP[i];
+      const k = (x - a) / (b - a || 1);
+      return [ca[0] + (cb[0] - ca[0]) * k, ca[1] + (cb[1] - ca[1]) * k, ca[2] + (cb[2] - ca[2]) * k];
+    }
+  }
+  return AQI_RAMP[AQI_RAMP.length - 1][1];
+}
+export function aqiLegendGradient(): string {
+  const stops = AQI_RAMP.map(([v, c]) => `rgb(${c[0]},${c[1]},${c[2]}) ${Math.round((v / 500) * 100)}%`);
+  return `linear-gradient(to right, ${stops.join(', ')})`;
+}

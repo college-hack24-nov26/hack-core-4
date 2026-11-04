@@ -9,6 +9,7 @@ import { isLiveFresh } from '../services/liveData';
 import { SOURCE_COLORS, SOURCE_LABELS } from '../utils/colors';
 import { fmt } from '../utils/format';
 import type { SourceContribution } from '../types';
+import { Select } from './Select';
 
 const SOURCES: Array<keyof SourceContribution> = ['traffic', 'industry', 'background', 'other'];
 
@@ -201,7 +202,7 @@ export function AnalyticsPanel() {
           <p className="rounded-xl bg-ink-850 p-3 text-xs text-sand-300 hairline">No station has a data feed, so there is no forecast chart.</p>
         ) : (
           <>
-            <select
+            <Select
               value={stationId ?? ''}
               onChange={(e) => {
                 setStationId(e.target.value || null);
@@ -214,7 +215,7 @@ export function AnalyticsPanel() {
               {feeds.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
-            </select>
+            </Select>
             <RegionScenarioSection stationId={stationId} />
           </>
         )}

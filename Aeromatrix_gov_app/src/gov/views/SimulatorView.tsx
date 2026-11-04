@@ -13,6 +13,7 @@ import { formatIst, signed } from '../lib/format';
 import { isLite } from '../lib/perf';
 import { CompareChart } from '../charts';
 import { AqiChip, Btn, Card, EmptyState, Field, PageTitle, SectionCard, StatusChip, Table, inputCls } from '../ui';
+import { Select } from '../../components/Select';
 
 function Choice<T extends string | number>({ label, value, options, onChange, disabledFor }: { label: string; value: T; options: Array<{ value: T; label: string }>; onChange: (v: T) => void; disabledFor?: (v: T) => boolean }) {
   return (
@@ -182,13 +183,13 @@ export function SimulatorView() {
       <div className="space-y-4">
         <SectionCard title="Area">
           <Field label="Where">
-            <select value={targetId ?? ''} onChange={(e) => setSimTarget(e.target.value)} className={inputCls}>
-              {hot.zones.map((h) => (
-                <option key={h.id} value={h.zone!.id}>
-                  {h.name} · AQI {h.aqi}
+            <Select value={targetId ?? ''} onChange={(e) => setSimTarget(e.target.value)} className={inputCls}>
+              {[...air.zones].sort((x, y) => y.aqi - x.aqi || x.place.localeCompare(y.place)).map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.place} · AQI {z.aqi}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           {zone && (
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl bg-ink-800 p-4">
@@ -206,14 +207,14 @@ export function SimulatorView() {
               <Choice label="Traffic" value={measures.traffic} onChange={(v) => set({ traffic: v })} options={[{ value: 'off', label: 'Off' }, { value: 'standard', label: 'Standard' }, { value: 'intensive', label: 'Intensive' }]} />
             </Field>
             <Field label="Close a road" hint={closures.length === 0 ? 'No major road in this area.' : undefined}>
-              <select value={measures.closureRoadId ?? ''} onChange={(e) => set({ closureRoadId: e.target.value || null })} className={inputCls} disabled={closures.length === 0}>
+              <Select value={measures.closureRoadId ?? ''} onChange={(e) => set({ closureRoadId: e.target.value || null })} className={inputCls} disabled={closures.length === 0}>
                 <option value="">None</option>
                 {closures.map((c) => (
                   <option key={c.road.id} value={c.road.id}>
                     {c.road.name} · {c.lengthKm.toFixed(1)} km
                   </option>
                 ))}
-              </select>
+              </Select>
             </Field>
             {measures.closureRoadId && (
               <Field label={`Traffic diverted: ${Math.round(measures.closureDiversion * 100)}%`}>

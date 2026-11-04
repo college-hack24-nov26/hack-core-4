@@ -57,11 +57,11 @@ export function Map2D(props: Map2DProps) {
     if (!el.current) return;
     const map = L.map(el.current, { zoomControl: false, preferCanvas: true, attributionControl: true });
     L.control.zoom({ position: 'topright' }).addTo(map);
-    // The same imagery as the city model: CARTO dark underneath, Esri satellite on top, place names above both.
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
-      subdomains: 'abcd',
+    // The same imagery as the city model (no key needed): Esri street map underneath, Esri satellite on top, place names above.
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
-      attribution: 'Basemap: &copy; CARTO, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxNativeZoom: 18,
+      attribution: 'Basemap: Esri, HERE, Garmin, OpenStreetMap contributors',
     }).addTo(map);
     L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
@@ -69,9 +69,9 @@ export function Map2D(props: Map2DProps) {
       className: 'gov-satellite',
       attribution: 'Imagery: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
     }).addTo(map);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png', {
-      subdomains: 'abcd',
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
+      maxNativeZoom: 18,
       pane: 'shadowPane',
     }).addTo(map);
     const b = base.city.bbox;

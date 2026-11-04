@@ -1,6 +1,6 @@
 ﻿import { useMemo } from 'react';
 import { useTwinStore } from '../store/useTwinStore';
-import { POLLUTANT_LABEL, POLLUTANT_RANGE, POLLUTANT_UNIT, deltaScaleFor, legendGradient } from '../utils/colors';
+import { POLLUTANT_LABEL, POLLUTANT_RANGE, POLLUTANT_UNIT, aqiLegendGradient, deltaScaleFor, legendGradient } from '../utils/colors';
 import { StatusBadge } from '../components/ui';
 import { useMapSource } from './heatSource';
 import { OSM_ATTRIBUTION } from '../services/osmGeometry';
@@ -38,7 +38,7 @@ export function MapLegend() {
     >
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="text-xs font-bold text-sand-50">
-          {showDelta ? `Change in ${POLLUTANT_LABEL[pollutant]}` : POLLUTANT_LABEL[pollutant]}
+          {showDelta ? `Change in ${POLLUTANT_LABEL[pollutant]}` : src.spec.kind === 'aqi' && src.values !== null ? 'AQI (US)' : POLLUTANT_LABEL[pollutant]}
         </span>
         {src.values === null ? <span className="rounded-full bg-ink-700 px-2 py-0.5 text-[10px] font-bold tracking-wider text-sand-300">NO OVERLAY</span> : <StatusBadge status={status} />}
       </div>
@@ -55,6 +55,18 @@ export function MapLegend() {
           </div>
           <div className="mt-1 text-[10px] text-sand-400">{POLLUTANT_UNIT[pollutant]}: blue = decrease, rose = increase</div>
           <div className="mt-1 text-[10px] text-sand-400">Outlined zones changed by 0.5 ug/m3 PM2.5 or more.</div>
+        </>
+      ) : src.spec.kind === 'aqi' && src.values !== null ? (
+        <>
+          <div className="h-2.5 w-full rounded-full" style={{ background: aqiLegendGradient() }} />
+          <div className="mt-1 flex justify-between font-mono text-[10px] text-sand-300">
+            <span>0</span>
+            <span>100</span>
+            <span>200</span>
+            <span>300</span>
+            <span>500</span>
+          </div>
+          <div className="mt-1 text-[10px] text-sand-400">US AQI: good, moderate, unhealthy, very unhealthy, hazardous</div>
         </>
       ) : (
         <>

@@ -271,6 +271,9 @@ interface TwinState {
   init: (gridSize?: number) => Promise<void>;
   setGridSize: (n: number) => Promise<void>;
   setPollutant: (p: Pollutant) => void;
+  /** the map and header show the US AQI instead of one pollutant */
+  aqiView: boolean;
+  setAqiView: (on: boolean) => void;
   selectCell: (id: string | null) => void;
   focusCell: (id: string) => void;
   selectIndustry: (id: string | null) => void;
@@ -408,6 +411,10 @@ export const useTwinStore = create<TwinState>((set, get) => {
     base: null,
     gridSize: 10,
     pollutant: 'pm25',
+    aqiView: true,
+    setAqiView(on) {
+      set({ aqiView: on });
+    },
     baseline: [],
     placeNames: {},
     section: 'overview',
@@ -520,7 +527,7 @@ export const useTwinStore = create<TwinState>((set, get) => {
     },
 
     setPollutant(p) {
-      set({ pollutant: p });
+      set({ pollutant: p, aqiView: false });
     },
 
     selectCell(id) {

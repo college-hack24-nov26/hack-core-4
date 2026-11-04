@@ -4,6 +4,7 @@ import { Btn, Field, inputCls } from '../ui';
 import { mailtoLink, whatsappLink, type Department } from '../lib/routing';
 import { NOT_SENT_NOTE, copyText } from '../lib/instructions';
 import { canShareText, shareText } from '../lib/share';
+import { Select } from '../../components/Select';
 
 const OTHER = '__other__';
 
@@ -51,14 +52,14 @@ export function InstructionComposer({
   return (
     <div className="space-y-4">
       <Field label="Send to">
-        <select value={choice} onChange={(e) => setChoice(e.target.value)} className={inputCls} aria-label="Recipient">
+        <Select value={choice} onChange={(e) => setChoice(e.target.value)} className={inputCls} aria-label="Recipient">
           {departments.map((d) => (
             <option key={d.key} value={d.name}>
               {d.name}
             </option>
           ))}
           <option value={OTHER}>Someone else</option>
-        </select>
+        </Select>
       </Field>
       {choice === OTHER && (
         <Field label="Name, office or email">

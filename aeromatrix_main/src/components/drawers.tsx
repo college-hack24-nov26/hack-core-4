@@ -8,6 +8,7 @@ import { pathLengthKm } from '../utils/geo';
 import { zoneLabel } from '../utils/zones';
 import { useSiteAssessment } from '../locations/useSiteAssessment';
 import type { SourceContribution } from '../types';
+import { Select } from './Select';
 
 const SOURCES: Array<keyof SourceContribution> = ['traffic', 'industry', 'background', 'other'];
 
@@ -150,7 +151,7 @@ export function useRoadDrawer(): DrawerContent | null {
           <>
             <label className="block text-[11px] text-sand-400">
               Divert to (optional)
-              <select
+              <Select
                 value={divert}
                 onChange={(e) => setDivert(e.target.value)}
                 className="h-9 w-full rounded-lg bg-ink-950 px-2 text-xs text-sand-50 hairline"
@@ -161,7 +162,7 @@ export function useRoadDrawer(): DrawerContent | null {
                     {r.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             {divert && (
               <label className="block text-xs font-semibold text-sand-100">

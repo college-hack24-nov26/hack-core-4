@@ -88,13 +88,6 @@ html[data-ui^='glass'] .gov-header {
   box-shadow: var(--glass-shadow);
 }
 
-html[data-ui^='glass'] nav[aria-label='Main'] {
-  background: color-mix(in srgb, var(--color-ink-900) 86%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
-  backdrop-filter: blur(20px) saturate(1.3);
-  border-top: 1px solid var(--glass-edge);
-}
-
 html[data-ui^='glass'] aside[role='dialog'] {
   background: color-mix(in srgb, var(--color-ink-950) 92%, transparent);
   -webkit-backdrop-filter: blur(22px) saturate(1.3);
@@ -176,12 +169,6 @@ html[data-ui^='glass'] .gov-card.gov-tap:hover {
   -webkit-backdrop-filter: blur(18px) saturate(1.3);
   backdrop-filter: blur(18px) saturate(1.3);
   box-shadow: 0 14px 34px -10px rgb(20 10 15 / 0.4);
-}
-html[data-ui^='glass'] nav[aria-label='Main'].gov-nav-wrap {
-  background: transparent;
-  border: 0;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 html[data-ui^='glass'] .gov-nav-pill {
   border-color: var(--glass-edge);

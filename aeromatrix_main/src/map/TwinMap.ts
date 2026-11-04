@@ -45,7 +45,7 @@ import {
 import { BuildingTiles } from './buildingTiles';
 import { loadPhotoreal } from './photoreal';
 import { PUNE } from '../data/geojson/puneDemoGeometry';
-import { deltaColor, pollutionColor } from '../utils/colors';
+import { deltaColor, pollutionColor, aqiColor } from '../utils/colors';
 
 export interface CursorInfo {
   lon: number;
@@ -72,6 +72,7 @@ export interface TwinMapCallbacks {
 
 export type HeatSpec =
   | { kind: 'pollution'; pollutant: Pollutant }
+  | { kind: 'aqi' }
   | { kind: 'delta'; pollutant: Pollutant; scale: number };
 
 export interface RoadsSpecInput {
@@ -238,12 +239,11 @@ export class TwinMap {
 
   private addBaseImagery() {
     const layers = this.viewer.imageryLayers;
-    // CARTO dark matter is the fallback underneath; Esri satellite sits on top.
+    // Esri street map is the fallback underneath (no key needed); Esri satellite sits on top.
     const carto = new UrlTemplateImageryProvider({
-      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-      subdomains: ['a', 'b', 'c', 'd'],
+      url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
       maximumLevel: 18,
-      credit: new Credit('Basemap: (c) CARTO, (c) OpenStreetMap contributors', true),
+      credit: new Credit('Basemap: Esri, HERE, Garmin, OpenStreetMap contributors', true),
     });
     layers.add(new ImageryLayer(carto));
 
@@ -318,7 +318,9 @@ export class TwinMap {
     const colorAt =
       spec.kind === 'pollution'
         ? (v: number) => pollutionColor(spec.pollutant, v)
-        : (v: number) => deltaColor(v, spec.scale);
+        : spec.kind === 'aqi'
+          ? (v: number) => aqiColor(v)
+          : (v: number) => deltaColor(v, spec.scale);
     this.heat.set(() => renderHeatmapCanvas(base, values, colorAt, 512));
   }
 

@@ -115,8 +115,15 @@ export function MapView() {
   const focusMap = useGovStore((s) => s.focusMap);
   const [selection, setSelection] = useState<MapSelection>(null);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [metric, setMetric] = useState<HeatMetric>('pm25');
+  const [metric, setMetric] = useState<HeatMetric>('aqi');
   const [query, setQuery] = useState('');
+  const suggestions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const seen = new Set<string>();
+    const out = air.zones.filter((z) => z.place.toLowerCase().includes(q) && z.place.toLowerCase() !== q && !seen.has(z.place) && (seen.add(z.place), true));
+    return out.slice(0, 6);
+  }, [air.zones, query]);
   const [me, setMe] = useState<{ lon: number; lat: number; accuracy: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locateNote, setLocateNote] = useState<string | null>(null);
@@ -204,31 +211,39 @@ export function MapView() {
         />
       )}
 
-      <div className="absolute inset-x-3 top-3 z-10 flex flex-col items-start gap-2">
+      <div className="absolute inset-x-3 top-[calc(4.5rem+env(safe-area-inset-top))] z-10 flex flex-col items-start gap-2">
         {!show3d && (
           <div className="relative w-full max-w-md">
             <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sand-400" />
             <input
               type="search"
-              list="map-places"
               value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                const z = air.zones.find((x) => x.place.toLowerCase() === e.target.value.trim().toLowerCase());
-                if (z) {
-                  focusMap(z.location[0], z.location[1]);
-                  setSelection({ kind: 'zone', id: z.id });
-                }
-              }}
+              onChange={(e) => setQuery(e.target.value)}
               placeholder="Search a place"
               aria-label="Search a place"
+              autoComplete="off"
               className="gov-tap h-11 w-full rounded-2xl border border-white/60 bg-ink-900/95 pl-10 pr-3 text-sm text-sand-50 shadow-lg backdrop-blur placeholder:text-sand-500"
             />
-            <datalist id="map-places">
-              {[...new Set(air.zones.map((z) => z.place))].sort().map((p) => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
+            {suggestions.length > 0 && (
+              <ul role="listbox" className="animate-rise absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-sand-400/20 bg-ink-950 p-1.5 shadow-2xl backdrop-blur-xl">
+                {suggestions.map((z) => (
+                  <li key={z.id} role="option" aria-selected={false}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQuery(z.place);
+                        focusMap(z.location[0], z.location[1]);
+                        setSelection({ kind: 'zone', id: z.id });
+                      }}
+                      className="gov-tap flex min-h-10 w-full items-center justify-between gap-2 rounded-xl px-3 text-left text-sm text-sand-100 hover:bg-ink-800"
+                    >
+                      <span className="truncate">{z.place}</span>
+                      <span className="shrink-0 text-xs text-sand-400">AQI {z.aqi}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
         <div className="flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
@@ -346,7 +361,7 @@ export function MapView() {
       )}
 
       {air.zones.length === 0 && !show3d && (
-        <div role="status" className="absolute inset-x-3 top-44 z-10 mx-auto max-w-md rounded-2xl bg-ink-950/95 p-4 text-sm text-sand-100 shadow-lg">
+        <div role="status" className="absolute inset-x-3 top-64 z-10 mx-auto max-w-md rounded-2xl bg-ink-950/95 p-4 text-sm text-sand-100 shadow-lg">
           <b>No area readings right now.</b> {air.reason ?? 'Model data has not arrived.'}
         </div>
       )}

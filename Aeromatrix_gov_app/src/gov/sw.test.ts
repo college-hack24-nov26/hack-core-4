@@ -67,13 +67,13 @@ describe('service worker', () => {
     w.handlers.install({ waitUntil: (p: Promise<unknown>) => (installed = p) });
     await installed;
     const names = [...w.store.keys()];
-    expect(names).toEqual(['aeromatrix-gov-shell-v2']);
+    expect(names).toEqual(['aeromatrix-gov-shell-v3']);
     expect([...w.store.get(names[0])!.keys()]).toEqual(['/', '/manifest.webmanifest', '/aeromatrix-mark.svg', '/pwa/icon-192.png', '/pwa/icon-512.png', '/pwa/apple-touch-icon.png']);
     w.store.set('aeromatrix-gov-shell-v1', new Map());
     w.store.set('somebody-elses-cache', new Map());
     let activated: Promise<unknown> | undefined;
     w.handlers.activate({ waitUntil: (p: Promise<unknown>) => (activated = p) });
     await activated;
-    expect([...w.store.keys()].sort()).toEqual(['aeromatrix-gov-shell-v2', 'somebody-elses-cache']);
+    expect([...w.store.keys()].sort()).toEqual(['aeromatrix-gov-shell-v3', 'somebody-elses-cache']);
   });
 });

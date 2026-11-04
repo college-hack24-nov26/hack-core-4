@@ -49,6 +49,7 @@ button,
 }
 
 .gov-view {
+  padding-top: calc(4.5rem + env(safe-area-inset-top));
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
   scroll-padding-bottom: 8rem;
@@ -132,4 +133,9 @@ button,
   .animate-sheet-up {
     animation: none !important;
   }
+}
+
+/* The map's zoom buttons sit below the floating top bar. */
+.leaflet-container .leaflet-top {
+  top: calc(4.5rem + env(safe-area-inset-top));
 }

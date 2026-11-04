@@ -13,6 +13,7 @@ import { formatAge, formatIst } from '../lib/format';
 import { WeeklyChart } from '../charts';
 import { AqiChip, Btn, StatusChip, type ChipKind } from '../ui';
 import { Sheet } from '../Sheet';
+import { Select } from '../../components/Select';
 
 const chipOf = (s: StationStatus): ChipKind => (s === 'live' ? 'measured' : s === 'outdated' ? 'outdated' : s === 'estimate' ? 'estimated' : 'nofeed');
 
@@ -137,23 +138,23 @@ function PlanIt({ zone, station }: { zone: ZoneRow; station: StationRow }) {
       <div className="grid grid-cols-2 gap-3">
         <label className="text-xs font-medium text-sand-300">
           Goal
-          <select value={objective} onChange={(e) => setObjective(e.target.value as Objective)} className="gov-tap mt-1 min-h-10 w-full rounded-xl bg-ink-900 px-2.5 text-sm text-sand-50">
+          <Select value={objective} onChange={(e) => setObjective(e.target.value as Objective)} className="gov-tap mt-1 min-h-10 w-full rounded-xl bg-ink-900 px-2.5 text-sm text-sand-50">
             {(Object.keys(OBJECTIVE_LABEL) as Objective[]).map((o) => (
               <option key={o} value={o}>
                 {OBJECTIVE_LABEL[o]}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="text-xs font-medium text-sand-300">
           Most measures together
-          <select value={maxMeasures} onChange={(e) => setMaxMeasures(Number(e.target.value))} className="gov-tap mt-1 min-h-10 w-full rounded-xl bg-ink-900 px-2.5 text-sm text-sand-50">
+          <Select value={maxMeasures} onChange={(e) => setMaxMeasures(Number(e.target.value))} className="gov-tap mt-1 min-h-10 w-full rounded-xl bg-ink-900 px-2.5 text-sm text-sand-50">
             {[1, 2, 3].map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       </div>
       <div>

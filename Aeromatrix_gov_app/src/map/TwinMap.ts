@@ -238,12 +238,11 @@ export class TwinMap {
 
   private addBaseImagery() {
     const layers = this.viewer.imageryLayers;
-    // CARTO dark matter is the fallback underneath; Esri satellite sits on top.
+    // Esri street map is the fallback underneath (no key needed); Esri satellite sits on top.
     const carto = new UrlTemplateImageryProvider({
-      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-      subdomains: ['a', 'b', 'c', 'd'],
+      url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
       maximumLevel: 18,
-      credit: new Credit('Basemap: (c) CARTO, (c) OpenStreetMap contributors', true),
+      credit: new Credit('Basemap: Esri, HERE, Garmin, OpenStreetMap contributors', true),
     });
     layers.add(new ImageryLayer(carto));
 

@@ -4,6 +4,7 @@ import { useSiteAssessment } from './useSiteAssessment';
 import { Section, StatusBadge, Toggle } from '../components/ui';
 import { fmt, fmtInt } from '../utils/format';
 import type { IndustryCategory } from '../types';
+import { Select } from '../components/Select';
 
 const CATEGORIES: IndustryCategory[] = ['Manufacturing', 'Chemical', 'Power', 'Metal', 'Processing'];
 
@@ -30,7 +31,7 @@ export function LocationsPanel() {
         <div className="grid grid-cols-2 gap-2">
           <label className="text-[11px] text-sand-400">
             Unit type
-            <select
+            <Select
               value={project.category}
               onChange={(e) => setProject({ category: e.target.value as IndustryCategory })}
               className="h-9 w-full rounded-lg bg-ink-950 px-2 text-xs text-sand-50 hairline"
@@ -38,7 +39,7 @@ export function LocationsPanel() {
               {CATEGORIES.map((c) => (
                 <option key={c}>{c}</option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="text-[11px] text-sand-400">
             Intensity (0-100)

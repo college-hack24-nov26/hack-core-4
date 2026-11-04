@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownRight, ArrowRight, ArrowUpRight, ChevronDown, CloudRain, Droplets, Gauge as GaugeIcon, MapPin, RadioTower, RefreshCw, Thermometer, Wind } from 'lucide-react';
+import { ArrowDownRight, ArrowRight, ArrowUpRight, CloudRain, Droplets, Gauge as GaugeIcon, MapPin, RadioTower, RefreshCw, Thermometer, Wind } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { cityHourly, liveValue, refreshLiveNow, zonePointId } from '../../services/liveData';
 import { useTwinStore } from '../../store/useTwinStore';
@@ -10,6 +10,7 @@ import { formatIst } from '../lib/format';
 import { PersonIllustration } from '../PersonIllustration';
 import { Skeleton, StatusChip } from '../ui';
 import { AQI_LABEL, AQI_SHORT } from '../../services/cpcbAqi';
+import { Select } from '../../components/Select';
 
 const ADVICE: Record<AqiCategory, string> = {
   Good: 'Air is clean. Enjoy the outdoors.',
@@ -69,10 +70,10 @@ function LocationPicker({ zones }: { zones: Array<{ id: string; place: string }>
     <label className="relative flex min-w-0 flex-1 items-center">
       <span className="sr-only">Location</span>
       <MapPin size={16} className="pointer-events-none absolute left-3.5 text-accent-500" />
-      <select
+      <Select
         value={zoneId ?? ''}
         onChange={(e) => select(e.target.value || null)}
-        className="gov-tap h-11 w-full appearance-none truncate rounded-2xl border border-white/60 bg-ink-900 pl-10 pr-9 text-sm font-semibold text-sand-50 shadow-sm backdrop-blur"
+        className="gov-tap h-11 w-full truncate rounded-2xl border border-white/60 bg-ink-900 pl-10 pr-3.5 text-sm font-semibold text-sand-50 shadow-sm backdrop-blur"
       >
         <option value="">All Pune and Pimpri-Chinchwad</option>
         {options.map((z) => (
@@ -80,8 +81,7 @@ function LocationPicker({ zones }: { zones: Array<{ id: string; place: string }>
             {z.place}
           </option>
         ))}
-      </select>
-      <ChevronDown size={16} className="pointer-events-none absolute right-3.5 text-sand-400" />
+      </Select>
     </label>
   );
 }

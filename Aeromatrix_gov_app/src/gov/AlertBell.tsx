@@ -66,7 +66,7 @@ export function AlertBanner() {
 
   if (!shown) return null;
   return (
-    <div role="status" className="gov-alert-in pointer-events-none absolute inset-x-3 top-3 z-40 mx-auto max-w-md">
+    <div role="status" className="gov-alert-in pointer-events-none absolute inset-x-3 top-[calc(4.75rem+env(safe-area-inset-top))] z-40 mx-auto max-w-md">
       <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-sand-500/20 bg-ink-950 p-3 pl-4 shadow-2xl">
         <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#d9372f]" />
         <button

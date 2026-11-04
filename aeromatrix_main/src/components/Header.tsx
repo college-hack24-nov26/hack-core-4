@@ -4,6 +4,7 @@ import { useTwinStore } from '../store/useTwinStore';
 import { POLLUTANT_LABEL } from '../utils/colors';
 import { POLLUTANTS } from '../services/pollutionModel';
 import type { Pollutant } from '../types';
+import { Select } from './Select';
 
 const env = import.meta.env as Record<string, string | undefined>;
 /** The logo and name lead back to the landing page. */
@@ -22,6 +23,8 @@ export function Header() {
   const pollutant = useTwinStore((s) => s.pollutant);
   const gridSize = useTwinStore((s) => s.gridSize);
   const setPollutant = useTwinStore((s) => s.setPollutant);
+  const aqiView = useTwinStore((s) => s.aqiView);
+  const setAqiView = useTwinStore((s) => s.setAqiView);
   const setGridSize = useTwinStore((s) => s.setGridSize);
   const setPlanItOpen = useTwinStore((s) => s.setPlanItOpen);
 
@@ -36,18 +39,19 @@ export function Header() {
         <label className="sr-only" htmlFor="pollutant-select">
           Pollutant
         </label>
-        <select
+        <Select
           id="pollutant-select"
-          value={pollutant}
-          onChange={(e) => setPollutant(e.target.value as Pollutant)}
+          value={aqiView ? 'aqi' : pollutant}
+          onChange={(e) => (e.target.value === 'aqi' ? setAqiView(true) : setPollutant(e.target.value as Pollutant))}
           className="h-11 rounded-xl bg-ink-800 px-2.5 text-sm font-semibold text-sand-100 hairline md:h-9"
         >
+          <option value="aqi">AQI</option>
           {POLLUTANTS.map((p) => (
             <option key={p} value={p}>
               {POLLUTANT_LABEL[p]}
             </option>
           ))}
-        </select>
+        </Select>
 
         <span className="ml-auto text-[11px] font-medium text-sand-400 max-lg:hidden">Grid</span>
         <Segmented

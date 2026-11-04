@@ -1,7 +1,9 @@
 import type { CellState, DataStatus, DisplayMode } from '../types';
 import { useTwinStore, type TwinStoreState } from '../store/useTwinStore';
 import { currentFieldValues, isLiveFresh } from '../services/liveData';
-import { localFactors } from '../services/localVariation';
+import { localFactors, scalePoint } from '../services/localVariation';
+import { aqiForPoint } from '../services/openMeteo';
+import { zonePointId } from '../services/liveData';
 import { deltaScaleFor } from '../utils/colors';
 import type { HeatSpec } from './TwinMap';
 
@@ -61,6 +63,17 @@ export function heatSource(s: TwinStoreState, nowMs: number = Date.now()): HeatS
     case 'current': {
       if (!isLiveFresh(s.live, nowMs)) {
         return none('MODEL_DATA', 'Current (model data)', s.live.status === 'loading' ? 'Loading Open-Meteo model data...' : (s.live.reason ?? 'Live model data is not available, so no current field is drawn.'));
+      }
+      if (s.aqiView) {
+        const f = localFactors(base, s.live.points, s.baseline);
+        const aqis: number[] = [];
+        for (const c of base.cells) {
+          const pt = s.live.points[zonePointId(c.id)];
+          const r = pt ? aqiForPoint(pt.times, scalePoint(pt, f[c.id] ?? 1).hourly, nowMs).aqi : null;
+          if (!r || r.value === null) return none('MODEL_DATA', 'Air quality index', 'The air quality index could not be worked out for every zone.');
+          aqis.push(r.value);
+        }
+        return { values: aqis, spec: { kind: 'aqi' }, status: 'MODEL_DATA', label: 'US AQI (estimated)', reason: null };
       }
       const raw = currentFieldValues(base, s.live.points, p, nowMs);
       if (!raw) return none('MODEL_DATA', 'Current (model data)', 'The Open-Meteo model has no value for this pollutant in every zone.');

@@ -4,7 +4,7 @@
  * It never touches the model API, Open-Meteo, map tiles or the assistant (all cross-origin or /task2), so nothing
  * offline can be mistaken for current data.
  */
-const CACHE = 'aeromatrix-gov-shell-v2';
+const CACHE = 'aeromatrix-gov-shell-v3';
 const SHELL = ['/', '/manifest.webmanifest', '/aeromatrix-mark.svg', '/pwa/icon-192.png', '/pwa/icon-512.png', '/pwa/apple-touch-icon.png'];
 
 // The page can ask a waiting worker to take over (the "update ready" bar).
