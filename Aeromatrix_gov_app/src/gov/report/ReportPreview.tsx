@@ -1,3 +1,4 @@
+import { toFraction } from '../lib/network';
 import type { Block, ChartSpec, ReportContent } from './reportContent';
 import { Table } from '../ui';
 
@@ -66,6 +67,47 @@ function Chart({ spec }: { spec: ChartSpec }) {
   );
 }
 
+function NetworkPreview({ b }: { b: Extract<Block, { t: 'network' }> }) {
+  const { plan, image } = b;
+  const P = (lon: number, lat: number): [number, number] => {
+    const [fx, fy] = toFraction(plan, lon, lat);
+    return [fx * 100, fy * (100 * plan.px.h) / plan.px.w];
+  };
+  const H = (100 * plan.px.h) / plan.px.w;
+  const hub = plan.hub ? P(plan.hub.lon, plan.hub.lat) : null;
+  return (
+    <figure className="overflow-hidden rounded-2xl ring-1 ring-sand-500/20">
+      <svg viewBox={`0 0 100 ${H}`} className="block w-full bg-ink-800" role="img" aria-label="Proposed device network">
+        {image && <image href={image} width="100" height={H} />}
+        {plan.devices.map((d) => {
+          const [x, y] = P(d.lon, d.lat);
+          return hub ? <line key={d.id} x1={x} y1={y} x2={hub[0]} y2={hub[1]} stroke="#a3263f" strokeWidth="0.5" strokeDasharray="1.6 1.2" /> : null;
+        })}
+        {hub && (
+          <g>
+            <rect x={hub[0] - 2} y={hub[1] - 2} width="4" height="4" rx="0.6" fill="#fff" stroke="#a3263f" strokeWidth="0.6" />
+            <text x={hub[0]} y={hub[1] - 3.4} textAnchor="middle" fontSize="2.6" fontWeight="700" fill="#fff" stroke="#000" strokeWidth="0.5" paintOrder="stroke">
+              {plan.hub!.kind === 'namp' ? 'NAMP' : 'CAAQMS'}: {plan.hub!.name}
+            </text>
+          </g>
+        )}
+        {plan.devices.map((d) => {
+          const [x, y] = P(d.lon, d.lat);
+          return (
+            <g key={d.id}>
+              <circle cx={x} cy={y} r="2.2" fill="#fff" stroke="#a3263f" strokeWidth="0.6" />
+              <text x={x} y={y + 0.9} textAnchor="middle" fontSize="2.2" fontWeight="700" fill="#a3263f">
+                {d.id}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      {!image && <figcaption className="bg-ink-800 p-2 text-center text-xs text-sand-300">The satellite picture is added to the PDF when it can be loaded.</figcaption>}
+    </figure>
+  );
+}
+
 function BlockView({ b }: { b: Block }) {
   switch (b.t) {
     case 'p':
@@ -87,6 +129,8 @@ function BlockView({ b }: { b: Block }) {
       return <p className="rounded-xl bg-ink-800 p-3.5 text-sm text-sand-300">{b.text}</p>;
     case 'table':
       return <Table head={b.head.every((h) => h === '') ? b.body[0].map(() => '') : b.head} rows={b.foot ? [...b.body, b.foot.map((x, i) => <b key={i}>{x}</b>)] : b.body} />;
+    case 'network':
+      return <NetworkPreview b={b} />;
     case 'charts':
       return (
         <div className={`grid gap-3 ${b.specs.length > 1 ? 'md:grid-cols-2' : ''}`}>

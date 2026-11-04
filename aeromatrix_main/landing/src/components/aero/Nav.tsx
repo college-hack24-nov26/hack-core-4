@@ -14,7 +14,7 @@ const LINKS = [
 export function Logo() {
   return (
     <a href="#home" className="flex items-center gap-2.5 text-vanilla" aria-label="AeroMatrix home">
-      <span className="grid h-8 w-8 place-items-center rounded-full border border-vanilla/70 font-display text-sm">A</span>
+      <span className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl bg-[#fcf1e6]"><img src="/aeromatrix-logo.png" alt="" className="h-[88%] w-[88%] object-contain" /></span>
       <span className="text-sm font-semibold tracking-[0.18em]">AERO-MATRIX</span>
     </a>
   );

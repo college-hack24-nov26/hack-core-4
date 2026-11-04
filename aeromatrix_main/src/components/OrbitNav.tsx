@@ -155,7 +155,7 @@ export function OrbitNav() {
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={toggle}
-        className={`absolute inset-0 flex items-center justify-center rounded-full bg-ink-950 shadow-2xl ring-2 ring-sand-400/30 transition-transform ${
+        className={`absolute inset-0 flex items-center justify-center overflow-hidden rounded-full bg-ink-950 shadow-2xl ring-2 ring-sand-400/30 transition-transform ${
           open ? 'rotate-90' : 'animate-pulse-ring'
         }`}
       >

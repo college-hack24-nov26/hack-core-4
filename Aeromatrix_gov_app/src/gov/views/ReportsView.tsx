@@ -1,3 +1,4 @@
+import { loadLogo, loadSatellite, planNetwork } from '../lib/network';
 import { useEffect, useMemo, useState } from 'react';
 import { Download, Eye, Loader2, Share2, SlidersHorizontal } from 'lucide-react';
 import { useTwinStore } from '../../store/useTwinStore';
@@ -53,6 +54,21 @@ export function ReportsView() {
   const selection = scenario ? scenario.selection : measures;
   const week = useWeeklyHistory(zone ? [{ id: zone.id, location: zone.location }] : [], !!zone);
   const daily = zone ? (week.byId[zone.id] ?? null) : null;
+  // the proposed AeroMatrix device network for the area, with its satellite picture and the logo
+  const network = useMemo(() => (zone && cell ? planNetwork(zone.place, cell, st.placed) : null), [zone, cell, st.placed]);
+  const [netImage, setNetImage] = useState<string | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setNetImage(null);
+    if (network) void loadSatellite(network).then((i) => alive && setNetImage(i));
+    return () => {
+      alive = false;
+    };
+  }, [network]);
+  useEffect(() => {
+    void loadLogo().then(setLogo);
+  }, []);
 
   const input: ReportInput | null = useMemo(() => {
     if (!base || !cell || !zone || !hasMeasures(selection)) return null;
@@ -67,9 +83,12 @@ export function ReportsView() {
       scenarioName: scenario?.name,
       apportionment: study,
       daily,
+      network,
+      networkImage: netImage,
+      logo,
     };
     // `generated` is fixed at the moment the inputs change, which is when the report is (re)built.
-  }, [base, cell, zone, selection, scenario, air.city, st.placed, study, daily]);
+  }, [base, cell, zone, selection, scenario, air.city, st.placed, study, daily, network, netImage, logo]);
 
   const content = useMemo(() => (input ? reportContent(input) : null), [input]);
 

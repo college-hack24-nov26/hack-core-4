@@ -12,7 +12,7 @@ const RAMP: Array<[number, RGB]> = [
 ];
 
 export const POLLUTANT_RANGE: Record<Pollutant, [number, number]> = {
-  pm25: [15, 120],
+  pm25: [50, 100],
   pm10: [30, 200],
   no2: [10, 90],
   so2: [2, 40],

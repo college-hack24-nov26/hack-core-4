@@ -38,8 +38,12 @@ button,
   min-width: 0;
 }
 
+/* The top bar floats: rounded, inset from the screen edges, clear of the status bar. */
 .gov-header {
-  padding-top: env(safe-area-inset-top);
+  margin: calc(0.5rem + env(safe-area-inset-top)) 0.75rem 0;
+  border-radius: 28px;
+  box-shadow: 0 10px 30px -12px rgb(20 10 15 / 0.35);
+  padding-top: 0;
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
 }

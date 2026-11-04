@@ -57,9 +57,22 @@ export function Map2D(props: Map2DProps) {
     if (!el.current) return;
     const map = L.map(el.current, { zoomControl: false, preferCanvas: true, attributionControl: true });
     L.control.zoom({ position: 'topright' }).addTo(map);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // The same imagery as the city model: CARTO dark underneath, Esri satellite on top, place names above both.
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+      subdomains: 'abcd',
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      attribution: 'Basemap: &copy; CARTO, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      maxNativeZoom: 18,
+      className: 'gov-satellite',
+      attribution: 'Imagery: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    }).addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png', {
+      subdomains: 'abcd',
+      maxZoom: 19,
+      pane: 'shadowPane',
     }).addTo(map);
     const b = base.city.bbox;
     map.fitBounds([[b.south, b.west], [b.north, b.east]]);
@@ -111,7 +124,7 @@ export function Map2D(props: Map2DProps) {
 
   // the smooth AQI heatmap (zone values interpolated, faded away from the zones)
   useEffect(() => {
-    sync('heat', visible.heat, () => createHeatLayer(heatPoints(zones, metric)), [zones, metric]);
+    sync('heat', visible.heat, () => createHeatLayer(heatPoints(zones, metric), metric), [zones, metric]);
   }, [visible.heat, zones, metric]);
 
   // zones coloured by the CAMS estimate

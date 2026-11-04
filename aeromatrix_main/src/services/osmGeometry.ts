@@ -5,6 +5,7 @@
  * documented DEMO assumption: road volumes are a PROXY from the road class, and the emission point sources
  * placed on the largest industrial zones carry DEMO intensities.
  */
+import { RESEARCHED_INDUSTRIES } from './industrySources';
 import type { CityGeometry, GreenArea, IndustrialArea, Industry, IndustryCategory, LonLat, Pollutant, Road } from '../types';
 import { pathLengthKm, polygonAreaKm2, polygonCentroid } from '../utils/geo';
 import { hashSeed } from '../utils/prng';
@@ -56,6 +57,11 @@ const CATEGORY_POLLUTANTS: Record<IndustryCategory, Pollutant[]> = {
 const roadKey = (el: OsmElement) => `${el.tags.name ?? el.tags.ref ?? `way-${el.id}`}|${el.tags.highway}`;
 
 /** Convert simplified OSM elements into engine geometry. */
+/** Adds the named estates and factories from public records to the mapped industrial zones. */
+export function withResearchedSources(g: CityGeometry): CityGeometry {
+  return { ...g, industries: [...g.industries, ...RESEARCHED_INDUSTRIES] };
+}
+
 export function elementsToGeometry(elements: OsmElement[]): CityGeometry {
   const groups = new Map<string, Road>();
   for (const el of elements) {
@@ -148,7 +154,7 @@ export async function loadOsmSnapshot(url: string = SNAPSHOT_URL): Promise<OsmLo
     throw new Error('OSM snapshot not available (the bundled file has no features).');
   }
   return {
-    geometry: elementsToGeometry(data.elements),
+    geometry: withResearchedSources(elementsToGeometry(data.elements)),
     generated: data.meta?.generated ?? null,
     attribution: data.meta?.attribution ?? OSM_ATTRIBUTION,
   };
@@ -234,7 +240,7 @@ export async function fetchOsmGeometry(
         const json = (await res.json()) as { elements?: OverpassWay[] };
         const elements = overpassToElements(json);
         if (elements.length === 0) throw new Error('no features returned');
-        return { geometry: elementsToGeometry(elements), generated: new Date().toISOString(), attribution: OSM_ATTRIBUTION };
+        return { geometry: withResearchedSources(elementsToGeometry(elements)), generated: new Date().toISOString(), attribution: OSM_ATTRIBUTION };
       } catch (e) {
         errors.push(`${new URL(url).host}: ${e instanceof Error ? e.message : 'failed'}`);
         await new Promise((r) => setTimeout(r, retryDelayMs));

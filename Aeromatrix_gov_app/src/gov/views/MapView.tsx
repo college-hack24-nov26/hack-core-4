@@ -9,6 +9,7 @@ import { isCapableDesktop, readDevice } from '../lib/capability';
 import { useStations } from '../lib/stations';
 import { CATEGORIES, CATEGORY_COLOR, POLLUTANT_KEYS, POLLUTANT_NAME } from '../lib/airdata';
 import type { HeatMetric } from '../lib/heat';
+import { POLLUTANT_RANGE, POLLUTANT_UNIT as UNIT, legendGradient } from '../../utils/colors';
 import { formatIst } from '../lib/format';
 import { AqiChip, Btn, ForecastStrip, StatusChip, TrendBadge } from '../ui';
 import { Sheet } from '../Sheet';
@@ -114,7 +115,7 @@ export function MapView() {
   const focusMap = useGovStore((s) => s.focusMap);
   const [selection, setSelection] = useState<MapSelection>(null);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [metric, setMetric] = useState<HeatMetric>('aqi');
+  const [metric, setMetric] = useState<HeatMetric>('pm25');
   const [query, setQuery] = useState('');
   const [me, setMe] = useState<{ lon: number; lat: number; accuracy: number } | null>(null);
   const [locating, setLocating] = useState(false);
@@ -310,15 +311,30 @@ export function MapView() {
 
       {!show3d && (
         <div className="pointer-events-none absolute bottom-24 right-3 z-10 hidden max-w-[210px] rounded-2xl bg-ink-950/95 p-3 text-xs text-sand-200 shadow-lg sm:block">
-          <div className="mb-1.5 font-semibold text-sand-100">Air quality (estimated)</div>
-          <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
-            {CATEGORIES.map((c) => (
-              <li key={AQI_SHORT[c]} className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-sm" style={{ background: CATEGORY_COLOR[c] }} />
-                {c}
-              </li>
-            ))}
-          </ul>
+          {metric === 'aqi' || mode === 'stations' ? (
+            <>
+              <div className="mb-1.5 font-semibold text-sand-100">Air quality index (US)</div>
+              <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
+                {CATEGORIES.map((c) => (
+                  <li key={c} className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-sm" style={{ background: CATEGORY_COLOR[c] }} />
+                    {AQI_SHORT[c]}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <>
+              <div className="mb-1.5 font-semibold text-sand-100">{POLLUTANT_NAME[metric as keyof typeof POLLUTANT_NAME]}</div>
+              <div className="h-2.5 w-full rounded-full" style={{ background: legendGradient() }} />
+              <div className="mt-1 flex justify-between font-mono text-[10px] text-sand-300">
+                <span>{POLLUTANT_RANGE[metric as keyof typeof POLLUTANT_RANGE][0]}</span>
+                <span>{(POLLUTANT_RANGE[metric as keyof typeof POLLUTANT_RANGE][0] + POLLUTANT_RANGE[metric as keyof typeof POLLUTANT_RANGE][1]) / 2}</span>
+                <span>{POLLUTANT_RANGE[metric as keyof typeof POLLUTANT_RANGE][1]}+</span>
+              </div>
+              <div className="mt-1 text-sand-400">{UNIT[metric as keyof typeof UNIT]} (colour scale)</div>
+            </>
+          )}
           <div className="mt-2 flex items-center gap-2 text-sand-300">
             <span className="h-3 w-3 rounded-full border-2 border-ink-950 bg-sand-400" /> Continuous station
           </div>
@@ -336,12 +352,12 @@ export function MapView() {
       )}
 
       {zone && (
-        <Sheet title={zone.place} subtitle="Area" onClose={() => setSelection(null)}>
+        <Sheet full title={zone.place} subtitle="Area" onClose={() => setSelection(null)}>
           <ZoneCard z={zone} />
         </Sheet>
       )}
       {hotspot && hotspot.zone && (
-        <Sheet title={hotspot.name} subtitle="Hotspot" onClose={() => setSelection(null)}>
+        <Sheet full title={hotspot.name} subtitle="Hotspot" onClose={() => setSelection(null)}>
           <ZoneCard z={hotspot.zone} rank={hot.zones.findIndex((h) => h.id === hotspot.id) + 1} />
         </Sheet>
       )}

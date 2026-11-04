@@ -3,6 +3,7 @@
  * is embedded so rupee amounts and units print correctly. Charts are drawn with plain shapes: pie charts only when a
  * source-apportionment study exists, bar charts for levels and costs, and an explicit box when a chart has no data.
  */
+import { toFraction } from '../lib/network';
 import { jsPDF } from 'jspdf';
 import * as autoTableModule from 'jspdf-autotable';
 import type { Block, ChartSpec, ReportContent, ReportInput } from './reportContent';
@@ -61,7 +62,15 @@ export function reportFileName(input: Pick<ReportInput, 'zone' | 'generated'>): 
   return `aeromatrix-report-${slug}-${input.generated.toISOString().slice(0, 10)}.pdf`;
 }
 
+let LOGO: string | null = null;
+
 function drawMark(doc: jsPDF, x: number, y: number, size: number) {
+  if (LOGO) {
+    doc.setFillColor(252, 241, 230);
+    doc.roundedRect(x, y, size, size, size * 0.22, size * 0.22, 'F');
+    doc.addImage(LOGO, 'PNG', x + size * 0.06, y + size * 0.06, size * 0.88, size * 0.88);
+    return;
+  }
   const k = size / 64;
   doc.setFillColor(...ACCENT);
   doc.circle(x + 32 * k, y + 32 * k, 30 * k, 'F');
@@ -276,6 +285,100 @@ class Writer {
     this.doc.text(cap.slice(0, 2), left + 22, top + h - 3.2 - (Math.min(2, cap.length) - 1) * 3);
   }
 
+  /** The device network on a satellite picture: devices D1..Dn linked to the nearest official centre, then to the AeroMatrix model. */
+  network(b: Extract<Block, { t: 'network' }>) {
+    const { plan, image, logo } = b;
+    const w = CONTENT_W;
+    const h = (w * plan.px.h) / plan.px.w;
+    this.ensure(h + 4);
+    const x0 = M;
+    const y0 = this.y;
+    const doc = this.doc;
+    if (image) {
+      doc.addImage(image, 'JPEG', x0, y0, w, h);
+    } else {
+      doc.setFillColor(232, 236, 232);
+      doc.rect(x0, y0, w, h, 'F');
+      this.font('normal', 9, MUTED);
+      doc.text('Satellite picture unavailable', x0 + w / 2, y0 + 6, { align: 'center' });
+    }
+    doc.setDrawColor(...LINE);
+    doc.rect(x0, y0, w, h, 'S');
+    const P = (lon: number, lat: number): [number, number] => {
+      const [fx, fy] = toFraction(plan, lon, lat);
+      return [x0 + fx * w, y0 + fy * h];
+    };
+    const label = (text: string, cx: number, cy: number, bold = true) => {
+      this.font(bold ? 'bold' : 'normal', 8, [60, 20, 30]);
+      const tw = doc.getTextWidth(pdfText(text)) + 3.6;
+      doc.setFillColor(255, 255, 255);
+      doc.roundedRect(cx - tw / 2, cy - 3.2, tw, 5.4, 1.6, 1.6, 'F');
+      doc.text(pdfText(text), cx, cy + 0.6, { align: 'center' });
+    };
+    const arrow = (ax: number, ay: number, bx: number, by: number, dashed: boolean) => {
+      doc.setDrawColor(...ACCENT);
+      doc.setLineWidth(0.55);
+      if (dashed) doc.setLineDashPattern([2, 1.5], 0);
+      doc.line(ax, ay, bx, by);
+      doc.setLineDashPattern([], 0);
+      const ang = Math.atan2(by - ay, bx - ax);
+      const s = 2.4;
+      doc.setFillColor(...ACCENT);
+      doc.triangle(bx, by, bx - s * Math.cos(ang - 0.45), by - s * Math.sin(ang - 0.45), bx - s * Math.cos(ang + 0.45), by - s * Math.sin(ang + 0.45), 'F');
+      doc.setLineWidth(0.2);
+    };
+
+    // the AeroMatrix model box (bottom right)
+    const bw = 46;
+    const bh = 17;
+    const bx = x0 + w - bw - 4;
+    const by = y0 + h - bh - 4;
+    const hubPt = plan.hub ? P(plan.hub.lon, plan.hub.lat) : null;
+    const areaPt = P(plan.area.lon, plan.area.lat);
+    const devPts = plan.devices.map((d) => ({ id: d.id, p: P(d.lon, d.lat) }));
+    // devices -> hub (or straight to the model when there is no hub)
+    for (const d of devPts) {
+      if (hubPt) arrow(d.p[0], d.p[1], hubPt[0], hubPt[1], true);
+      else arrow(d.p[0], d.p[1], bx, by + bh / 2, true);
+    }
+    if (hubPt) arrow(hubPt[0], hubPt[1], bx, by + bh / 2, false);
+
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(...ACCENT);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(bx, by, bw, bh, 2, 2, 'FD');
+    doc.setLineWidth(0.2);
+    if (logo) doc.addImage(logo, 'PNG', bx + 2.5, by + 2, 13, 13);
+    this.font('bold', 8.6, ACCENT);
+    doc.text('AeroMatrix Brain', bx + (logo ? 17 : 4), by + bh / 2 + 1.2);
+
+    // the official centre
+    if (hubPt && plan.hub) {
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(...ACCENT);
+      doc.setLineWidth(0.8);
+      doc.roundedRect(hubPt[0] - 3.2, hubPt[1] - 3.2, 6.4, 6.4, 1.2, 1.2, 'FD');
+      doc.setLineWidth(0.2);
+      this.font('bold', 6.5, ACCENT);
+      doc.text(plan.hub.kind === 'namp' ? 'M' : 'C', hubPt[0], hubPt[1] + 1.2, { align: 'center' });
+      label(`${plan.hub.kind === 'namp' ? 'Manual monitoring centre (NAMP)' : 'Continuous station (CAAQMS)'}`, hubPt[0], hubPt[1] + 8.4);
+      label(plan.hub.name, hubPt[0], hubPt[1] - 7.2, false);
+    }
+    // the area
+    label(plan.area.name, areaPt[0], areaPt[1] - 13, false);
+    // devices
+    for (const d of devPts) {
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(...ACCENT);
+      doc.setLineWidth(0.8);
+      doc.circle(d.p[0], d.p[1], 3.1, 'FD');
+      doc.setLineWidth(0.2);
+      this.font('bold', 7, ACCENT);
+      doc.text(d.id, d.p[0], d.p[1] + 1.1, { align: 'center' });
+    }
+    this.y += h + 4;
+  }
+
   charts(specs: ChartSpec[]) {
     const h = 62;
     this.ensure(h + 4);
@@ -292,7 +395,7 @@ class Writer {
 /** Space a heading needs below it so it never sits alone at the bottom of a page. */
 function needAfter(next: Block | undefined): number {
   if (!next) return 14;
-  return next.t === 'charts' ? 72 : next.t === 'table' ? 46 : next.t === 'list' ? 30 : 24;
+  return next.t === 'network' ? 112 : next.t === 'charts' ? 72 : next.t === 'table' ? 46 : next.t === 'list' ? 30 : 24;
 }
 
 function drawBlock(wr: Writer, b: Block, next?: Block) {
@@ -317,11 +420,15 @@ function drawBlock(wr: Writer, b: Block, next?: Block) {
     case 'charts':
       wr.charts(b.specs);
       break;
+    case 'network':
+      wr.network(b);
+      break;
   }
 }
 
 export function buildReportPdf(input: ReportInput, fonts: ReportFonts): jsPDF {
   const c = reportContent(input);
+  LOGO = input.logo ?? null;
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   doc.addFileToVFS('Inter-Regular.ttf', fonts.regular);
   doc.addFont('Inter-Regular.ttf', 'Inter', 'normal', undefined, 'Identity-H');

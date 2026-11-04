@@ -4,6 +4,7 @@
  */
 import L from 'leaflet';
 import type { ZoneRow, PollutantKey } from './airdata';
+import { pollutionColor } from '../../utils/colors';
 
 export type HeatMetric = 'aqi' | PollutantKey;
 
@@ -31,11 +32,10 @@ export function heatColor(v: number): [number, number, number] {
   return STOPS[STOPS.length - 1][1];
 }
 
-/** The number each zone contributes: its AQI, or the CPCB sub-index of the chosen pollutant. */
+/** The number each zone contributes: its AQI, or the concentration of the chosen pollutant (coloured as in the city model). */
 export function metricValue(z: ZoneRow, metric: HeatMetric): number | null {
   if (metric === 'aqi') return z.aqi;
-  const s = z.subindices.find((x) => x.pollutant === metric);
-  return s ? s.value : null;
+  return z.values[metric] ?? null;
 }
 
 export interface HeatPoint {
@@ -76,7 +76,7 @@ export function sampleHeat(points: HeatPoint[], lon: number, lat: number): { v: 
 const GRID = 32;
 
 /** A Leaflet tile layer that paints the surface smoothly (a coarse grid scaled up with bilinear smoothing). */
-export function createHeatLayer(points: HeatPoint[], opacity = 0.7): L.GridLayer {
+export function createHeatLayer(points: HeatPoint[], metric: HeatMetric, opacity = 0.72): L.GridLayer {
   const layer = L.gridLayer({ tileSize: 256, opacity, pane: 'overlayPane', zIndex: 2 });
   (layer as unknown as { createTile: (c: L.Coords) => HTMLElement }).createTile = function (this: L.GridLayer, coords: L.Coords) {
     const tile = document.createElement('canvas');
@@ -98,7 +98,7 @@ export function createHeatLayer(points: HeatPoint[], opacity = 0.7): L.GridLayer
         const s = sampleHeat(points, ll.lng, ll.lat);
         const o = (j * GRID + i) * 4;
         if (!s) continue;
-        const [r, g, b] = heatColor(s.v);
+        const [r, g, b] = metric === 'aqi' ? heatColor(s.v) : pollutionColor(metric, s.v);
         // fade out beyond ~3 km from the nearest zone
         const a = Math.max(0, Math.min(1, 1 - (s.nearestKm - 2.5) / 2.5));
         img.data[o] = r;

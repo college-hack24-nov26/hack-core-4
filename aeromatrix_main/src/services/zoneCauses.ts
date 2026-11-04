@@ -3,6 +3,7 @@
  * zone, mapped industry near it, and the PM2.5/PM10 ratio of the live model data. These are indications, not a measured
  * breakdown, and a cause with no evidence is simply left out.
  */
+import { industryLikelihood } from './industrySources';
 import type { BaseState, GridCell, Road } from '../types';
 import { distanceToBBoxKm, haversineKm, polygonCentroid } from '../utils/geo';
 
@@ -49,7 +50,9 @@ export function zoneCauses(base: BaseState, cell: GridCell, pm25: number | null,
         evidence: [...roads.slice(0, 3).map((r) => `${r.road.name} (${r.road.roadClass}) runs ${r.km.toFixed(1)} km through the zone`), `${total.toFixed(1)} km of major road in the zone`],
       });
     }
-    const sources = base.industries.filter((i) => distanceToBBoxKm(i.location, cell.bounds) <= NEAR_INDUSTRY_KM);
+    const sources = base.industries
+      .filter((i) => distanceToBBoxKm(i.location, cell.bounds) <= NEAR_INDUSTRY_KM)
+      .sort((a, b) => b.emissionIntensity * (1 - b.controlEfficiency) - a.emissionIntensity * (1 - a.controlEfficiency));
     const areas = base.industrialAreas.filter((a) => a.polygon.length > 0 && (distanceToBBoxKm(polygonCentroid(a.polygon), cell.bounds) <= NEAR_INDUSTRY_KM || a.polygon.some((p) => distanceToBBoxKm(p, cell.bounds) === 0)));
     const n = sources.length + areas.length;
     if (n > 0) {
@@ -57,7 +60,7 @@ export function zoneCauses(base: BaseState, cell: GridCell, pm25: number | null,
         key: 'industry',
         label: 'Industry',
         strength: n >= 4 ? 'Strong' : n >= 2 ? 'Moderate' : 'Weak',
-        evidence: [...sources.slice(0, 3).map((s) => `${s.name} (${s.category}), within ${NEAR_INDUSTRY_KM} km`), ...(areas.length > 0 ? [`${areas.length} industrial area${areas.length === 1 ? '' : 's'} in or near the zone`] : [])],
+        evidence: [...sources.slice(0, 3).map((s) => `${s.name} (${s.category}): ${industryLikelihood(s).toLowerCase()} chance of adding to local pollution, within ${NEAR_INDUSTRY_KM} km`), ...(areas.length > 0 ? [`${areas.length} industrial area${areas.length === 1 ? '' : 's'} in or near the zone`] : [])],
       });
     }
   }

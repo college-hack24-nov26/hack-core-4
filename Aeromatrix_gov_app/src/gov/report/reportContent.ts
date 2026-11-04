@@ -14,6 +14,7 @@ import type { SimOutcome } from '../lib/measures';
 import { DEPARTMENTS, departmentsFor, type CauseKey } from '../lib/routing';
 import { STATUS_LABEL, type StationRow } from '../lib/stations';
 import { topCause } from '../lib/alerts';
+import type { NetworkPlan } from '../lib/network';
 
 export interface ReportInput {
   generated: Date;
@@ -26,6 +27,10 @@ export interface ReportInput {
   apportionment: ApportionmentLoad;
   /** the last seven days for this area, when it could be fetched */
   daily: DailyPoint[] | null;
+  /** the proposed AeroMatrix device network for the area, with its satellite picture and the logo when they could be loaded */
+  network?: NetworkPlan | null;
+  networkImage?: string | null;
+  logo?: string | null;
 }
 
 export interface PieSlice {
@@ -51,7 +56,8 @@ export type Block =
   | { t: 'list'; items: string[] }
   | { t: 'table'; head: string[]; body: string[][]; foot?: string[] }
   | { t: 'charts'; specs: ChartSpec[] }
-  | { t: 'note'; text: string };
+  | { t: 'note'; text: string }
+  | { t: 'network'; plan: NetworkPlan; image: string | null; logo: string | null };
 
 export interface ReportSection {
   id: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I';
@@ -259,6 +265,20 @@ export function reportContent(input: ReportInput): ReportContent {
       },
     ],
   };
+  if (input.network) {
+    const net = input.network;
+    B.blocks.push(
+      { t: 'h', text: 'Proposed AeroMatrix sensor network' },
+      {
+        t: 'p',
+        text: net.hub
+          ? `${net.devices.length} AeroMatrix devices (D1 to D${net.devices.length}) are proposed inside ${place}. They report to the nearest ${net.hub.kind === 'namp' ? 'manual monitoring centre (NAMP)' : 'continuous monitoring station (CAAQMS)'}, ${net.hub.name}, ${net.hub.km.toFixed(1)} km away, and the combined data feeds the AeroMatrix model.`
+          : `${net.devices.length} AeroMatrix devices (D1 to D${net.devices.length}) are proposed inside ${place}. No official monitoring station was found nearby, so they would report directly to the AeroMatrix model.`,
+      },
+      { t: 'network', plan: net, image: input.networkImage ?? null, logo: input.logo ?? null },
+      { t: 'note', text: 'Device positions are an illustrative starting layout, not a surveyed site plan. Exact sites need a field visit.' },
+    );
+  }
 
   // ---- C. Recommended corrective measures ----
   const measureRows: string[][] = [];

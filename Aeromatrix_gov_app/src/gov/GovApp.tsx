@@ -135,11 +135,11 @@ export function GovApp() {
   return (
     <div className="gov-root flex h-dvh flex-col overflow-hidden bg-ink-950 text-sand-100">
       <PwaBar />
-      <header className="gov-header flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-sand-500/20 bg-ink-900 py-1">
+      <header className="gov-header relative z-30 flex min-h-12 shrink-0 items-center justify-between gap-3 border border-sand-500/20 bg-ink-900/95 py-1 backdrop-blur">
         <div className="flex min-w-0 items-center gap-2">
           <LogoMark size={26} />
           <span className="truncate font-display text-[15px] font-bold tracking-tight text-sand-50">
-            Aero<span className="text-accent-400">Matrix</span> <span className="font-semibold text-sand-300">Commissioner</span>
+            Aero<span className="text-accent-400">Matrix</span>
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-2">

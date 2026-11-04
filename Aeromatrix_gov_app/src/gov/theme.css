@@ -161,3 +161,8 @@ h3 {
   from { transform: scaleX(0); }
   to { transform: scaleX(1); }
 }
+
+/* Satellite imagery is slightly dimmed, as in the city model, so the heat colours and labels stand out. */
+.gov-satellite {
+  filter: brightness(0.82) saturate(0.9);
+}

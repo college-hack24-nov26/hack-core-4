@@ -62,8 +62,12 @@ export function BottomNav() {
           ))}
         </ul>
       )}
-      <div className="gov-nav-pill relative grid grid-cols-5 px-1">
-        <span aria-hidden className="absolute top-0 h-0.5 w-1/5 rounded-full bg-accent-500 transition-transform duration-300 ease-out" style={{ transform: `translateX(${slot * 100}%)` }} />
+      <div className="gov-nav-pill relative grid grid-cols-5 p-1.5">
+        <span
+          aria-hidden
+          className="absolute bottom-1.5 top-1.5 rounded-2xl bg-accent-500/15 transition-transform duration-300 ease-out"
+          style={{ left: '0.375rem', width: 'calc((100% - 0.75rem) / 5)', transform: `translateX(${slot * 100}%)` }}
+        />
         {MAIN.map(({ id, icon: Icon }) => {
           const on = view === id && !more;
           return (
