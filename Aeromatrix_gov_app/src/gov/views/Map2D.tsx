@@ -6,24 +6,18 @@ import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import type { BaseState, LonLat } from '../../types';
 import type { IndustryData } from '../../services/industryData';
-import type { ZoneRow } from '../lib/airdata';
 import { UNKNOWN_COLOR, colorOf } from '../lib/airdata';
 import type { CoverageResult } from '../lib/coverage';
 import type { Hotspot } from '../lib/hotspots';
 import { simplifyRing } from '../lib/geo';
-import { createHeatLayer, heatPoints, type HeatMetric } from '../lib/heat';
 import type { StationRow } from '../lib/stations';
-import { aqiName } from '../../services/cpcbAqi';
 
-export type MapLayerId = 'heat' | 'zones' | 'stations' | 'hotspots' | 'midc' | 'industry' | 'coverage';
+export type MapLayerId = 'stations' | 'hotspots' | 'midc' | 'industry' | 'coverage';
 export type MapSelection = { kind: 'zone' | 'station' | 'hotspot' | 'midc' | 'gap'; id: string } | null;
 
 export interface Map2DProps {
   base: BaseState;
   visible: Record<MapLayerId, boolean>;
-  zones: ZoneRow[];
-  /** what the heatmap shows: the AQI or one pollutant's sub-index */
-  metric: HeatMetric;
   stations: StationRow[];
   hotspots: Hotspot[];
   coverage: CoverageResult | null;
@@ -44,7 +38,7 @@ const ring = (r: LonLat[]): L.LatLngExpression[] => r.map(([lon, lat]) => [lat, 
  * their data changes, so a layer the Commissioner never opens costs nothing.
  */
 export function Map2D(props: Map2DProps) {
-  const { base, visible, zones, metric, stations, hotspots, coverage, industry, focus, me, simplify, onSelect } = props;
+  const { base, visible, stations, hotspots, coverage, industry, focus, me, simplify, onSelect } = props;
   const el = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const canvasRef = useRef<L.Canvas | null>(null);
@@ -122,43 +116,12 @@ export function Map2D(props: Map2DProps) {
     if (!map.hasLayer(layer)) map.addLayer(layer);
   };
 
-  // the smooth AQI heatmap (zone values interpolated, faded away from the zones)
-  useEffect(() => {
-    sync('heat', visible.heat, () => createHeatLayer(heatPoints(zones, metric), metric), [zones, metric]);
-  }, [visible.heat, zones, metric]);
-
-  // zones coloured by the CAMS estimate
-  useEffect(() => {
-    sync('zones', visible.zones, () => {
-      const g = L.layerGroup();
-      const byId = new Map(zones.map((z) => [z.id, z]));
-      for (const c of base.cells) {
-        const z = byId.get(c.id);
-        if (!z) continue;
-        const r = L.rectangle([[c.bounds.south, c.bounds.west], [c.bounds.north, c.bounds.east]], {
-          renderer: canvasRef.current ?? undefined,
-          weight: 0.6,
-          color: '#ffffff',
-          fillColor: colorOf(z.category),
-          fillOpacity: 0.42,
-        });
-        r.bindTooltip(`${z.place}: AQI ${z.aqi} ${aqiName(z.category)} (estimate)`, { sticky: true });
-        r.on('click', (e) => {
-          L.DomEvent.stopPropagation(e);
-          select.current({ kind: 'zone', id: z.id });
-        });
-        g.addLayer(r);
-      }
-      return g;
-    }, zones);
-  }, [visible.zones, zones, base]);
-
   // verified stations: coloured by their last AQI category, an Outdated ring when the reading is not current
   useEffect(() => {
     sync('stations', visible.stations, () => {
       const g = L.layerGroup();
       for (const s of stations) {
-        const col = s.aqi ? colorOf(s.aqi.category) : UNKNOWN_COLOR;
+        const col = s.aqi ? colorOf(s.aqi.category) : s.estimate ? colorOf(s.estimate.category) : UNKNOWN_COLOR;
         if (s.status === 'outdated') {
           g.addLayer(L.circleMarker([s.lat, s.lon], { renderer: canvasRef.current ?? undefined, radius: 15, color: '#7a2a2a', weight: 2, dashArray: '4 4', fill: false, interactive: false }));
         }
@@ -173,7 +136,7 @@ export function Map2D(props: Map2DProps) {
           : L.marker([s.lat, s.lon], {
               keyboard: true,
               title: s.name,
-              icon: L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17], html: `<div style="width:34px;height:34px;border-radius:50%;background:${col};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.45);color:${s.aqi?.category === 'Poor' || s.aqi?.category === 'Very Poor' || s.aqi?.category === 'Severe' ? '#fff' : '#1c0a10'};font:700 12px/28px system-ui;text-align:center">${s.aqi ? Math.round(s.aqi.value) : s.estimate ? Math.round(s.estimate.aqi) : '–'}</div>` }),
+              icon: L.divIcon({ className: '', iconSize: [34, 34], iconAnchor: [17, 17], html: `<div style="width:34px;height:34px;border-radius:50%;background:${col};border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.45);color:${['Poor', 'Very Poor', 'Severe'].includes(s.aqi?.category ?? s.estimate?.category ?? '') ? '#fff' : '#1c0a10'};font:700 12px/28px system-ui;text-align:center">${s.aqi ? Math.round(s.aqi.value) : s.estimate ? Math.round(s.estimate.aqi) : '–'}</div>` }),
             });
         m.bindTooltip(`${s.name}${manual ? ' (manual)' : ''}: ${s.status === 'live' ? 'measured' : s.status === 'outdated' ? 'OUTDATED reading' : 'no current reading'}`, { sticky: true });
         m.on('click', (e) => {

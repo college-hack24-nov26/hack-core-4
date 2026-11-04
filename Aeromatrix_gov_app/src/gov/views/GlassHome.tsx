@@ -8,7 +8,8 @@ import { POLLUTANT_KEYS, POLLUTANT_NAME, POLLUTANT_UNIT, aqiCategory, colorOf, u
 import { countStations, useStations } from '../lib/stations';
 import { formatIst } from '../lib/format';
 import { PersonIllustration } from '../PersonIllustration';
-import { Skeleton, StatusChip } from '../ui';
+import { AqiChip, Skeleton, StatusChip } from '../ui';
+import { useHotspots } from '../lib/hotspots';
 import { AQI_LABEL, AQI_SHORT } from '../../services/cpcbAqi';
 import { Select } from '../../components/Select';
 
@@ -111,47 +112,100 @@ function Hero({ loc }: { loc: Loc }) {
   );
 }
 
+/** The most polluted places first (the hotspots), with the pollutant breakdown of the place in view one tap away. */
 function Hotspots({ loc }: { loc: Loc }) {
-  const [all, setAll] = useState(false);
-  const list = useMemo(() => [...loc.pollutants].sort((a, b) => (b.sub ?? 0) - (a.sub ?? 0) || (b.concentration ?? 0) - (a.concentration ?? 0)), [loc.pollutants]);
-  const shown = all ? list : list.slice(0, 3);
+  const [tab, setTab] = useState<'places' | 'pollutants'>('places');
+  const hot = useHotspots('aqi');
+  const setView = useGovStore((s) => s.setView);
+  const selectHotspot = useGovStore((s) => s.selectHotspot);
+  const places = hot.zones.slice(0, 5);
+  const pollutants = useMemo(() => [...loc.pollutants].sort((a, b) => (b.sub ?? 0) - (a.sub ?? 0) || (b.concentration ?? 0) - (a.concentration ?? 0)), [loc.pollutants]);
   return (
     <section className="gov-card p-5" aria-label="Top pollutant hotspots">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-sand-50">Top Pollutant Hotspots</h2>
-        {list.length > 3 && (
-          <button type="button" onClick={() => setAll((v) => !v)} className="gov-tap min-h-9 text-sm font-semibold text-accent-500">
-            {all ? 'Show less' : 'View all'}
-          </button>
-        )}
+        <button type="button" onClick={() => setView('hotspots')} className="gov-tap min-h-9 text-sm font-semibold text-accent-500">
+          View all
+        </button>
       </div>
-      <ul className="space-y-3">
-        {shown.map((p) => {
-          const cat = p.sub !== null ? aqiCategory(p.sub) : null;
-          const col = colorOf(cat);
-          const pctBar = Math.max(6, Math.min(100, ((p.sub ?? 0) / 300) * 100));
-          return (
-            <li key={p.key}>
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="font-semibold text-sand-50">{POLLUTANT_NAME[p.key]}</span>
-                <span className="flex items-center gap-2">
-                  <span className="tabular-nums text-sand-100">
-                    {p.concentration!.toFixed(p.key === 'co' ? 2 : 0)} <span className="text-xs text-sand-400">{POLLUTANT_UNIT[p.key]}</span>
-                  </span>
-                  {cat && (
-                    <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: `${col}26`, color: col }}>
-                      {AQI_SHORT[cat]}
+      <div role="tablist" aria-label="Hotspot view" className="mb-4 grid grid-cols-2 gap-1.5 rounded-2xl bg-ink-800 p-1">
+        {([['places', 'Places'], ['pollutants', 'Pollutants']] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={`gov-tap min-h-9 rounded-xl text-sm font-semibold transition-all ${tab === id ? 'bg-accent-500 text-white shadow' : 'text-sand-200 hover:bg-white/40'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {tab === 'places' ? (
+        places.length === 0 ? (
+          <p className="text-sm text-sand-300">No places to rank right now.</p>
+        ) : (
+          <ol className="glass-swap space-y-1.5">
+            {places.map((h, i) => {
+              const dom = h.dominant as PollutantKey | null;
+              const val = dom && h.zone ? h.zone.values[dom] : undefined;
+              return (
+                <li key={h.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      selectHotspot(h.id);
+                      setView('hotspots');
+                    }}
+                    className="gov-tap flex w-full items-center gap-3 rounded-2xl bg-ink-850 px-3 py-2.5 text-left ring-1 ring-white/40 transition-colors hover:bg-ink-800"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: colorOf(h.category) }}>
+                      {i + 1}
                     </span>
-                  )}
-                </span>
-              </div>
-              <div className="glass-bar mt-1.5">
-                <span style={{ width: `${pctBar}%`, background: col }} />
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-semibold text-sand-50">{h.name}</span>
+                      <span className="block truncate text-xs text-sand-300">
+                        {dom ? POLLUTANT_NAME[dom] : 'AQI'}
+                        {val !== undefined && dom ? ` ${val.toFixed(dom === 'co' ? 2 : 0)} ${POLLUTANT_UNIT[dom]}` : ''}
+                      </span>
+                    </span>
+                    <AqiChip aqi={h.aqi} category={h.category} />
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        )
+      ) : (
+        <ul className="glass-swap space-y-3">
+          {pollutants.slice(0, 6).map((p) => {
+            const cat = p.sub !== null ? aqiCategory(p.sub) : null;
+            const col = colorOf(cat);
+            const pctBar = Math.max(6, Math.min(100, ((p.sub ?? 0) / 300) * 100));
+            return (
+              <li key={p.key}>
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-semibold text-sand-50">{POLLUTANT_NAME[p.key]}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="tabular-nums text-sand-100">
+                      {p.concentration!.toFixed(p.key === 'co' ? 2 : 0)} <span className="text-xs text-sand-400">{POLLUTANT_UNIT[p.key]}</span>
+                    </span>
+                    {cat && (
+                      <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: `${col}26`, color: col }}>
+                        {AQI_SHORT[cat]}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <div className="glass-bar mt-1.5">
+                  <span style={{ width: `${pctBar}%`, background: col }} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }

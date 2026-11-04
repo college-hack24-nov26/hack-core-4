@@ -7,9 +7,7 @@ import { coverageGaps } from '../lib/coverage';
 import { useHotspots } from '../lib/hotspots';
 import { isCapableDesktop, readDevice } from '../lib/capability';
 import { useStations } from '../lib/stations';
-import { CATEGORIES, CATEGORY_COLOR, POLLUTANT_KEYS, POLLUTANT_NAME } from '../lib/airdata';
-import type { HeatMetric } from '../lib/heat';
-import { POLLUTANT_RANGE, POLLUTANT_UNIT as UNIT, legendGradient } from '../../utils/colors';
+import { CATEGORIES, CATEGORY_COLOR } from '../lib/airdata';
 import { formatIst } from '../lib/format';
 import { AqiChip, Btn, ForecastStrip, StatusChip, TrendBadge } from '../ui';
 import { Sheet } from '../Sheet';
@@ -38,8 +36,6 @@ function useCapableDesktop(): boolean {
 }
 
 const LAYERS: Array<{ id: MapLayerId; label: string }> = [
-  { id: 'heat', label: 'AQI heatmap' },
-  { id: 'zones', label: 'Pollution surface (estimated)' },
   { id: 'stations', label: 'Monitoring stations (continuous and manual)' },
   { id: 'hotspots', label: 'Hotspots' },
   { id: 'coverage', label: 'Monitoring gaps' },
@@ -115,7 +111,6 @@ export function MapView() {
   const focusMap = useGovStore((s) => s.focusMap);
   const [selection, setSelection] = useState<MapSelection>(null);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [metric, setMetric] = useState<HeatMetric>('aqi');
   const [query, setQuery] = useState('');
   const suggestions = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -127,9 +122,8 @@ export function MapView() {
   const [me, setMe] = useState<{ lon: number; lat: number; accuracy: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locateNote, setLocateNote] = useState<string | null>(null);
-  const [visible, setVisible] = useState<Record<MapLayerId, boolean>>({ heat: true, zones: false, stations: false, hotspots: true, coverage: false, midc: false, industry: false });
+  const [visible, setVisible] = useState<Record<MapLayerId, boolean>>({ stations: true, hotspots: true, coverage: false, midc: false, industry: false });
 
-  const mode: 'heat' | 'stations' = visible.heat ? 'heat' : 'stations';
   const capable = useCapableDesktop();
   const show3d = capable && settings.map3d;
   const coverage = useMemo(() => (base ? coverageGaps(base.cells, st.placed) : null), [base, st.placed]);
@@ -197,9 +191,7 @@ export function MapView() {
       ) : (
         <Map2D
           base={base}
-          visible={{ heat: eff('heat'), zones: eff('zones'), stations: eff('stations'), hotspots: eff('hotspots'), coverage: eff('coverage'), midc: eff('midc'), industry: eff('industry') }}
-          zones={air.zones}
-          metric={metric}
+          visible={{ stations: eff('stations'), hotspots: eff('hotspots'), coverage: eff('coverage'), midc: eff('midc'), industry: eff('industry') }}
           stations={st.placed}
           hotspots={hot.zones}
           coverage={coverage}
@@ -214,7 +206,7 @@ export function MapView() {
       <div className="absolute inset-x-3 top-[calc(4.5rem+env(safe-area-inset-top))] z-10 flex flex-col items-start gap-2">
         {!show3d && (
           <div className="relative w-full max-w-md">
-            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sand-400" />
+            <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-accent-500" />
             <input
               type="search"
               value={query}
@@ -222,7 +214,7 @@ export function MapView() {
               placeholder="Search a place"
               aria-label="Search a place"
               autoComplete="off"
-              className="gov-tap h-11 w-full rounded-2xl border border-white/60 bg-ink-900/95 pl-10 pr-3 text-sm text-sand-50 shadow-lg backdrop-blur placeholder:text-sand-500"
+              className="gov-tap h-12 w-full rounded-2xl border-2 border-accent-500/40 bg-white pl-11 pr-3 text-[15px] font-medium text-slate-900 shadow-xl placeholder:font-normal placeholder:text-slate-500 focus:border-accent-500"
             />
             {suggestions.length > 0 && (
               <ul role="listbox" className="animate-rise absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-sand-400/20 bg-ink-950 p-1.5 shadow-2xl backdrop-blur-xl">
@@ -248,22 +240,6 @@ export function MapView() {
         )}
         <div className="flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
           {!show3d && (
-            <div role="radiogroup" aria-label="Map view" className="flex shrink-0 rounded-2xl bg-ink-900/95 p-1 shadow-lg backdrop-blur">
-              {(['heat', 'stations'] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  role="radio"
-                  aria-checked={mode === m}
-                  onClick={() => setVisible({ ...visible, heat: m === 'heat', stations: m === 'stations' })}
-                  className={`gov-tap min-h-9 rounded-xl px-3.5 text-sm font-semibold transition-colors ${mode === m ? 'bg-accent-500 text-white' : 'text-sand-200'}`}
-                >
-                  {m === 'heat' ? 'Heatmap' : 'Stations'}
-                </button>
-              ))}
-            </div>
-          )}
-          {!show3d && (
             <Btn icon={Layers} onClick={() => setPanelOpen((v) => !v)} className="shrink-0 !bg-ink-900/95 shadow-lg backdrop-blur" ariaLabel="Map layers">
               Layers
             </Btn>
@@ -279,22 +255,6 @@ export function MapView() {
             </Btn>
           )}
         </div>
-        {!show3d && mode === 'heat' && (
-          <div role="tablist" aria-label="Pollutant" className="flex max-w-full gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
-            {(['aqi', ...POLLUTANT_KEYS] as HeatMetric[]).map((k) => (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                aria-selected={metric === k}
-                onClick={() => setMetric(k)}
-                className={`gov-tap min-h-9 shrink-0 rounded-full px-3.5 text-sm font-semibold shadow-md backdrop-blur ${metric === k ? 'bg-accent-500 text-white' : 'bg-ink-900/95 text-sand-100'}`}
-              >
-                {k === 'aqi' ? 'AQI' : POLLUTANT_NAME[k]}
-              </button>
-            ))}
-          </div>
-        )}
         {locateNote && !show3d && (
           <p role="status" className="max-w-xs rounded-xl bg-ink-950 p-3 text-sm text-sand-100 shadow-lg">
             {locateNote}
@@ -326,30 +286,15 @@ export function MapView() {
 
       {!show3d && (
         <div className="pointer-events-none absolute bottom-24 right-3 z-10 hidden max-w-[210px] rounded-2xl bg-ink-950/95 p-3 text-xs text-sand-200 shadow-lg sm:block">
-          {metric === 'aqi' || mode === 'stations' ? (
-            <>
-              <div className="mb-1.5 font-semibold text-sand-100">Air quality index (US)</div>
-              <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
-                {CATEGORIES.map((c) => (
-                  <li key={c} className="flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-sm" style={{ background: CATEGORY_COLOR[c] }} />
-                    {AQI_SHORT[c]}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <>
-              <div className="mb-1.5 font-semibold text-sand-100">{POLLUTANT_NAME[metric as keyof typeof POLLUTANT_NAME]}</div>
-              <div className="h-2.5 w-full rounded-full" style={{ background: legendGradient() }} />
-              <div className="mt-1 flex justify-between font-mono text-[10px] text-sand-300">
-                <span>{POLLUTANT_RANGE[metric as keyof typeof POLLUTANT_RANGE][0]}</span>
-                <span>{(POLLUTANT_RANGE[metric as keyof typeof POLLUTANT_RANGE][0] + POLLUTANT_RANGE[metric as keyof typeof POLLUTANT_RANGE][1]) / 2}</span>
-                <span>{POLLUTANT_RANGE[metric as keyof typeof POLLUTANT_RANGE][1]}+</span>
-              </div>
-              <div className="mt-1 text-sand-400">{UNIT[metric as keyof typeof UNIT]} (colour scale)</div>
-            </>
-          )}
+          <div className="mb-1.5 font-semibold text-sand-100">Air quality index (US)</div>
+          <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
+            {CATEGORIES.map((c) => (
+              <li key={c} className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-sm" style={{ background: CATEGORY_COLOR[c] }} />
+                {AQI_SHORT[c]}
+              </li>
+            ))}
+          </ul>
           <div className="mt-2 flex items-center gap-2 text-sand-300">
             <span className="h-3 w-3 rounded-full border-2 border-ink-950 bg-sand-400" /> Continuous station
           </div>
