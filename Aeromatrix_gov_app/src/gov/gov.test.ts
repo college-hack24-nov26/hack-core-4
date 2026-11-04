@@ -76,12 +76,12 @@ beforeAll(async () => {
 });
 
 describe('categories', () => {
-  it('orders and colours the six CPCB categories', () => {
+  it('orders and colours the six US AQI categories', () => {
     expect(CATEGORIES).toEqual(['Good', 'Satisfactory', 'Moderate', 'Poor', 'Very Poor', 'Severe']);
     expect(categoryRank('Poor')).toBe(3);
     expect(categoryRank(null)).toBe(-1);
-    expect(CATEGORY_COLOR).toMatchObject({ Good: '#2fae8b', Satisfactory: '#8bc34a', Moderate: '#e0b100', Poor: '#f08c1a', 'Very Poor': '#d9372f', Severe: '#8c1d5e' });
-    expect(CATEGORY_FLOOR).toEqual({ Good: 0, Satisfactory: 51, Moderate: 101, Poor: 201, 'Very Poor': 301, Severe: 401 });
+    expect(CATEGORY_COLOR).toMatchObject({ Good: '#2fae8b', Satisfactory: '#e8c100', Moderate: '#f08c1a', Poor: '#d9372f', 'Very Poor': '#8c1d5e', Severe: '#5e1535' });
+    expect(CATEGORY_FLOOR).toEqual({ Good: 0, Satisfactory: 51, Moderate: 101, Poor: 151, 'Very Poor': 201, Severe: 301 });
   });
 });
 
@@ -96,7 +96,7 @@ describe('zone rows from live model data', () => {
     expect(out.missing).toBe(c.length - 1);
     expect(out.rows[0].id).toBe(c[0].id);
     expect(out.rows[0].category).toBe('Poor');
-    expect(out.rows[0].aqi).toBeGreaterThan(200);
+    expect(out.rows[0].aqi).toBeGreaterThan(150);
   });
 
   it('gives no rows at all when there is no live data', () => {
@@ -277,11 +277,12 @@ describe('stations', () => {
     expect(by['s-est'].status).toBe('estimate');
     expect(by['s-est'].readings).toEqual([]);
     expect(by['s-est'].estimate?.category).toBeDefined();
-    expect(by['s-none'].status).toBe('no_feed');
-    expect(by['s-none'].estimate).toBeNull();
+    // a station with no model point of its own takes the nearest model point, marked as an estimate
+    expect(by['s-none'].status).toBe('estimate');
+    expect(by['s-none'].estimate).not.toBeNull();
     expect(by['s-nocoord']).toBeUndefined();
     expect(b.notPlaced.map((n) => n.name)).toEqual(expect.arrayContaining(['Dange Chowk', 'Hadapsar']));
-    expect(countStations(b)).toEqual({ total: 4, live: 1, outdated: 1, estimate: 1, noFeed: 1, notPlaced: 2 });
+    expect(countStations(b)).toEqual({ total: 4, live: 1, outdated: 1, estimate: 2, noFeed: 0, notPlaced: 2 });
   });
 
   it('explains why nothing is drawn when no coordinates are loaded', () => {
@@ -354,7 +355,7 @@ describe('alerts', () => {
   it('creates one current alert per model grid point at Poor and Critical at Very Poor', () => {
     const poor = buildAlerts({ zones: zonesAt('poor'), stations: noStations(), records: {}, nowMs: NOW });
     expect(poor).toHaveLength(1); // two zones share one model point
-    expect(poor[0]).toMatchObject({ kind: 'current', severity: 'high', threshold: 201, confidence: CONFIDENCE_TEXT });
+    expect(poor[0]).toMatchObject({ kind: 'current', severity: 'high', threshold: 151, confidence: CONFIDENCE_TEXT });
     expect(poor[0].location).toMatch(/1 nearby area/);
     expect(poor[0].deadline).toBe(addDaysIst(NOW, 2));
     const vp = buildAlerts({ zones: zonesAt('verypoor'), stations: noStations(), records: {}, nowMs: NOW });
@@ -369,8 +370,8 @@ describe('alerts', () => {
     expect(a).toHaveLength(1);
     expect(a[0].kind).toBe('forecast');
     expect(a[0].forDate).toMatch(/^2026-11-0[4-6]$/);
-    expect(a[0].expected!).toBeGreaterThanOrEqual(201);
-    expect(a[0].current!).toBeLessThan(201);
+    expect(a[0].expected!).toBeGreaterThanOrEqual(151);
+    expect(a[0].current!).toBeLessThan(151);
     // a day-3-only crossing is a Watch
     const late = buildAlerts({ zones: zonesAt('low', (h) => (h > 50 ? 150 : 40)), stations: noStations(), records: {}, nowMs: NOW });
     expect(late[0]?.severity).toBe('watch');
@@ -443,7 +444,7 @@ describe('hotspots', () => {
     };
     const zones = buildZoneRows({ base: osmBase, points, placeNames: {}, nowMs: NOW }).rows;
     const z = zoneHotspots(zones);
-    expect(z.map((h) => h.category)).toEqual(['Very Poor', 'Poor', 'Satisfactory']);
+    expect(z.map((h) => h.category)).toEqual(['Very Poor', 'Poor', 'Moderate']);
     expect(z[0].subtitle).toMatch(/1 nearby area/);
     const { catalog, svc, live } = stationFixture();
     const st = stationHotspots(buildStationRows(catalog, svc, live, NOW).placed, zones);

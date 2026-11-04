@@ -25,6 +25,8 @@ import { DataPanel } from './DataPanel';
 import { SensorsPanel } from '../task2/SensorsPanel';
 import { AnalyticsPanel } from './AnalyticsPanel';
 import { IndustryPanel } from './IndustryPanels';
+import { localFactors } from '../services/localVariation';
+import { isLiveFresh, liveValue, zonePointId } from '../services/liveData';
 import { ForecastTab, LiveNowTab, LiveStrip } from './LivePanels';
 import { StationsTab } from './StationPanels';
 import { ZoneCauses } from './ZoneCauses';
@@ -59,27 +61,37 @@ function useZoneRows() {
 
 function Overview() {
   const rows = useZoneRows();
+  const live = useTwinStore((s) => s.live);
   const base = useTwinStore((s) => s.base);
   const focusCell = useTwinStore((s) => s.focusCell);
   const selectedCellId = useTwinStore((s) => s.selectedCellId);
 
+  const base0 = useTwinStore((s) => s.base);
+  const baseline0 = useTwinStore((s) => s.baseline);
   const stats = useMemo(() => {
-    const n = Math.max(1, rows.length);
-    const mean = rows.reduce((a, r) => a + r.state.pm25, 0) / n;
+    // With live air data the zone numbers are the live ones (spread inside each model cell), the same as every other panel.
+    const f = base0 && isLiveFresh(live) ? localFactors(base0, live.points, baseline0) : {};
+    const adj = rows.map((r) => {
+      const v = isLiveFresh(live) ? liveValue(live.points[zonePointId(r.cell.id)], 'pm25') : null;
+      const pm25 = v === null ? r.state.pm25 : v * (f[r.cell.id] ?? 1);
+      return { ...r, state: { ...r.state, pm25, risk: v === null ? r.state.risk : riskFromPm25(pm25) } };
+    });
+    const n = Math.max(1, adj.length);
+    const mean = adj.reduce((a, r) => a + r.state.pm25, 0) / n;
     const counts: Record<RiskLevel, number> = { LOW: 0, MODERATE: 0, HIGH: 0, VERY_HIGH: 0 };
-    rows.forEach((r) => (counts[r.state.risk] += 1));
-    const top = [...rows].sort((a, b) => b.state.pm25 - a.state.pm25).slice(0, 5);
-    return { mean, counts, top, total: rows.length };
-  }, [rows]);
-
+    adj.forEach((r) => (counts[r.state.risk] += 1));
+    const top = [...adj].sort((a, b) => b.state.pm25 - a.state.pm25).slice(0, 5);
+    return { mean, counts, top, total: adj.length };
+  }, [rows, live, base0, baseline0]);
   if (!base) return null;
   const w = base.weather;
-  const meanRisk = riskFromPm25(stats.mean);
+  const shownMean = stats.mean;
+  const meanRisk = riskFromPm25(shownMean);
 
   return (
     <>
       <div className="flex items-end justify-between gap-3 pt-3">
-        <Stat label="City average PM2.5" value={fmt(stats.mean)} unit="ug/m3" />
+        <Stat label="City average PM2.5" value={fmt(shownMean)} unit="ug/m3" />
         <span
           className="mb-1 rounded-full px-2.5 py-1 text-[11px] font-bold text-white"
           style={{ background: RISK_COLOR[meanRisk] }}

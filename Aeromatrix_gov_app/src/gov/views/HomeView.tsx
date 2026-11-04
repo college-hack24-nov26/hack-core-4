@@ -9,6 +9,7 @@ import { formatAge, formatIst } from '../lib/format';
 import { ForecastChart } from '../charts';
 import { GlassHome } from './GlassHome';
 import { AqiChip, Btn, CategoryScale, Card, EmptyState, Gauge, Skeleton, StatusChip, TrendBadge } from '../ui';
+import { AQI_LABEL } from '../../services/cpcbAqi';
 
 const SEV_COLOR: Record<AlertSeverity, string> = { critical: '#d9372f', high: '#f08c1a', watch: '#e0b100', info: '#9a8a80' };
 
@@ -16,7 +17,7 @@ const timeOnly = (ms: number) => formatIst(ms).replace(/^.*?, /, '');
 
 export function HomeView() {
   const ui = useGovStore((s) => s.settings.ui);
-  return ui === 'glass' ? <GlassHome /> : <ClassicHome />;
+  return ui !== 'classic' ? <GlassHome /> : <ClassicHome />;
 }
 
 function ClassicHome() {
@@ -64,7 +65,7 @@ function ClassicHome() {
             <div className="mt-3 flex flex-col items-center text-sand-50">
               <Gauge value={city.value} category={city.category} />
               <div className="-mt-1 text-lg font-semibold" style={{ color: colorOf(city.category) }}>
-                {city.category}
+                {AQI_LABEL[city.category]}
               </div>
               <div className="mt-3">
                 <CategoryScale category={city.category} />

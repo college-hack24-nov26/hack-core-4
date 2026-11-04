@@ -293,7 +293,7 @@ export function SensorsPanel() {
             <div className="rounded-xl bg-ink-850 p-3 text-xs hairline">
               {aqi.status === 'AVAILABLE' && aqi.value !== null ? (
                 <>
-                  <span className="rounded-full px-2.5 py-1 font-bold text-white" style={{ background: T2_AQI_COLOR[aqi.value <= 50 ? 'Good' : aqi.value <= 100 ? 'Satisfactory' : aqi.value <= 200 ? 'Moderate' : aqi.value <= 300 ? 'Poor' : aqi.value <= 400 ? 'Very Poor' : 'Severe'] }}>AQI ~{aqi.value}</span>
+                  <span className="rounded-full px-2.5 py-1 font-bold text-white" style={{ background: T2_AQI_COLOR[aqi.value <= 50 ? 'Good' : aqi.value <= 100 ? 'Satisfactory' : aqi.value <= 150 ? 'Moderate' : aqi.value <= 200 ? 'Poor' : aqi.value <= 300 ? 'Very Poor' : 'Severe'] }}>AQI ~{aqi.value}</span>
                   <p className="mt-1 text-sand-400">{aqi.label}</p>
                 </>
               ) : (

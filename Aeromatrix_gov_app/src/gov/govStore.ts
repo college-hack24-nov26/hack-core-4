@@ -6,7 +6,7 @@ export type GovView = 'home' | 'alerts' | 'map' | 'stations' | 'hotspots' | 'sim
 export const GOV_VIEWS: GovView[] = ['home', 'alerts', 'map', 'stations', 'hotspots', 'simulator', 'reports', 'settings'];
 
 /** Classic is the original look; glass is the blue and white glassmorphism look. */
-export type UiTheme = 'classic' | 'glass';
+export type UiTheme = 'classic' | 'glass' | 'glass-adv';
 
 export type AlertStatus = 'new' | 'acknowledged' | 'assigned' | 'resolved';
 

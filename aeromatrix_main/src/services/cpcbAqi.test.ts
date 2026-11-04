@@ -11,7 +11,8 @@ interface ParityCase {
   sub: Record<string, number>;
 }
 
-describe('CPCB AQI: parity with the Python backend', () => {
+// The recorded cases come from the CPCB backend. The apps now use the US EPA scale, so they no longer apply.
+describe.skip('CPCB AQI: parity with the Python backend', () => {
   const cases = parity as unknown as ParityCase[];
 
   it('has the recorded cases', () => {
@@ -33,32 +34,33 @@ describe('CPCB AQI: parity with the Python backend', () => {
 
 const flat = (v: number, n = 24): number[] => Array.from({ length: n }, () => v);
 
-describe('CPCB AQI rules', () => {
+describe('US AQI rules', () => {
   it('maps values to categories', () => {
-    expect([0, 50, 51, 100, 101, 200, 201, 300, 301, 400, 401, 500].map(aqiCategory)).toEqual([
+    expect([0, 50, 51, 100, 101, 150, 151, 200, 201, 300, 301, 500].map(aqiCategory)).toEqual([
       'Good', 'Good', 'Satisfactory', 'Satisfactory', 'Moderate', 'Moderate', 'Poor', 'Poor', 'Very Poor', 'Very Poor', 'Severe', 'Severe',
     ]);
   });
 
   it('computes sub-indices at the band edges', () => {
-    expect(subindexFor('pm25', 30)).toMatchObject({ value: 50, bounded: false });
-    expect(subindexFor('pm25', 60)).toMatchObject({ value: 100 });
-    expect(subindexFor('pm10', 250)).toMatchObject({ value: 200 });
-    expect(subindexFor('co', 2.04)).toMatchObject({ value: 100, concentration: 2 }); // rounded to table precision
-    expect(subindexFor('so2', 800)).toMatchObject({ value: 300 });
+    expect(subindexFor('pm25', 9)).toMatchObject({ value: 50, bounded: false });
+    expect(subindexFor('pm25', 35.4)).toMatchObject({ value: 100 });
+    expect(subindexFor('pm25', 55.4)).toMatchObject({ value: 150 });
+    expect(subindexFor('pm10', 154)).toMatchObject({ value: 100 });
+    expect(subindexFor('co', 5.04)).toMatchObject({ value: 50, concentration: 5 }); // rounded to table precision
+    expect(subindexFor('so2', 796)).toMatchObject({ value: 200 });
   });
 
   it('gives a lower bound for open-ended severe concentrations', () => {
-    expect(subindexFor('pm25', 400)).toMatchObject({ kind: 'ok', value: 401, bounded: true });
+    expect(subindexFor('pm25', 400)).toMatchObject({ kind: 'ok', value: 301, bounded: true });
     const r = calculateAqi({ pm25: flat(400), pm10: flat(100), no2: flat(30) }, '2026-01-01T00:00:00Z');
     expect(r.status).toBe('LOWER_BOUND');
-    expect(r.value).toBe(401);
+    expect(r.value).toBe(301);
     expect(r.category).toBe('Severe');
-    expect(aqiLabel(r)).toBe('>= 401 (Severe)');
+    expect(aqiLabel(r)).toBe('>= 301 (Hazardous)');
   });
 
-  it('withholds the AQI when ozone is above 208 ug/m3', () => {
-    const r = calculateAqi({ pm25: flat(50), pm10: flat(90), no2: flat(30), o3: flat(300) }, '2026-01-01T00:00:00Z');
+  it('withholds the AQI when ozone is above 392 ug/m3', () => {
+    const r = calculateAqi({ pm25: flat(50), pm10: flat(90), no2: flat(30), o3: flat(500) }, '2026-01-01T00:00:00Z');
     expect(r.status).toBe('UNAVAILABLE');
     expect(r.value).toBeNull();
     expect(r.reason).toMatch(/Ozone/);

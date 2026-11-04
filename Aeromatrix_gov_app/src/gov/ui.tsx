@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Info, type LucideIcon } from 'lucide-react';
 import { CATEGORY_FLOOR, colorOf, type AqiCategory, type ForecastDay, type Trend } from './lib/airdata';
+import { AQI_LABEL, AQI_SHORT } from '../services/cpcbAqi';
 
 /** The five labels a number may carry, plus an explicit "Unavailable". */
 export type ChipKind = 'measured' | 'outdated' | 'estimated' | 'forecast' | 'simulation' | 'nofeed';
@@ -31,7 +32,7 @@ export function AqiChip({ aqi, category, className = '' }: { aqi?: number | null
   return (
     <span className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${className}`} style={{ background: bg, color: dark ? '#1c0a10' : '#fff' }}>
       {aqi !== null && aqi !== undefined && <span className="tabular-nums">{Math.round(aqi)}</span>}
-      <span>{category ?? 'Unknown'}</span>
+      <span>{category ? AQI_SHORT[category] : 'Unknown'}</span>
     </span>
   );
 }
@@ -208,7 +209,7 @@ export function Gauge({ value, category, size = 220 }: { value: number; category
   const offset = LEN * (1 - shown / 500);
   const color = colorOf(category);
   return (
-    <svg width={size} height={(size * 120) / 200} viewBox="0 0 200 120" role="img" aria-label={`Air quality index ${Math.round(value)}, ${category}`}>
+    <svg width={size} height={(size * 120) / 200} viewBox="0 0 200 120" role="img" aria-label={`Air quality index ${Math.round(value)}, ${AQI_LABEL[category]}`}>
       <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="currentColor" strokeOpacity="0.12" strokeWidth="14" strokeLinecap="round" />
       <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke={color} strokeWidth="14" strokeLinecap="round" strokeDasharray={LEN} strokeDashoffset={offset} className="gov-gauge-arc" />
       <text x="100" y="88" textAnchor="middle" fontSize="48" fontWeight="700" fill="currentColor" style={{ fontVariantNumeric: 'tabular-nums' }}>
@@ -239,7 +240,7 @@ export function ForecastStrip({ days }: { days: ForecastDay[] }) {
           <div className="text-xs font-medium text-sand-300">+{d.hours} h</div>
           <div className="mt-1 text-xl font-semibold tabular-nums text-sand-50">{d.aqi}</div>
           <div className="text-xs font-medium" style={{ color: colorOf(d.category) }}>
-            {d.category}
+            {AQI_SHORT[d.category]}
           </div>
         </li>
       ))}

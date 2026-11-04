@@ -10,6 +10,7 @@ import { CATEGORY_FLOOR, POLLUTANT_NAME, POLLUTANT_UNIT, categoryRank, groupByGr
 import { countStations, nearestStations, useStations, type StationBuild, type StationRow } from './stations';
 import { actionFor, departmentsFor, type CauseKey, type Department } from './routing';
 import { addDaysIst } from './format';
+import { aqiName } from '../../services/cpcbAqi';
 
 export type AlertSeverity = 'critical' | 'high' | 'watch' | 'info';
 export type AlertKind = 'forecast' | 'current' | 'data';
@@ -17,7 +18,7 @@ export type AlertKind = 'forecast' | 'current' | 'data';
 export const SEVERITY_LABEL: Record<AlertSeverity, string> = { critical: 'Critical', high: 'High', watch: 'Watch', info: 'Info' };
 export const SEVERITY_ORDER: Record<AlertSeverity, number> = { critical: 0, high: 1, watch: 2, info: 3 };
 
-/** The configured threshold: Poor (CPCB AQI 201) or worse. */
+/** The configured threshold: Unhealthy (US AQI 151) or worse. */
 export const ALERT_THRESHOLD: AqiCategory = 'Poor';
 export const ALERT_THRESHOLD_AQI = CATEGORY_FLOOR[ALERT_THRESHOLD];
 
@@ -124,7 +125,7 @@ export function buildAlerts({ zones, stations, records, nowMs }: AlertInputs): G
         id,
         kind: 'current',
         severity,
-        title: `${zone.category} air in ${zone.place}`,
+        title: `${aqiName(zone.category)} air in ${zone.place}`,
         current: zone.aqi,
         currentDetail: readingText(zone),
         expected: null,
@@ -148,7 +149,7 @@ export function buildAlerts({ zones, stations, records, nowMs }: AlertInputs): G
         id,
         kind: 'forecast',
         severity,
-        title: `${worst.category} air expected in ${zone.place} by ${first.date}`,
+        title: `${aqiName(worst.category)} air expected in ${zone.place} by ${first.date}`,
         current: zone.aqi,
         currentDetail: readingText(zone),
         expected: worst.aqi,

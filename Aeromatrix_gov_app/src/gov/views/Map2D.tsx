@@ -13,6 +13,7 @@ import type { Hotspot } from '../lib/hotspots';
 import { simplifyRing } from '../lib/geo';
 import { createHeatLayer, heatPoints, type HeatMetric } from '../lib/heat';
 import type { StationRow } from '../lib/stations';
+import { aqiName } from '../../services/cpcbAqi';
 
 export type MapLayerId = 'heat' | 'zones' | 'stations' | 'hotspots' | 'midc' | 'industry' | 'coverage';
 export type MapSelection = { kind: 'zone' | 'station' | 'hotspot' | 'midc' | 'gap'; id: string } | null;
@@ -128,7 +129,7 @@ export function Map2D(props: Map2DProps) {
           fillColor: colorOf(z.category),
           fillOpacity: 0.42,
         });
-        r.bindTooltip(`${z.place}: AQI ${z.aqi} ${z.category} (estimate)`, { sticky: true });
+        r.bindTooltip(`${z.place}: AQI ${z.aqi} ${aqiName(z.category)} (estimate)`, { sticky: true });
         r.on('click', (e) => {
           L.DomEvent.stopPropagation(e);
           select.current({ kind: 'zone', id: z.id });

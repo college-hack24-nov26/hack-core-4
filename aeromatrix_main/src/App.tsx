@@ -13,7 +13,7 @@ import { MapLegend } from './map/MapLegend';
 import { useTwinStore } from './store/useTwinStore';
 import { startLiveScenario } from './store/liveScenario';
 import { startDerived } from './store/derived';
-import { startLiveDataWhenReady } from './services/liveData';
+import { isLiveFresh, startLiveDataWhenReady } from './services/liveData';
 import { parseDeepLink } from './deepLink';
 
 function LoadingOverlay() {
@@ -77,6 +77,14 @@ export function App() {
         }
       }
     });
+    // Once live air data arrives, the map and every panel read from it, so all of them show the same numbers.
+    let switched = false;
+    const unsubMode = useTwinStore.subscribe((s) => {
+      if (!switched && isLiveFresh(s.live) && s.displayMode === 'baseline') {
+        switched = true;
+        s.setDisplayMode('current');
+      }
+    });
     const stopLive = startLiveScenario();
     const stopDerived = startDerived();
     const stopLiveData = startLiveDataWhenReady();
@@ -87,6 +95,7 @@ export function App() {
     return () => {
       window.removeEventListener('hashchange', onHash);
       unsubSection();
+      unsubMode();
       stopLive();
       stopDerived();
       stopLiveData();

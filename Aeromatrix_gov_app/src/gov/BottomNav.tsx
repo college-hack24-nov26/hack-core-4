@@ -50,9 +50,9 @@ export function BottomNav() {
   };
 
   return (
-    <nav ref={ref} aria-label="Main" className="relative z-30 shrink-0 border-t border-sand-500/20 bg-ink-900/95 backdrop-blur" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <nav ref={ref} aria-label="Main" className="gov-nav-wrap">
       {more && (
-        <ul className="gov-pop absolute bottom-full right-3 mb-2 w-52 overflow-hidden rounded-2xl border border-sand-500/20 bg-ink-950 p-1.5 shadow-2xl">
+        <ul className="gov-pop pointer-events-auto absolute bottom-full right-4 mb-2 w-52 overflow-hidden rounded-2xl border border-sand-500/20 bg-ink-950 p-1.5 shadow-2xl">
           {MORE.map(({ id, icon: Icon }) => (
             <li key={id}>
               <button type="button" onClick={() => go(id)} aria-current={view === id ? 'page' : undefined} className={`gov-tap flex w-full items-center gap-3 rounded-xl px-3 text-sm font-medium ${view === id ? 'bg-accent-500 text-white' : 'text-sand-100 hover:bg-ink-800'}`}>
@@ -62,8 +62,8 @@ export function BottomNav() {
           ))}
         </ul>
       )}
-      <div className="relative mx-auto grid max-w-xl grid-cols-5">
-        <span aria-hidden className="absolute top-0 h-0.5 w-1/5 bg-accent-500 transition-transform duration-300 ease-out" style={{ transform: `translateX(${slot * 100}%)` }} />
+      <div className="gov-nav-pill relative grid grid-cols-5 px-1">
+        <span aria-hidden className="absolute top-0 h-0.5 w-1/5 rounded-full bg-accent-500 transition-transform duration-300 ease-out" style={{ transform: `translateX(${slot * 100}%)` }} />
         {MAIN.map(({ id, icon: Icon }) => {
           const on = view === id && !more;
           return (

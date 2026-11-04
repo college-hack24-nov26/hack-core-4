@@ -4,6 +4,7 @@
  */
 import { PRICES, formatINR } from '../../plan/costModel';
 import { subindexFor } from '../../services/cpcbAqi';
+import { aqiName } from '../../services/cpcbAqi';
 import { POLLUTANT_KEYS, POLLUTANT_NAME, POLLUTANT_UNIT, categoryRank, colorOf, type AqiCategory, type CitySummary, type PollutantKey, type ZoneRow } from '../lib/airdata';
 import { sharesFor, projectShares, type ApportionmentLoad, type SourceShare } from '../lib/apportionment';
 import { COST_GROUPS, costBreakdown, runningRates } from '../lib/costs';
@@ -69,14 +70,14 @@ export interface ReportContent {
 
 export const NO_PIE_MESSAGE = 'A source-contribution chart cannot be generated yet: no source-apportionment study is available for this area. It will appear here once one is provided.';
 
-/** The CPCB description of each category. */
+/** The US EPA health description of each category. */
 export const CPCB_IMPACT: Record<AqiCategory, string> = {
-  Good: 'Minimal impact.',
-  Satisfactory: 'May cause minor breathing discomfort to sensitive people.',
-  Moderate: 'May cause breathing discomfort to people with lung disease, asthma and heart disease.',
-  Poor: 'May cause breathing discomfort to most people on prolonged exposure.',
-  'Very Poor': 'May cause respiratory illness on prolonged exposure.',
-  Severe: 'Affects healthy people and seriously affects those with existing diseases.',
+  Good: 'Air quality is satisfactory and poses little or no risk.',
+  Satisfactory: 'Acceptable, but a few unusually sensitive people may be affected.',
+  Moderate: 'Members of sensitive groups may experience health effects.',
+  Poor: 'Everyone may begin to experience health effects; sensitive groups may feel more serious effects.',
+  'Very Poor': 'Health alert: everyone may experience more serious health effects.',
+  Severe: 'Health warning of emergency conditions: everyone is likely to be affected.',
 };
 
 const PIE_COLORS = ['#a3263f', '#e0a100', '#2fae8b', '#4a6fa5', '#8c1d5e', '#9a8a80', '#f08c1a', '#5b8c5a'];
@@ -175,9 +176,9 @@ export function reportContent(input: ReportInput): ReportContent {
   const approveBy = addDaysIst(generated.getTime(), categoryRank(zone.category) >= categoryRank('Very Poor') ? 1 : zone.category === 'Poor' ? 2 : 5);
 
   // ---- A. Executive summary ----
-  const whyNow: string[] = [`The air quality category is ${zone.category}. ${CPCB_IMPACT[zone.category]}`];
+  const whyNow: string[] = [`The air quality category is ${aqiName(zone.category)}. ${CPCB_IMPACT[zone.category]}`];
   const worse = zone.forecast.find((f) => categoryRank(f.category) > categoryRank(zone.category));
-  if (worse) whyNow.push(`The forecast reaches ${worse.category} (AQI ${worse.aqi}) within ${worse.hours} hours.`);
+  if (worse) whyNow.push(`The forecast reaches ${aqiName(worse.category)} (AQI ${worse.aqi}) within ${worse.hours} hours.`);
   if (zone.trend === 'up') whyNow.push(`PM2.5 has risen ${Math.round(zone.trendPct)}% over the last six hours.`);
   if (week && week.poorDays > 0) whyNow.push(`The area was Poor or worse on ${week.poorDays} of the last ${week.days} days.`);
   else if (week && week.moderateDays >= 4) whyNow.push(`The area was Moderate or worse on ${week.moderateDays} of the last ${week.days} days.`);
@@ -192,7 +193,7 @@ export function reportContent(input: ReportInput): ReportContent {
         body: [
           ['Problem identified', `${domName} pollution in ${place}`],
           ['Affected location', place],
-          ['Current condition', `AQI ${zone.aqi} (${zone.category}), estimated from model data, ${when.replace(/, \d\d:\d\d IST$/, '')}`],
+          ['Current condition', `AQI ${zone.aqi} (${aqiName(zone.category)}), estimated from model data, ${when.replace(/, \d\d:\d\d IST$/, '')}`],
           ['Main pollutant', domValue !== undefined ? `${domName}, ${domValue < 10 ? domValue.toFixed(1) : Math.round(domValue)} ${POLLUTANT_UNIT[dominant]}` : domName],
           ['Severity', severity],
           ['Recommended intervention', o.measures.join('; ')],
@@ -212,14 +213,14 @@ export function reportContent(input: ReportInput): ReportContent {
     s.name,
     `${km.toFixed(1)} km`,
     STATUS_LABEL[s.status],
-    s.readings.length > 0 ? `${s.aqi ? `AQI ${s.aqi.value} (${s.aqi.category}); ` : ''}${formatIst(s.lastReadingAt)} (${formatAge(s.ageMs)})` : s.estimate ? `No reading; estimate AQI ${s.estimate.aqi}` : 'No reading',
+    s.readings.length > 0 ? `${s.aqi ? `AQI ${s.aqi.value} (${aqiName(s.aqi.category)}); ` : ''}${formatIst(s.lastReadingAt)} (${formatAge(s.ageMs)})` : s.estimate ? `No reading; estimate AQI ${s.estimate.aqi}` : 'No reading',
   ]);
   const B: ReportSection = {
     id: 'B',
     title: 'Current situation and reasons',
     blocks: [
       { t: 'h', text: 'Pollutant levels now' },
-      { t: 'table', head: ['Pollutant', 'Level', 'Status'], body: [['Air Quality Index', `${zone.aqi} (${zone.category})`, 'Estimated'], ...concRows, ['Trend (PM2.5, 6 hours)', zone.trend === 'flat' ? 'Steady' : `${zone.trend === 'up' ? 'Up' : 'Down'} ${Math.abs(Math.round(zone.trendPct))}%`, 'Estimated']] },
+      { t: 'table', head: ['Pollutant', 'Level', 'Status'], body: [['Air Quality Index', `${zone.aqi} (${aqiName(zone.category)})`, 'Estimated'], ...concRows, ['Trend (PM2.5, 6 hours)', zone.trend === 'flat' ? 'Steady' : `${zone.trend === 'up' ? 'Up' : 'Down'} ${Math.abs(Math.round(zone.trendPct))}%`, 'Estimated']] },
       { t: 'h', text: 'The last seven days' },
       ...(daily && week
         ? ([
@@ -232,7 +233,7 @@ export function reportContent(input: ReportInput): ReportContent {
                   title: 'Daily PM2.5, last 7 days',
                   unit: 'µg/m³',
                   decimals: 0,
-                  caption: 'Estimated from model data. Bar colour is the CPCB category of that day.',
+                  caption: 'Estimated from model data. Bar colour is the AQI category of that day.',
                   bars: daily.filter((d) => d.pm25 !== null).map((d) => ({ label: `${d.date.slice(8)}/${d.date.slice(5, 7)}`, value: d.pm25 as number, color: colorOf(d.category) })),
                 },
               ],
@@ -459,7 +460,7 @@ export function reportContent(input: ReportInput): ReportContent {
         head: ['', ''],
         body: [
           ['What to do', o.measures.join('; ')],
-          ['Why', `${domName} is ${zone.category} in ${place}. ${CPCB_IMPACT[zone.category]}`],
+          ['Why', `${domName} is ${aqiName(zone.category)} in ${place}. ${CPCB_IMPACT[zone.category]}`],
           ['Who to inform', unique(sched.flatMap((s) => s.department.split('; '))).join('; ') || dept(causeKey)],
           ['Estimated cost', `${inr(costs.total)} (${inr(costs.oneTime)} one-time, ${inr(costs.running)} first-year running)`],
           ['Expected outcome', o.modelledEffect && o.projectedPm25 !== null ? `PM2.5 about ${o.projectedPm25.toFixed(1)} µg/m³ from ${o.currentPm25?.toFixed(1)} (${signed(o.changePct, 0)}%), a modelled estimate` : 'Effect to be confirmed by readings on Day 7 and Day 14'],

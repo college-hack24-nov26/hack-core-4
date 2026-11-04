@@ -12,6 +12,7 @@ import {
   POLLUTANT_UNIT,
   RISK_COLOR,
   RISK_LABEL,
+  riskFromPm25,
   SOURCE_COLORS,
   SOURCE_LABELS,
 } from '../utils/colors';
@@ -19,12 +20,13 @@ import { POLLUTANTS } from '../services/pollutionModel';
 import { fmt, fmtInt, fmtSigned } from '../utils/format';
 import { zoneLabel } from '../utils/zones';
 import { displayedStates, modeStatus } from '../map/heatSource';
+import { localFactors } from '../services/localVariation';
 import type { SourceContribution } from '../types';
 
 const SOURCES: Array<keyof SourceContribution> = ['traffic', 'industry', 'background', 'other'];
 
 /** Observed vs modeled for the selected zone, when more than one source exists. Each value keeps its own status. */
-function CompareSection({ cellId }: { cellId: string }) {
+export function CompareSection({ cellId }: { cellId: string }) {
   const base = useTwinStore((s) => s.base);
   const baseline = useTwinStore((s) => s.baseline);
   const pollutant = useTwinStore((s) => s.pollutant);
@@ -70,6 +72,7 @@ function useCellDrawer(): DrawerContent | null {
   const mode = useTwinStore((s) => s.displayMode);
   const activeResult = useTwinStore((s) => s.activeResult);
   const names = useTwinStore((s) => s.placeNames);
+  const live = useTwinStore((s) => s.live);
 
   const cell = useMemo(() => base?.cells.find((c) => c.id === selectedCellId), [base, selectedCellId]);
   const states = useTwinStore((s) => displayedStates(s));
@@ -79,7 +82,18 @@ function useCellDrawer(): DrawerContent | null {
 
   const showDelta = (mode === 'scenario' || mode === 'delta') && !!activeResult && !!baseState;
   const delta = showDelta ? state.pm25 - baseState!.pm25 : 0;
-  const donut = SOURCES.map((k) => ({ key: k, name: SOURCE_LABELS[k], value: state.contributionAbs[k] }));
+  // One set of numbers per place: when live air data is fresh and no scenario is showing, the panel uses the same
+  // live values as the Overview, and the city-model shares are scaled to add up to that PM2.5.
+  const livePoint = isLiveFresh(live) && !showDelta ? live.points[zonePointId(cell.id)] : undefined;
+  const factor = livePoint ? (localFactors(base, live.points, baseline)[cell.id] ?? 1) : 1;
+  const valueOf = (p: (typeof POLLUTANTS)[number]): number => {
+    const v = livePoint ? liveValue(livePoint, p) : null;
+    return v === null ? state[p] : v * factor;
+  };
+  const pm25 = valueOf('pm25');
+  const scale = livePoint && state.pm25 > 0 ? pm25 / state.pm25 : 1;
+  const risk = livePoint ? riskFromPm25(pm25) : state.risk;
+  const donut = SOURCES.map((k) => ({ key: k, name: SOURCE_LABELS[k], value: state.contributionAbs[k] * scale }));
 
   return {
     title: zoneLabel(cell, names),
@@ -90,7 +104,7 @@ function useCellDrawer(): DrawerContent | null {
           <div>
             <div className="text-[11px] font-medium text-sand-400">PM2.5{showDelta ? ' (scenario)' : ''}</div>
             <div className="font-display text-3xl font-bold leading-none text-sand-50">
-              {fmt(state.pm25)} <span className="text-xs font-medium text-sand-400">ug/m3</span>
+              {fmt(pm25)} <span className="text-xs font-medium text-sand-400">ug/m3</span>
             </div>
             {showDelta && (
               <div className={`mt-1 text-xs font-bold ${delta < 0 ? 'text-emerald-600' : delta > 0 ? 'text-red-600' : 'text-sand-300'}`}>
@@ -98,8 +112,8 @@ function useCellDrawer(): DrawerContent | null {
               </div>
             )}
           </div>
-          <span className="rounded-full px-3 py-1 text-xs font-bold text-white" style={{ background: RISK_COLOR[state.risk] }}>
-            {RISK_LABEL[state.risk]} risk
+          <span className="rounded-full px-3 py-1 text-xs font-bold text-white" style={{ background: RISK_COLOR[risk] }}>
+            {RISK_LABEL[risk]} risk
           </span>
         </div>
 
@@ -108,7 +122,7 @@ function useCellDrawer(): DrawerContent | null {
             {POLLUTANTS.map((p) => (
               <div key={p} className="rounded-lg bg-ink-850 p-2 hairline">
                 <dt className="text-[11px] font-semibold text-sand-400">{POLLUTANT_LABEL[p]}</dt>
-                <dd className="font-mono text-sm font-semibold text-sand-50">{fmt(state[p], p === 'co' ? 2 : 1)}</dd>
+                <dd className="font-mono text-sm font-semibold text-sand-50">{fmt(valueOf(p), p === 'co' ? 2 : 1)}</dd>
                 <dd className="text-[10px] text-sand-500">{POLLUTANT_UNIT[p]}</dd>
               </div>
             ))}
@@ -133,7 +147,7 @@ function useCellDrawer(): DrawerContent | null {
                 <li key={k} className="flex items-center gap-2 text-xs">
                   <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: SOURCE_COLORS[k] }} />
                   <span className="min-w-0 flex-1 truncate text-sand-200">{SOURCE_LABELS[k]}</span>
-                  <span className="font-mono text-sand-50">{fmt(state.contributionAbs[k])}</span>
+                  <span className="font-mono text-sand-50">{fmt(state.contributionAbs[k] * scale)}</span>
                 </li>
               ))}
               <li className="border-t border-sand-400/15 pt-1 text-[11px] text-sand-400">ug/m3, sums to PM2.5</li>
@@ -145,7 +159,7 @@ function useCellDrawer(): DrawerContent | null {
           <dl className="grid grid-cols-2 gap-2 text-xs">
             {[
               ['Traffic intensity', `${fmt(Math.min(100, state.trafficIntensity), 0)} / 100`],
-              ['Industrial influence', `${fmt(state.industrialInfluence)} ug/m3 PM2.5`],
+              ['Industrial influence', `${fmt(state.industrialInfluence * scale)} ug/m3 PM2.5`],
               ['Green cover', `${fmt(state.greenCover, 0)} %`],
               ['Building density', fmt(state.buildingDensity, 2)],
               ['Avg building height', `${fmt(cell.avgBuildingHeight, 0)} m`],
@@ -158,8 +172,6 @@ function useCellDrawer(): DrawerContent | null {
             ))}
           </dl>
         </Section>
-
-        <CompareSection cellId={cell.id} />
 
         <p className="rounded-xl bg-ink-850 p-3 text-[11px] leading-relaxed text-sand-300 hairline">
           Modelled estimates, not direct observations.

@@ -3,17 +3,17 @@ import type { AqiCategory } from './lib/airdata';
 /** What the person in the AQI card looks like for each band. */
 const LOOK: Record<AqiCategory, { shirt: string; mood: 'happy' | 'calm' | 'concerned' | 'worried' | 'unwell' | 'critical'; mask: boolean }> = {
   Good: { shirt: '#22c55e', mood: 'happy', mask: false },
-  Satisfactory: { shirt: '#84cc16', mood: 'calm', mask: false },
-  Moderate: { shirt: '#eab308', mood: 'concerned', mask: false },
-  Poor: { shirt: '#f97316', mood: 'worried', mask: true },
-  'Very Poor': { shirt: '#ef4444', mood: 'unwell', mask: true },
-  Severe: { shirt: '#a21caf', mood: 'critical', mask: true },
+  Satisfactory: { shirt: '#eab308', mood: 'calm', mask: false },
+  Moderate: { shirt: '#f97316', mood: 'concerned', mask: true },
+  Poor: { shirt: '#ef4444', mood: 'worried', mask: true },
+  'Very Poor': { shirt: '#a21caf', mood: 'unwell', mask: true },
+  Severe: { shirt: '#7f1d1d', mood: 'critical', mask: true },
 };
 
 const LABEL: Record<AqiCategory, string> = {
   Good: 'A happy, healthy person',
   Satisfactory: 'A comfortable person',
-  Moderate: 'A slightly concerned person',
+  Moderate: 'A concerned person wearing a mask',
   Poor: 'A worried person wearing a mask',
   'Very Poor': 'An uncomfortable person wearing a mask',
   Severe: 'A person in a mask with a health warning',

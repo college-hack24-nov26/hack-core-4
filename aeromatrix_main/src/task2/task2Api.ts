@@ -20,7 +20,7 @@ export type T2Pollutant = 'pm25' | 'pm10';
 export const T2_POLLUTANTS: T2Pollutant[] = ['pm25', 'pm10'];
 export const T2_LABEL: Record<T2Pollutant, string> = { pm25: 'PM2.5', pm10: 'PM10' };
 export const T2_UNIT = 'ug/m3';
-export const T2_AQI_COLOR = { Good: '#2fae8b', Satisfactory: '#8bc34a', Moderate: '#e0b100', Poor: '#f08c1a', 'Very Poor': '#d9372f', Severe: '#8c1d5e' } as const;
+export const T2_AQI_COLOR = { Good: '#2fae8b', Satisfactory: '#e8c100', Moderate: '#f08c1a', Poor: '#d9372f', 'Very Poor': '#8c1d5e', Severe: '#5e1535' } as const;
 
 /** Evaluated sensor-loss levels (share of donor readings removed) and the random seeds used in evaluation. */
 export const T2_LOSS_LEVELS = [0, 0.1, 0.3, 0.5, 0.7];

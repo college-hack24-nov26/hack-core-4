@@ -116,8 +116,8 @@ describe('report structure', () => {
     for (const k of ['Problem identified', 'Affected location', 'Current condition', 'Main pollutant', 'Severity', 'Recommended intervention', 'Why action is recommended now']) expect(t).toContain(k);
     expect(t).toContain('PM2.5 pollution in Test Nagar');
     expect(t).toContain('Moderate');
-    expect(t).toMatch(/CPCB|breathing discomfort/);
-    expect(t).toContain('reaches Poor');
+    expect(t).toMatch(/health effects|little or no risk|sensitive/);
+    expect(t).toContain('reaches Unhealthy');
   });
 });
 

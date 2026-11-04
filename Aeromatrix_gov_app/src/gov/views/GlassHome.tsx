@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownRight, ArrowRight, ArrowUpRight, ChevronDown, MapPin, RadioTower, RefreshCw } from 'lucide-react';
-import { refreshLiveNow } from '../../services/liveData';
+import { ArrowDownRight, ArrowRight, ArrowUpRight, ChevronDown, CloudRain, Droplets, Gauge as GaugeIcon, MapPin, RadioTower, RefreshCw, Thermometer, Wind } from 'lucide-react';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { cityHourly, liveValue, refreshLiveNow, zonePointId } from '../../services/liveData';
 import { useTwinStore } from '../../store/useTwinStore';
 import { useGovStore } from '../govStore';
 import { POLLUTANT_KEYS, POLLUTANT_NAME, POLLUTANT_UNIT, aqiCategory, colorOf, useAirData, type AqiCategory, type ForecastDay, type PollutantKey } from '../lib/airdata';
@@ -8,12 +9,13 @@ import { countStations, useStations } from '../lib/stations';
 import { formatIst } from '../lib/format';
 import { PersonIllustration } from '../PersonIllustration';
 import { Skeleton, StatusChip } from '../ui';
+import { AQI_LABEL, AQI_SHORT } from '../../services/cpcbAqi';
 
 const ADVICE: Record<AqiCategory, string> = {
   Good: 'Air is clean. Enjoy the outdoors.',
-  Satisfactory: 'Fine for most people.',
-  Moderate: 'Sensitive people should limit long outdoor activity.',
-  Poor: 'Wear a mask outdoors and limit exposure.',
+  Satisfactory: 'Acceptable. Very sensitive people may take it easy.',
+  Moderate: 'Sensitive groups should limit time outside. Wear a mask.',
+  Poor: 'Everyone should limit outdoor time and wear a mask.',
   'Very Poor': 'Avoid outdoor exercise. Wear a mask.',
   Severe: 'Stay indoors if you can. Mask outside.',
 };
@@ -98,7 +100,7 @@ function Hero({ loc }: { loc: Loc }) {
           <div className="font-display text-[68px] font-bold leading-none tracking-tight tabular-nums sm:text-[84px]" style={{ color }}>
             {loc.aqi}
           </div>
-          <div className="mt-1 text-xl font-semibold text-sand-50">{loc.category}</div>
+          <div className="mt-1 text-xl font-semibold text-sand-50">{AQI_LABEL[loc.category]}</div>
           <p className="mt-1 text-sm text-sand-200">{main ? `Mostly ${main}` : 'Air quality index'}</p>
           <p className="mt-3 inline-block rounded-2xl bg-white/45 px-3 py-2 text-sm font-medium text-sand-100 backdrop-blur">{ADVICE[loc.category]}</p>
         </div>
@@ -138,7 +140,7 @@ function Hotspots({ loc }: { loc: Loc }) {
                   </span>
                   {cat && (
                     <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ background: `${col}26`, color: col }}>
-                      {cat}
+                      {AQI_SHORT[cat]}
                     </span>
                   )}
                 </span>
@@ -205,7 +207,7 @@ function Forecast({ loc }: { loc: Loc }) {
             <div className="font-display text-5xl font-bold leading-none tabular-nums" style={{ color: colorOf(cur.category) }}>
               {cur.aqi}
             </div>
-            <div className="mt-1 text-sm font-semibold text-sand-50">{cur.category}</div>
+            <div className="mt-1 text-sm font-semibold text-sand-50">{AQI_LABEL[cur.category]}</div>
           </div>
           <div className="min-w-0">
             <Spark points={series} color={colorOf(cur.category)} />
@@ -227,13 +229,91 @@ function Forecast({ loc }: { loc: Loc }) {
   );
 }
 
+/** Temperature, humidity, wind, pressure and rain, in small glass tiles. */
+function Conditions({ loc }: { loc: Loc }) {
+  const w = loc.weather;
+  if (!w) return null;
+  const tiles: Array<{ icon: typeof Wind; label: string; value: string }> = [
+    { icon: Thermometer, label: 'Temperature', value: w.temperature === null ? '-' : `${w.temperature.toFixed(1)} °C` },
+    { icon: Droplets, label: 'Humidity', value: w.humidity === null ? '-' : `${Math.round(w.humidity)} %` },
+    { icon: Wind, label: 'Wind', value: w.windSpeed === null ? '-' : `${Math.round(w.windSpeed * 3.6)} km/h` },
+    { icon: GaugeIcon, label: 'Pressure', value: w.pressure === null ? '-' : `${Math.round(w.pressure)} hPa` },
+    { icon: CloudRain, label: 'Rain (24 h)', value: w.rainfall24h === null ? '-' : `${w.rainfall24h.toFixed(1)} mm` },
+  ];
+  return (
+    <section className="gov-card p-5" aria-label="Current conditions">
+      <h2 className="mb-3 text-base font-semibold text-sand-50">Current Conditions</h2>
+      <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        {tiles.map(({ icon: Icon, label, value }) => (
+          <li key={label} className="flex items-center gap-3 rounded-2xl bg-ink-850 p-3 shadow-sm ring-1 ring-white/40">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-500/12 text-accent-500">
+              <Icon size={18} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[11px] text-sand-300">{label}</span>
+              <span className="block truncate text-sm font-bold tabular-nums text-sand-50">{value}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** PM2.5 over the last 24 hours for the place in view. */
+function Trend24({ zoneId }: { zoneId: string | null }) {
+  const live = useTwinStore((s) => s.live);
+  const air = useAirData();
+  const data = useMemo(() => {
+    const src = zoneId ? live.points[zonePointId(zoneId)] : cityHourly(live.points);
+    if (!src) return [];
+    // the zone's local variation, so the chart ends at the same PM2.5 the card above shows
+    const row = zoneId ? air.zones.find((z) => z.id === zoneId) : undefined;
+    const raw = zoneId ? liveValue(live.points[zonePointId(zoneId)], 'pm25') : null;
+    const scale = row?.pm25 && raw ? row.pm25 / raw : 1;
+    const now = Date.now() / 1000;
+    const out: Array<{ label: string; value: number }> = [];
+    src.times.forEach((tm, i) => {
+      const v = src.hourly.pm25[i];
+      if (tm <= now && tm > now - 24 * 3600 && typeof v === 'number') {
+        out.push({ label: new Date(tm * 1000 + 330 * 60000).toISOString().slice(11, 16), value: Math.round(v * scale * 10) / 10 });
+      }
+    });
+    return out;
+  }, [live.points, zoneId, air.zones]);
+  if (data.length < 3) return null;
+  return (
+    <section className="gov-card p-5" aria-label="PM2.5 trend">
+      <h2 className="mb-2 text-base font-semibold text-sand-50">PM2.5 Trend (Last 24 Hours)</h2>
+      <div className="h-[170px] [&_*]:outline-none">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ left: -18, right: 8, top: 8, bottom: 0 }}>
+            <defs>
+              <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--gov-aqi)" stopOpacity={0.45} />
+                <stop offset="100%" stopColor="var(--gov-aqi)" stopOpacity={0.03} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="rgba(100,124,163,.25)" vertical={false} strokeDasharray="3 4" />
+            <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-sand-400)' }} tickLine={false} axisLine={false} interval={Math.max(0, Math.floor(data.length / 5))} />
+            <YAxis tick={{ fontSize: 10, fill: 'var(--color-sand-400)' }} tickLine={false} axisLine={false} width={36} />
+            <Tooltip formatter={(v) => [`${Number(v).toFixed(1)} µg/m³`, 'PM2.5']} contentStyle={{ borderRadius: 14, border: '1px solid rgba(255,255,255,.7)', background: 'rgba(255,255,255,.9)', fontSize: 12 }} />
+            <Area type="monotone" dataKey="value" stroke="var(--gov-aqi)" strokeWidth={2.5} fill="url(#trendFill)" dot={false} isAnimationActive={false} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
+}
+
 function StationHealth() {
   const st = useStations();
   const setView = useGovStore((s) => s.setView);
   const c = countStations(st);
   const total = c.total + c.notPlaced;
-  const offline = Math.max(0, total - c.live - c.outdated);
-  const health = total > 0 ? Math.round((c.live / total) * 100) : 0;
+  const active = c.live + c.estimate;
+  const offline = Math.max(0, total - active - c.outdated);
+  const health = total > 0 ? Math.round(((active + c.outdated) / total) * 100) : 0;
   const tone = health >= 70 ? { t: 'Healthy', c: '#16a34a' } : health >= 40 ? { t: 'Fair', c: '#d97706' } : { t: 'Needs attention', c: '#dc2626' };
   return (
     <section className="gov-card p-5" aria-label="Station health">
@@ -260,13 +340,13 @@ function StationHealth() {
             </div>
           </div>
           <div className="glass-bar mt-3 flex !h-2.5">
-            <span style={{ width: `${(c.live / total) * 100}%`, background: '#22c55e', borderRadius: 0 }} />
+            <span style={{ width: `${(active / total) * 100}%`, background: '#22c55e', borderRadius: 0 }} />
             <span style={{ width: `${(c.outdated / total) * 100}%`, background: '#f59e0b', borderRadius: 0 }} />
             <span style={{ width: `${(offline / total) * 100}%`, background: '#94a3b8', borderRadius: 0 }} />
           </div>
           <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
             {[
-              ['Active', c.live, '#16a34a'],
+              ['Active', active, '#16a34a'],
               ['Needs upkeep', c.outdated, '#d97706'],
               ['Offline', offline, '#64748b'],
             ].map(([k, v, col]) => (
@@ -278,6 +358,7 @@ function StationHealth() {
               </div>
             ))}
           </dl>
+          {c.estimate > 0 && <p className="mt-3 text-xs text-sand-300">{c.live} measured now, {c.estimate} showing estimated values.</p>}
         </>
       )}
       <button type="button" onClick={() => setView('stations')} className="gov-tap mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-ink-800 text-sm font-semibold text-sand-50 hover:bg-white/60">
@@ -291,6 +372,7 @@ function StationHealth() {
 export function GlassHome() {
   const loc = useLocationAir();
   const air = useAirData();
+  const zoneId = useGovStore((s) => s.selectedZoneId);
   return (
     <div className="mx-auto max-w-2xl px-4 pb-40 pt-4 sm:px-6">
       <div className="mb-4 flex items-center gap-2">
@@ -305,6 +387,8 @@ export function GlassHome() {
             <Hero loc={loc} />
             <Hotspots loc={loc} />
             <Forecast loc={loc} />
+            <Conditions loc={loc} />
+            <Trend24 zoneId={zoneId} />
           </>
         ) : (
           <>

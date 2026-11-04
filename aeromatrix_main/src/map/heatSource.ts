@@ -1,6 +1,7 @@
 import type { CellState, DataStatus, DisplayMode } from '../types';
 import { useTwinStore, type TwinStoreState } from '../store/useTwinStore';
 import { currentFieldValues, isLiveFresh } from '../services/liveData';
+import { localFactors } from '../services/localVariation';
 import { deltaScaleFor } from '../utils/colors';
 import type { HeatSpec } from './TwinMap';
 
@@ -61,9 +62,11 @@ export function heatSource(s: TwinStoreState, nowMs: number = Date.now()): HeatS
       if (!isLiveFresh(s.live, nowMs)) {
         return none('MODEL_DATA', 'Current (model data)', s.live.status === 'loading' ? 'Loading Open-Meteo model data...' : (s.live.reason ?? 'Live model data is not available, so no current field is drawn.'));
       }
-      const values = currentFieldValues(base, s.live.points, p, nowMs);
-      if (!values) return none('MODEL_DATA', 'Current (model data)', 'The Open-Meteo model has no value for this pollutant in every zone.');
-      return { values, spec: { kind: 'pollution', pollutant: p }, status: 'MODEL_DATA', label: 'Open-Meteo CAMS model, about 40 km resolution', reason: null };
+      const raw = currentFieldValues(base, s.live.points, p, nowMs);
+      if (!raw) return none('MODEL_DATA', 'Current (model data)', 'The Open-Meteo model has no value for this pollutant in every zone.');
+      const f = localFactors(base, s.live.points, s.baseline);
+      const values = raw.map((v, i) => v * (f[base.cells[i].id] ?? 1));
+      return { values, spec: { kind: 'pollution', pollutant: p }, status: 'MODEL_DATA', label: 'Estimated air quality', reason: null };
     }
     case 'observed': {
       if (!s.observations) return none('OBSERVED', 'Observed', 'No observations imported. Import a CPCB CSV in the Data panel.');

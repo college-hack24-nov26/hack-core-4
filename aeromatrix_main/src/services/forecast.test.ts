@@ -34,9 +34,9 @@ describe('dailyForecast', () => {
       expect(d.aqi.method).toMatch(/ESTIMATED from CAMS model data/);
       expect(d.pm25Mean).toBeCloseTo(60, 6);
     }
-    // PM2.5 60 ug/m3 is exactly the Satisfactory edge (AQI 100)
-    expect(days[0].aqi.value).toBe(100);
-    expect(days[0].aqi.category).toBe('Satisfactory');
+    // PM2.5 60 ug/m3 is in the US 'Unhealthy' band (AQI 154)
+    expect(days[0].aqi.value).toBe(154);
+    expect(days[0].aqi.category).toBe('Poor');
   });
 
   it('marks a partly covered day UNAVAILABLE rather than guessing', () => {

@@ -1,21 +1,21 @@
 import { Cloud, Droplets, Navigation } from 'lucide-react';
-import type { AqiCategory } from '../services/cpcbAqi';
+import { AQI_LABEL, type AqiCategory } from '../services/cpcbAqi';
 
 /** Card colours for each AQI band: panel, number box, text. */
 const THEME: Record<AqiCategory, { bg: string; box: string; ink: string }> = {
   Good: { bg: '#c8ecd6', box: '#5cc48a', ink: '#0f3d24' },
-  Satisfactory: { bg: '#e0f0bf', box: '#a6d65a', ink: '#2e4310' },
-  Moderate: { bg: '#fbe9a0', box: '#f0c93a', ink: '#4a3a08' },
-  Poor: { bg: '#fbd0a0', box: '#f59a3a', ink: '#5a2c05' },
-  'Very Poor': { bg: '#f6b4ae', box: '#e45a50', ink: '#5a0f0a' },
-  Severe: { bg: '#d9b0d8', box: '#9b3d96', ink: '#3d0f3b' },
+  Satisfactory: { bg: '#fbeba0', box: '#f0cf3a', ink: '#4a3a08' },
+  Moderate: { bg: '#fbd0a0', box: '#f59a3a', ink: '#5a2c05' },
+  Poor: { bg: '#f6b4ae', box: '#e45a50', ink: '#5a0f0a' },
+  'Very Poor': { bg: '#dcb4dc', box: '#a14aa0', ink: '#3d0f3b' },
+  Severe: { bg: '#d9a8b8', box: '#8a2a4e', ink: '#3a0d1c' },
 };
 const NONE = { bg: '#e6ddd2', box: '#bdb0a2', ink: '#3a2c20' };
 
 /** A simple face that shows how the air feels: smiling when clean, neutral when moderate, behind a mask when poor. */
 export function AirFace({ category, size = 64, color = '#4a3a12' }: { category: AqiCategory | null; size?: number; color?: string }) {
-  const masked = category === 'Poor' || category === 'Very Poor' || category === 'Severe';
-  const mood = category === 'Good' || category === 'Satisfactory' ? 'happy' : 'flat';
+  const masked = category === 'Moderate' || category === 'Poor' || category === 'Very Poor' || category === 'Severe';
+  const mood = category === 'Good' ? 'happy' : 'flat';
   const ink = color;
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" role="img" aria-label={masked ? 'Face wearing a mask' : mood === 'happy' ? 'Smiling face' : 'Neutral face'} fill="none" stroke={ink} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -44,10 +44,10 @@ export function AirFace({ category, size = 64, color = '#4a3a12' }: { category: 
 
 const ADVICE: Record<AqiCategory, string> = {
   Good: 'Air is clean. Enjoy the outdoors.',
-  Satisfactory: 'Fine for most people.',
-  Moderate: 'Sensitive people should take it easy outside.',
-  Poor: 'Wear a mask outdoors. Limit long exposure.',
-  'Very Poor': 'Wear a mask and avoid outdoor exercise.',
+  Satisfactory: 'Acceptable. Very sensitive people may take it easy.',
+  Moderate: 'Sensitive groups should limit time outside. Wear a mask.',
+  Poor: 'Everyone should limit outdoor time and wear a mask.',
+  'Very Poor': 'Avoid outdoor exercise. Wear a mask.',
   Severe: 'Stay indoors if you can. Wear a mask outside.',
 };
 
@@ -72,7 +72,7 @@ export function AqiCard({ value, category, mainPollutant, concentration, weather
             <span className="mt-1 text-[10px] font-semibold tracking-wide opacity-80">AQI</span>
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-display text-xl font-bold leading-tight">{category ?? 'No reading'}</div>
+            <div className="font-display text-xl font-bold leading-tight">{category ? AQI_LABEL[category] : 'No reading'}</div>
             {category && <p className="mt-0.5 text-xs leading-snug opacity-80">{ADVICE[category]}</p>}
           </div>
           <AirFace category={category} color={th.ink} />

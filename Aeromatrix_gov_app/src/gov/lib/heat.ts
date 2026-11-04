@@ -10,12 +10,12 @@ export type HeatMetric = 'aqi' | PollutantKey;
 /** Colour stops on the 0-500 AQI scale, the same colours as the categories. */
 const STOPS: Array<[number, [number, number, number]]> = [
   [0, [47, 174, 139]],
-  [50, [139, 195, 74]],
-  [100, [224, 177, 0]],
-  [200, [240, 140, 26]],
-  [300, [217, 55, 47]],
-  [400, [140, 29, 94]],
-  [500, [100, 20, 80]],
+  [50, [47, 174, 139]],
+  [100, [232, 193, 0]],
+  [150, [240, 140, 26]],
+  [200, [217, 55, 47]],
+  [300, [140, 29, 94]],
+  [500, [94, 21, 53]],
 ];
 
 export function heatColor(v: number): [number, number, number] {

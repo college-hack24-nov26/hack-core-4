@@ -12,6 +12,7 @@ import type { HeatMetric } from '../lib/heat';
 import { formatIst } from '../lib/format';
 import { AqiChip, Btn, ForecastStrip, StatusChip, TrendBadge } from '../ui';
 import { Sheet } from '../Sheet';
+import { AQI_SHORT } from '../../services/cpcbAqi';
 import { StationDetail } from './StationDetail';
 import { Map2D, type MapLayerId, type MapSelection } from './Map2D';
 
@@ -312,7 +313,7 @@ export function MapView() {
           <div className="mb-1.5 font-semibold text-sand-100">Air quality (estimated)</div>
           <ul className="grid grid-cols-2 gap-x-2 gap-y-1">
             {CATEGORIES.map((c) => (
-              <li key={c} className="flex items-center gap-1.5">
+              <li key={AQI_SHORT[c]} className="flex items-center gap-1.5">
                 <span className="h-2.5 w-2.5 rounded-sm" style={{ background: CATEGORY_COLOR[c] }} />
                 {c}
               </li>

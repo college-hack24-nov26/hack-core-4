@@ -19,7 +19,7 @@ export const categoryRank = (c: AqiCategory | null | undefined): number => (c ? 
 export const CATEGORY_COLOR: Record<AqiCategory, string> = AQI_COLORS;
 export const UNKNOWN_COLOR = '#9a8a80';
 export const colorOf = (c: AqiCategory | null | undefined): string => (c ? CATEGORY_COLOR[c] : UNKNOWN_COLOR);
-export const CATEGORY_FLOOR: Record<AqiCategory, number> = { Good: 0, Satisfactory: 51, Moderate: 101, Poor: 201, 'Very Poor': 301, Severe: 401 };
+export const CATEGORY_FLOOR: Record<AqiCategory, number> = { Good: 0, Satisfactory: 51, Moderate: 101, Poor: 151, 'Very Poor': 201, Severe: 301 };
 
 export type { AqiCategory };
 export { aqiCategory };
@@ -237,6 +237,37 @@ export function forecastFor(times: number[], hourly: LiveAirPoint['hourly'], now
   return out;
 }
 
+/** The same model point with every concentration scaled (used for the local variation inside one ~40 km model cell). */
+function scalePoint(p: LiveAirPoint, f: number): LiveAirPoint {
+  if (f === 1) return p;
+  const hourly = Object.fromEntries(Object.entries(p.hourly).map(([k, arr]) => [k, (arr as Array<number | null>).map((v) => (typeof v === 'number' ? v * f : v))])) as LiveAirPoint['hourly'];
+  return { ...p, hourly };
+}
+
+/**
+ * The live model has one value per ~40 km cell, so many zones would show the same number. Inside each cell the zones are
+ * spread around that value using the city model's relative pattern (traffic, industry, green cover), keeping the cell
+ * average equal to the live value. Limited to 0.6x to 1.8x so nothing runs away.
+ */
+export function localFactors(base: BaseState, points: Record<string, LiveAirPoint>, baselinePm25: Record<string, number>): Record<string, number> {
+  const groups = new Map<string, string[]>();
+  for (const c of base.cells) {
+    const p = points[zonePointId(c.id)];
+    if (!p || baselinePm25[c.id] === undefined) continue;
+    const k = gridKeyOf(p);
+    const g = groups.get(k);
+    if (g) g.push(c.id);
+    else groups.set(k, [c.id]);
+  }
+  const out: Record<string, number> = {};
+  for (const ids of groups.values()) {
+    const mean = ids.reduce((a, id) => a + baselinePm25[id], 0) / ids.length;
+    if (mean <= 0) continue;
+    for (const id of ids) out[id] = Math.max(0.6, Math.min(1.8, baselinePm25[id] / mean));
+  }
+  return out;
+}
+
 export interface ZoneBuild {
   rows: ZoneRow[];
   /** zones that have no usable model value right now */
@@ -248,16 +279,19 @@ export function buildZoneRows(args: {
   points: Record<string, LiveAirPoint>;
   placeNames: Record<string, string>;
   nowMs: number;
+  /** per-zone local variation inside a model grid point (see `localFactors`) */
+  factors?: Record<string, number>;
 }): ZoneBuild {
-  const { base, points, placeNames, nowMs } = args;
+  const { base, points, placeNames, nowMs, factors } = args;
   const rows: ZoneRow[] = [];
   let missing = 0;
   for (const cell of base.cells) {
-    const p = points[zonePointId(cell.id)];
-    if (!p) {
+    const raw = points[zonePointId(cell.id)];
+    if (!raw) {
       missing++;
       continue;
     }
+    const p = scalePoint(raw, factors?.[cell.id] ?? 1);
     const { aqi, idx } = aqiForPoint(p.times, p.hourly, nowMs);
     if (!aqi || aqi.value === null || idx < 0) {
       missing++;
@@ -342,15 +376,17 @@ export function useAirData(): AirData {
   const base = useTwinStore((s) => s.base);
   const live = useTwinStore((s) => s.live);
   const placeNames = useTwinStore((s) => s.placeNames);
+  const baseline = useTwinStore((s) => s.baseline);
   return useMemo(() => {
     const now = Date.now();
     if (!base || Object.keys(live.points).length === 0) {
       return { status: live.status, reason: live.reason, zones: [], missingZones: base?.cells.length ?? 0, city: null, lastUpdated: live.lastUpdated };
     }
-    const built = buildZoneRows({ base, points: live.points, placeNames, nowMs: now });
+    const factors = localFactors(base, live.points, Object.fromEntries(baseline.map((b) => [b.cellId, b.pm25])));
+    const built = buildZoneRows({ base, points: live.points, placeNames, nowMs: now, factors });
     return { status: live.status, reason: live.reason, zones: built.rows, missingZones: built.missing, city: buildCitySummary(live.points, now), lastUpdated: live.lastUpdated };
     // `live.lastUpdated` changes whenever new points arrive; the current hour moves slowly enough that a refresh re-derives it.
-  }, [base, live, placeNames]);
+  }, [base, live, placeNames, baseline]);
 }
 
 /** One representative zone per model grid point (neighbouring zones often share a value). */
@@ -361,5 +397,8 @@ export function groupByGrid(zones: ZoneRow[]): Array<{ zone: ZoneRow; sharing: n
     if (g) g.push(z);
     else groups.set(z.gridKey, [z]);
   }
-  return [...groups.values()].map((g) => ({ zone: g[0], sharing: g.length - 1 }));
+  return [...groups.values()].map((g) => {
+    const top = [...g].sort((a, b) => b.aqi - a.aqi)[0];
+    return { zone: top, sharing: g.length - 1 };
+  });
 }

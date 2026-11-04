@@ -4,6 +4,7 @@ import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Too
 import { useTwinStore } from '../store/useTwinStore';
 import { Section } from './ui';
 import { AqiCard } from './AqiCard';
+import { localFactors } from '../services/localVariation';
 import { CHART } from './chartTheme';
 import {
   LIVE_REFRESH_MINUTES,
@@ -140,12 +141,19 @@ export function LiveNowTab() {
   const now = useNow();
   const fresh = isLiveFresh(live, now);
 
-  const records = useMemo(() => (fresh && zone?.point ? resolveCurrent({ live: zone.point }, now) : []), [fresh, zone?.point, now]);
+  const base = useTwinStore((s) => s.base);
+  const baseline = useTwinStore((s) => s.baseline);
+  // the zone's local variation, the same factor the map and the zone panel use
+  const factor = useMemo(() => (base && fresh && zone ? (localFactors(base, live.points, baseline)[zone.cell.id] ?? 1) : 1), [base, baseline, fresh, zone, live.points]);
+  const records = useMemo(() => {
+    const raw = fresh && zone?.point ? resolveCurrent({ live: zone.point }, now) : [];
+    return raw.map((r) => (r.live ? { ...r, live: { ...r.live, value: r.live.value * factor } } : r));
+  }, [fresh, zone?.point, now, factor]);
   const series = useMemo(() => {
     const p = zone?.point;
     if (!fresh || !p) return [];
-    return p.times.map((t, i) => ({ t: t * 1000, label: fmtIstTime(t * 1000).replace(' IST', ''), value: p.hourly[pollutant][i] }));
-  }, [fresh, zone?.point, pollutant]);
+    return p.times.map((t, i) => ({ t: t * 1000, label: fmtIstTime(t * 1000).replace(' IST', ''), value: p.hourly[pollutant][i] === null ? null : (p.hourly[pollutant][i] as number) * factor }));
+  }, [fresh, zone?.point, pollutant, factor]);
 
   const est = useMemo(() => (fresh ? cityAqiEstimate(live.points, now) : null), [fresh, live.points, now]);
 

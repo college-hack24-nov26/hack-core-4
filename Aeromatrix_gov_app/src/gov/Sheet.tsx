@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 const CLOSE_DISTANCE = 90;
@@ -7,7 +8,7 @@ const CLOSE_DISTANCE = 90;
  * Detail panel: a bottom sheet on phones and tablets (drag the handle down to close), a card on the right on wide
  * screens. The bottom padding keeps the last controls clear of the two round launchers in the corners.
  */
-export function Sheet({ title, subtitle, onClose, children, chips }: { title: string; subtitle?: ReactNode; onClose: () => void; children: ReactNode; chips?: ReactNode }) {
+export function Sheet({ title, subtitle, onClose, children, chips, full = false }: { title: string; subtitle?: ReactNode; onClose: () => void; children: ReactNode; chips?: ReactNode; full?: boolean }) {
   const [dy, setDy] = useState(0);
   const start = useRef<number | null>(null);
   const last = useRef(0);
@@ -38,12 +39,13 @@ export function Sheet({ title, subtitle, onClose, children, chips }: { title: st
     last.current = 0;
   };
 
-  return (
+  // Drawn on the page itself: inside an animated page container a fixed panel would be sized to that container.
+  return createPortal(
     <aside
       role="dialog"
       aria-label={title}
       style={dy > 0 ? { transform: `translateY(${dy}px)`, transition: 'none' } : undefined}
-      className="animate-sheet-up fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 flex max-h-[78dvh] flex-col rounded-t-3xl bg-ink-950 shadow-2xl hairline lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-16 lg:max-h-none lg:w-[420px] lg:rounded-2xl"
+      className={`animate-sheet-up fixed inset-x-0 flex flex-col ${full ? 'inset-y-0 z-50 max-h-none rounded-none' : 'bottom-[calc(6rem+env(safe-area-inset-bottom))] z-20 max-h-[78dvh] rounded-t-3xl'} lg:max-h-none lg:rounded-2xl bg-ink-950 shadow-2xl hairline lg:inset-x-auto lg:bottom-4 lg:right-4 lg:top-16 lg:max-h-none lg:w-[420px]`}
     >
       <div
         className="flex h-6 shrink-0 cursor-grab touch-none items-center justify-center lg:hidden"
@@ -66,6 +68,7 @@ export function Sheet({ title, subtitle, onClose, children, chips }: { title: st
         </button>
       </header>
       <div className="panel-scroll min-h-0 flex-1 p-4 pb-8 lg:pb-6">{children}</div>
-    </aside>
+    </aside>,
+    document.body,
   );
 }

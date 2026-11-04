@@ -240,6 +240,7 @@ export function StationDetail({ s, onClose }: { s: StationRow; onClose: () => vo
 
   return (
     <Sheet
+      full
       title={s.name}
       subtitle={[s.monitoring === 'manual' ? 'Manual station' : 'Continuous station', s.agency, s.city].filter(Boolean).join(' · ')}
       onClose={onClose}

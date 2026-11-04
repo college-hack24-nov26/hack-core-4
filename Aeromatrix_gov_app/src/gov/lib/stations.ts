@@ -120,7 +120,20 @@ export function buildStationRow(s: PlacedStation, svc: ModelServiceState, live: 
   const historical = !!measured && isMeasured(measured) && measured.historical;
   const age = newest === null ? null : nowMs - newest;
   const current = newest !== null && !historical && age !== null && age <= CURRENT_MAX_AGE_MS;
-  const estimate = estimateOf(live[placePointId(s.id)], nowMs);
+  // No model point of its own: use the nearest model grid point, so every station has a value (marked as an estimate).
+  const own = live[placePointId(s.id)];
+  let point = own;
+  if (!point) {
+    let best = Infinity;
+    for (const p of Object.values(live)) {
+      const d = distKm([s.lon, s.lat], [p.grid[0], p.grid[1]]);
+      if (d < best) {
+        best = d;
+        point = p;
+      }
+    }
+  }
+  const estimate = estimateOf(point, nowMs);
   const status: StationStatus = readings.length > 0 ? (current ? 'live' : 'outdated') : estimate ? 'estimate' : 'no_feed';
 
   let aqi: StationRow['aqi'] = null;

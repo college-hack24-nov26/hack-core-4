@@ -13,6 +13,7 @@ import { WeeklyChart } from '../charts';
 import { AqiChip, Btn, Card, EmptyState, PageTitle, Pills, Skeleton, StatusChip, TrendBadge } from '../ui';
 import { Sheet } from '../Sheet';
 import { InstructionComposer } from './InstructionComposer';
+import { aqiName } from '../../services/cpcbAqi';
 
 const valueText = (h: Hotspot) =>
   h.metricValue === null ? 'No value' : h.metricLabel === 'AQI' ? `AQI ${Math.round(h.metricValue)}` : `${h.metricLabel} ${h.metricValue < 10 ? h.metricValue.toFixed(1) : Math.round(h.metricValue)} ${h.metricUnit}`;
@@ -33,7 +34,7 @@ function HotspotDetail({ h, rank, total, onClose }: { h: Hotspot; rank: number; 
   const maxSub = Math.max(1, ...subs.map((s) => s.value));
 
   const reasons: string[] = [`Number ${rank} of ${total} by ${h.metricLabel}`];
-  if (h.category) reasons.push(`Air quality is ${h.category}${h.aqi !== null ? ` (AQI ${Math.round(h.aqi)})` : ''}`);
+  if (h.category) reasons.push(`Air quality is ${aqiName(h.category)}${h.aqi !== null ? ` (AQI ${Math.round(h.aqi)})` : ''}`);
   if (h.trendKnown && h.trend === 'up') reasons.push(`Rising: PM2.5 up ${Math.round(h.trendPct)}% in six hours`);
   if (summary && summary.poorDays > 0) reasons.push(`Poor or worse on ${summary.poorDays} of the last ${summary.days} days`);
   else if (summary && summary.moderateDays >= 4) reasons.push(`Moderate or worse on ${summary.moderateDays} of the last ${summary.days} days`);
