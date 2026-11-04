@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bell, FileText, Flame, LayoutDashboard, MapPinned, MoreHorizontal, RadioTower, Settings, SlidersHorizontal, type LucideIcon } from 'lucide-react';
+import { Bell, FileText, Flame, Inbox, LayoutDashboard, MapPinned, MoreHorizontal, RadioTower, Settings, SlidersHorizontal, type LucideIcon } from 'lucide-react';
 import { useGovStore, type GovView } from './govStore';
 
 export const VIEW_LABEL: Record<GovView, string> = {
@@ -10,6 +10,7 @@ export const VIEW_LABEL: Record<GovView, string> = {
   hotspots: 'Hotspots',
   simulator: 'What if',
   reports: 'Reports',
+  complaints: 'Complaints',
   settings: 'Settings',
 };
 
@@ -23,6 +24,7 @@ const MORE: Array<{ id: GovView; icon: LucideIcon }> = [
   { id: 'alerts', icon: Bell },
   { id: 'hotspots', icon: Flame },
   { id: 'stations', icon: RadioTower },
+  { id: 'complaints', icon: Inbox },
   { id: 'settings', icon: Settings },
 ];
 

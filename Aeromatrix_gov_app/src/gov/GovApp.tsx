@@ -17,6 +17,7 @@ import { HotspotsView } from './views/HotspotsView';
 import { SimulatorView } from './views/SimulatorView';
 import { ReportsView } from './views/ReportsView';
 import { SettingsView } from './views/SettingsView';
+import { ComplaintsView } from './views/ComplaintsView';
 import { useAirData, colorOf } from './lib/airdata';
 
 const THEME_KEY = 'aeromatrix.gov.theme';
@@ -170,6 +171,7 @@ export function GovApp() {
             {view === 'hotspots' && <HotspotsView />}
             {view === 'simulator' && <SimulatorView />}
             {view === 'reports' && <ReportsView />}
+            {view === 'complaints' && <ComplaintsView />}
             {view === 'settings' && <SettingsView />}
           </div>
         )}

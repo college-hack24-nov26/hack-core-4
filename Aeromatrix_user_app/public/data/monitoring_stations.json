@@ -1,0 +1,789 @@
+{
+  "_about": "Air-quality monitoring stations used by AeroMatrix. Continuous (CAAQMS) stations come with a published coordinate; manual (NAMP) stations and stations named only in the state report have no published coordinate in the supplied documents and are never placed on the map by guesswork.",
+  "_sources": {
+    "CPCB list of CAAQM stations, All India": "Central Pollution Control Board, list of Continuous Ambient Air Quality Monitoring Stations with agency and coordinates (358 stations).",
+    "NAMP manual network list (India, 19.11.2024)": "Ambient Air Quality Monitoring Network (Manual) under NAMP as on 19.11.2024: Pune 3 stations, Pimpri-Chinchwad 1.",
+    "Air Quality Status Report of Maharashtra 2022-23": "Maharashtra Pollution Control Board, annual air quality status report 2022-23 (Pune Regional Office station list)."
+  },
+  "stations": [
+    {
+      "id": "caaqms-198",
+      "name": "More Chowk Waluj",
+      "city": "Aurangabad",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#198",
+      "latitude": 19.8389,
+      "longitude": 75.2444,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-271",
+      "name": "Chandrapur",
+      "city": "Chandrapur",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#271",
+      "latitude": 19.6453,
+      "longitude": 77.6345,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-295",
+      "name": "MIDC Khutala",
+      "city": "Chandrapur",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#295",
+      "latitude": 19.9775,
+      "longitude": 79.2337,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5118",
+      "name": "Khadakpada",
+      "city": "Kalyan",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5118",
+      "latitude": 19.2529,
+      "longitude": 73.142,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5392",
+      "name": "Bandra Kurla Complex",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5392",
+      "latitude": 19.0535,
+      "longitude": 72.8464,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-168",
+      "name": "Bandra",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#168",
+      "latitude": 19.0627,
+      "longitude": 72.8461,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5400",
+      "name": "Borivali East",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5400",
+      "latitude": 19.2324,
+      "longitude": 72.8689,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5113",
+      "name": "Borivali East",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5113",
+      "latitude": 19.2243,
+      "longitude": 72.8658,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5399",
+      "name": "Chakala-Andheri East",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5399",
+      "latitude": 19.1107,
+      "longitude": 72.8608,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5107",
+      "name": "Chhatrapati Shivaji Intl. Airport (T2)",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5107",
+      "latitude": 19.1008,
+      "longitude": 72.8746,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5120",
+      "name": "Colaba",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5120",
+      "latitude": 18.91,
+      "longitude": 72.82,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5396",
+      "name": "Deonar",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5396",
+      "latitude": 19.0495,
+      "longitude": 72.923,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5412",
+      "name": "Kandivali East",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5412",
+      "latitude": 19.2058,
+      "longitude": 72.8682,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5397",
+      "name": "Khindipada-Bhandup West",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5397",
+      "latitude": 19.1653,
+      "longitude": 72.9221,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5104",
+      "name": "Kurla",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5104",
+      "latitude": 19.0863,
+      "longitude": 72.8888,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5402",
+      "name": "Malad West",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5402",
+      "latitude": 19.1971,
+      "longitude": 72.822,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5394",
+      "name": "Mazgaon",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5394",
+      "latitude": 18.967,
+      "longitude": 72.8421,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5413",
+      "name": "Mulund West",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5413",
+      "latitude": 19.175,
+      "longitude": 72.9419,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5398",
+      "name": "Navy Nagar-Colaba",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5398",
+      "latitude": 18.8978,
+      "longitude": 72.8133,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5112",
+      "name": "Powai",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5112",
+      "latitude": 19.1375,
+      "longitude": 72.9151,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5403",
+      "name": "Siddharth Nagar-Worli",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5403",
+      "latitude": 19.0001,
+      "longitude": 72.814,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5119",
+      "name": "Sion",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5119",
+      "latitude": 19.047,
+      "longitude": 72.8746,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5102",
+      "name": "Vasai West",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5102",
+      "latitude": 19.3832,
+      "longitude": 72.8204,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5106",
+      "name": "Vile Parle West",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5106",
+      "latitude": 19.1086,
+      "longitude": 72.8362,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5115",
+      "name": "Worli",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5115",
+      "latitude": 18.9936,
+      "longitude": 72.8128,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-303",
+      "name": "Opp GPO Civil Lines",
+      "city": "Nagpur",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#303",
+      "latitude": 21.1529,
+      "longitude": 79.0518,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-304",
+      "name": "Gangapur Road",
+      "city": "Nashik",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#304",
+      "latitude": 20.0073,
+      "longitude": 73.7762,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-261",
+      "name": "Airoli",
+      "city": "Navi Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#261",
+      "latitude": 19.1494,
+      "longitude": 72.9986,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5114",
+      "name": "Mahape",
+      "city": "Navi Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5114",
+      "latitude": 19.1135,
+      "longitude": 73.009,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5103",
+      "name": "Nerul",
+      "city": "Navi Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#5103",
+      "latitude": 19.0088,
+      "longitude": 73.0166,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5401",
+      "name": "Sector-19A Nerul",
+      "city": "Navi Mumbai",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5401",
+      "latitude": 19.044,
+      "longitude": 73.0325,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5405",
+      "name": "Alandi",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5405",
+      "latitude": 18.6751,
+      "longitude": 73.8927,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5406",
+      "name": "Bhosari",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5406",
+      "latitude": 18.6401,
+      "longitude": 73.849,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5407",
+      "name": "Hadapsar",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5407",
+      "latitude": 18.5018,
+      "longitude": 73.9275,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-292",
+      "name": "Karve Road",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#292",
+      "latitude": 18.5012,
+      "longitude": 73.8166,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5410",
+      "name": "MIT-Kothrud",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5410",
+      "latitude": 18.5178,
+      "longitude": 73.8215,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5404",
+      "name": "Mhada Colony",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5404",
+      "latitude": 18.573,
+      "longitude": 73.9277,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5409",
+      "name": "Revenue Colony-Shivajinagar",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5409",
+      "latitude": 18.5301,
+      "longitude": 73.8496,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-5408",
+      "name": "Transport Nagar-Nigdi",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "IITM",
+      "code": "#5408",
+      "latitude": 18.6643,
+      "longitude": 73.764,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-302",
+      "name": "Solapur",
+      "city": "Solapur",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#302",
+      "latitude": 17.6599,
+      "longitude": 75.9064,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "caaqms-305",
+      "name": "Pimpleshwar Mandir",
+      "city": "Thane",
+      "state": "Maharashtra",
+      "region": "maharashtra",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": "#305",
+      "latitude": 19.1921,
+      "longitude": 72.9585,
+      "sources": [
+        "CPCB list of CAAQM stations, All India"
+      ]
+    },
+    {
+      "id": "namp-1",
+      "name": "Swargate Police Chowki",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "manual",
+      "agency": "MPCB (NAMP)",
+      "code": null,
+      "latitude": null,
+      "longitude": null,
+      "sources": [
+        "NAMP manual network list (India, 19.11.2024)",
+        "Air Quality Status Report of Maharashtra 2022-23"
+      ],
+      "note": "Manual (NAMP) station. Named in the Air Quality Status Report of Maharashtra 2022-23 (Pune Regional Office). The provided documents give no coordinate for this station, so it is not placed on the map."
+    },
+    {
+      "id": "namp-2",
+      "name": "State Electricity Board Building, Nal Stop",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "manual",
+      "agency": "MPCB (NAMP)",
+      "code": null,
+      "latitude": null,
+      "longitude": null,
+      "sources": [
+        "NAMP manual network list (India, 19.11.2024)",
+        "Air Quality Status Report of Maharashtra 2022-23"
+      ],
+      "note": "Manual (NAMP) station. Named in the Air Quality Status Report of Maharashtra 2022-23 (Pune Regional Office). The provided documents give no coordinate for this station, so it is not placed on the map."
+    },
+    {
+      "id": "namp-3",
+      "name": "Maratha Chamber of Commerce, Bhosari",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "manual",
+      "agency": "MPCB (NAMP)",
+      "code": null,
+      "latitude": null,
+      "longitude": null,
+      "sources": [
+        "NAMP manual network list (India, 19.11.2024)",
+        "Air Quality Status Report of Maharashtra 2022-23"
+      ],
+      "note": "Manual (NAMP) station. Named in the Air Quality Status Report of Maharashtra 2022-23 (Pune Regional Office). The provided documents give no coordinate for this station, so it is not placed on the map."
+    },
+    {
+      "id": "namp-4",
+      "name": "Bank of Baroda Building, near Pimpri-Chinchwad M.C. Building",
+      "city": "Pimpri-Chinchwad",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "manual",
+      "agency": "MPCB (NAMP)",
+      "code": null,
+      "latitude": null,
+      "longitude": null,
+      "sources": [
+        "NAMP manual network list (India, 19.11.2024)",
+        "Air Quality Status Report of Maharashtra 2022-23"
+      ],
+      "note": "Manual (NAMP) station. Named in the Air Quality Status Report of Maharashtra 2022-23 (Pune Regional Office). The provided documents give no coordinate for this station, so it is not placed on the map."
+    },
+    {
+      "id": "mpcb-ro-1",
+      "name": "Dange Chowk Pune",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": null,
+      "latitude": null,
+      "longitude": null,
+      "sources": [
+        "Air Quality Status Report of Maharashtra 2022-23"
+      ],
+      "note": "Named in the Air Quality Status Report of Maharashtra 2022-23 (Pune Regional Office). The provided documents give no coordinate for this station, so it is not placed on the map."
+    },
+    {
+      "id": "mpcb-ro-2",
+      "name": "Jagtap Dairy Pune",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": null,
+      "latitude": null,
+      "longitude": null,
+      "sources": [
+        "Air Quality Status Report of Maharashtra 2022-23"
+      ],
+      "note": "Named in the Air Quality Status Report of Maharashtra 2022-23 (Pune Regional Office). The provided documents give no coordinate for this station, so it is not placed on the map."
+    },
+    {
+      "id": "mpcb-ro-3",
+      "name": "Katraj Dairy Pune",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": null,
+      "latitude": null,
+      "longitude": null,
+      "sources": [
+        "Air Quality Status Report of Maharashtra 2022-23"
+      ],
+      "note": "Named in the Air Quality Status Report of Maharashtra 2022-23 (Pune Regional Office). The provided documents give no coordinate for this station, so it is not placed on the map."
+    },
+    {
+      "id": "mpcb-ro-4",
+      "name": "Pune CAAQMS",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": null,
+      "latitude": null,
+      "longitude": null,
+      "sources": [
+        "Air Quality Status Report of Maharashtra 2022-23"
+      ],
+      "note": "Named in the Air Quality Status Report of Maharashtra 2022-23 (Pune Regional Office). The provided documents give no coordinate for this station, so it is not placed on the map."
+    },
+    {
+      "id": "mpcb-ro-5",
+      "name": "Pune Pimpri Rose Garden",
+      "city": "Pimpri-Chinchwad",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": null,
+      "latitude": null,
+      "longitude": null,
+      "sources": [
+        "Air Quality Status Report of Maharashtra 2022-23"
+      ],
+      "note": "Named in the Air Quality Status Report of Maharashtra 2022-23 (Pune Regional Office). The provided documents give no coordinate for this station, so it is not placed on the map."
+    },
+    {
+      "id": "mpcb-ro-6",
+      "name": "Pune University",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "region": "pune",
+      "monitoring": "continuous",
+      "agency": "MPCB",
+      "code": null,
+      "latitude": null,
+      "longitude": null,
+      "sources": [
+        "Air Quality Status Report of Maharashtra 2022-23"
+      ],
+      "note": "Named in the Air Quality Status Report of Maharashtra 2022-23 (Pune Regional Office). The provided documents give no coordinate for this station, so it is not placed on the map."
+    }
+  ]
+}

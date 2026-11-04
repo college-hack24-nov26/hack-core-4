@@ -1,0 +1,260 @@
+{
+  "scenario": "A_normal",
+  "mode": "HISTORICAL_REPLAY",
+  "configuration": {
+    "loss_level": 0,
+    "pattern": "random",
+    "seed": 17,
+    "fold": "network"
+  },
+  "input": {
+    "station": "site_5766",
+    "pollutant": "pm25",
+    "cutoff": "2025-06-30T11:30:00+00:00",
+    "excluded_station": null,
+    "observations": [
+      {
+        "station": "site_5409",
+        "pollutant": "pm25",
+        "value": 32.56,
+        "timestamp": "2025-06-30T05:30:00+00:00",
+        "available_at": "2025-06-30T05:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5766",
+        "pollutant": "pm25",
+        "value": 17.98,
+        "timestamp": "2025-06-30T05:30:00+00:00",
+        "available_at": "2025-06-30T05:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5996",
+        "pollutant": "pm25",
+        "value": 18.37,
+        "timestamp": "2025-06-30T05:30:00+00:00",
+        "available_at": "2025-06-30T05:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5409",
+        "pollutant": "pm25",
+        "value": 25.36,
+        "timestamp": "2025-06-30T06:30:00+00:00",
+        "available_at": "2025-06-30T06:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5766",
+        "pollutant": "pm25",
+        "value": 22.75,
+        "timestamp": "2025-06-30T06:30:00+00:00",
+        "available_at": "2025-06-30T06:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5996",
+        "pollutant": "pm25",
+        "value": 18.31,
+        "timestamp": "2025-06-30T06:30:00+00:00",
+        "available_at": "2025-06-30T06:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5409",
+        "pollutant": "pm25",
+        "value": 24.14,
+        "timestamp": "2025-06-30T07:30:00+00:00",
+        "available_at": "2025-06-30T07:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5766",
+        "pollutant": "pm25",
+        "value": 20.98,
+        "timestamp": "2025-06-30T07:30:00+00:00",
+        "available_at": "2025-06-30T07:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5996",
+        "pollutant": "pm25",
+        "value": 18.16,
+        "timestamp": "2025-06-30T07:30:00+00:00",
+        "available_at": "2025-06-30T07:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5409",
+        "pollutant": "pm25",
+        "value": 35.26,
+        "timestamp": "2025-06-30T08:30:00+00:00",
+        "available_at": "2025-06-30T08:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5766",
+        "pollutant": "pm25",
+        "value": 18.02,
+        "timestamp": "2025-06-30T08:30:00+00:00",
+        "available_at": "2025-06-30T08:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5996",
+        "pollutant": "pm25",
+        "value": 17.7,
+        "timestamp": "2025-06-30T08:30:00+00:00",
+        "available_at": "2025-06-30T08:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5409",
+        "pollutant": "pm25",
+        "value": 28.41,
+        "timestamp": "2025-06-30T09:30:00+00:00",
+        "available_at": "2025-06-30T09:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5766",
+        "pollutant": "pm25",
+        "value": 19.77,
+        "timestamp": "2025-06-30T09:30:00+00:00",
+        "available_at": "2025-06-30T09:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5996",
+        "pollutant": "pm25",
+        "value": 18.86,
+        "timestamp": "2025-06-30T09:30:00+00:00",
+        "available_at": "2025-06-30T09:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5409",
+        "pollutant": "pm25",
+        "value": 23.45,
+        "timestamp": "2025-06-30T10:30:00+00:00",
+        "available_at": "2025-06-30T10:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5766",
+        "pollutant": "pm25",
+        "value": 19.97,
+        "timestamp": "2025-06-30T10:30:00+00:00",
+        "available_at": "2025-06-30T10:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5996",
+        "pollutant": "pm25",
+        "value": 17.17,
+        "timestamp": "2025-06-30T10:30:00+00:00",
+        "available_at": "2025-06-30T10:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5409",
+        "pollutant": "pm25",
+        "value": 26.62,
+        "timestamp": "2025-06-30T11:30:00+00:00",
+        "available_at": "2025-06-30T11:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5766",
+        "pollutant": "pm25",
+        "value": 18.84,
+        "timestamp": "2025-06-30T11:30:00+00:00",
+        "available_at": "2025-06-30T11:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      },
+      {
+        "station": "site_5996",
+        "pollutant": "pm25",
+        "value": 15.91,
+        "timestamp": "2025-06-30T11:30:00+00:00",
+        "available_at": "2025-06-30T11:30:00+00:00",
+        "category": "MEASURED",
+        "units": "ug/m3"
+      }
+    ],
+    "weather": {
+      "timestamp": "2025-03-02T11:00:00+00:00",
+      "source": "ERA5",
+      "grid": "18.5_73.75",
+      "temperature_2m": 32.6,
+      "relative_humidity_2m": 32.0,
+      "dew_point_2m": 13.8,
+      "wind_speed_10m": 2.52,
+      "wind_direction_10m": 321.0,
+      "precipitation": 0.0,
+      "surface_pressure": 932.7
+    }
+  },
+  "prediction": {
+    "status": "AVAILABLE",
+    "category": "FORECAST_ML",
+    "pollutant": "pm25",
+    "units": "ug/m3",
+    "station": "site_5766",
+    "value": 12.204377044237154,
+    "cutoff": "2025-06-30T11:30:00+00:00",
+    "target_time": "2025-06-30T12:30:00+00:00",
+    "horizon_hours": 1,
+    "interval": [
+      0,
+      82.27425079674278
+    ],
+    "model": "pm25_network",
+    "version": "task2-20261011-v1",
+    "baselines": {
+      "idw": 22.432061209630692,
+      "persistence": 18.84
+    },
+    "reliability": {
+      "status": "LOW",
+      "donor_count": 2,
+      "nearest_km": 8.386228648237582,
+      "oldest_donor_hours": 0.0,
+      "out_of_training_bounds": [],
+      "weather_available": true,
+      "weather_delay_days": 120,
+      "weather_missing_handling": "Training-only median plus missing indicators, if selected model includes weather",
+      "nominal_interval_coverage": 0.9,
+      "coverage_warning": "Empirical coverage is in evaluation; 90% is not a guaranteed confidence probability for this case."
+    },
+    "causal_effects_estimated": false
+  },
+  "independent_reference": {
+    "value": 17.39,
+    "timestamp": "2025-06-30 12:30:00+00:00",
+    "units": "ug/m3",
+    "source": "Unmodified supplied CSV target; never passed to predict()"
+  },
+  "absolute_error": 5.185622955762847
+}

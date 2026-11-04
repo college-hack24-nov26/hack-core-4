@@ -2,8 +2,8 @@ import { create } from 'zustand';
 import type { MeasureSelection } from './lib/measures';
 import { NO_MEASURES } from './lib/measures';
 
-export type GovView = 'home' | 'alerts' | 'map' | 'stations' | 'hotspots' | 'simulator' | 'reports' | 'settings';
-export const GOV_VIEWS: GovView[] = ['home', 'alerts', 'map', 'stations', 'hotspots', 'simulator', 'reports', 'settings'];
+export type GovView = 'home' | 'alerts' | 'map' | 'stations' | 'hotspots' | 'simulator' | 'reports' | 'complaints' | 'settings';
+export const GOV_VIEWS: GovView[] = ['home', 'alerts', 'map', 'stations', 'hotspots', 'simulator', 'reports', 'complaints', 'settings'];
 
 /** Classic is the original look; glass is the blue and white glassmorphism look. */
 export type UiTheme = 'classic' | 'glass' | 'glass-adv';

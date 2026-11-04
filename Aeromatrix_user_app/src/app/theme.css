@@ -1,0 +1,168 @@
+/* The Commissioner look: calm, roomy, one typeface. Colours come from the AeroMatrix tokens in index.css. */
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-feature-settings: 'cv11', 'ss03';
+  letter-spacing: -0.003em;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.015em;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Cards: soft edge, almost no shadow, plenty of air. */
+.gov-card {
+  background: var(--color-ink-900);
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--color-sand-400) 16%, transparent);
+  box-shadow: 0 1px 2px rgb(28 10 16 / 0.04), 0 10px 28px -16px rgb(28 10 16 / 0.18);
+}
+
+.gov-row {
+  border-radius: 14px;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+.gov-row:hover {
+  background: color-mix(in srgb, var(--color-ink-800) 70%, transparent);
+}
+.gov-row:active {
+  transform: scale(0.995);
+}
+
+.gov-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-sand-400);
+}
+
+/* Content arrives in a gentle stagger. */
+.gov-stagger > * {
+  animation: rise 0.45s var(--ease-out-soft) both;
+}
+.gov-stagger > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+.gov-stagger > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.gov-stagger > *:nth-child(4) {
+  animation-delay: 180ms;
+}
+.gov-stagger > *:nth-child(5) {
+  animation-delay: 240ms;
+}
+.gov-stagger > *:nth-child(n + 6) {
+  animation-delay: 300ms;
+}
+
+/* Alerts slide in from the side. */
+.gov-alert-in {
+  animation: slide-in 0.35s var(--ease-out-soft) both;
+}
+
+/* Loading placeholder. */
+.gov-skeleton {
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--color-ink-800) 25%, var(--color-ink-700) 50%, var(--color-ink-800) 75%);
+  background-size: 200% 100%;
+  animation: gov-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes gov-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Gauge sweep. */
+.gov-gauge-arc {
+  transition: stroke-dashoffset 0.9s var(--ease-out-soft);
+}
+
+/* Lite mode (weak phones, data saver, reduced motion): no decorative motion at all. */
+[data-lite='1'] *,
+[data-lite='1'] *::before,
+[data-lite='1'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  animation-delay: 0ms !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Page change: a short fade and rise. */
+.gov-page {
+  animation: rise 0.32s var(--ease-out-soft) both;
+}
+
+/* The More menu opens with a small pop. */
+.gov-pop {
+  transform-origin: bottom right;
+  animation: gov-pop 0.18s var(--ease-out-soft) both;
+}
+@keyframes gov-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The bell rings once for a new alert. */
+.gov-ring {
+  transform-origin: 50% 10%;
+  animation: gov-ring 0.9s ease-in-out 1;
+}
+@keyframes gov-ring {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(8deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(3deg); }
+}
+
+/* "Analysing" shimmer bar and the result reveal in the What if screen. */
+.gov-analyse {
+  background: linear-gradient(90deg, transparent, var(--color-accent-400), transparent);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  animation: gov-sweep 1s ease-in-out infinite;
+}
+@keyframes gov-sweep {
+  from { background-position: -60% 0; }
+  to { background-position: 160% 0; }
+}
+.gov-reveal {
+  animation: rise 0.5s var(--ease-out-soft) both;
+}
+.gov-bar-grow {
+  transform-origin: left center;
+  animation: gov-grow 0.8s var(--ease-out-soft) both;
+}
+@keyframes gov-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* Satellite imagery is slightly dimmed, as in the city model, so the heat colours and labels stand out. */
+.gov-satellite {
+  filter: brightness(0.82) saturate(0.9);
+}

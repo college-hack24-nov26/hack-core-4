@@ -1,0 +1,141 @@
+/* Phone rules for the Commissioner app: no sideways scrolling, 44 px touch targets, 16 px inputs, safe areas, no accidental gestures. */
+
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+html {
+  /* No pull-to-refresh or rubber-banding of the whole page: the screens scroll inside their own container. */
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* No double-tap zoom delay on controls; the map and sliders keep their own gestures. */
+button,
+a,
+select,
+label,
+[role='tab'],
+[role='radio'],
+[role='switch'] {
+  touch-action: manipulation;
+}
+
+button,
+[role='tab'],
+[role='radio'] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* A grid cell may shrink below its widest unbreakable text (truncated names, long words) instead of stretching the page. */
+.grid > * {
+  min-width: 0;
+}
+
+/* The top bar floats: rounded, inset from the screen edges, clear of the status bar. */
+.gov-header {
+  margin: calc(0.5rem + env(safe-area-inset-top)) 0.75rem 0;
+  border-radius: 28px;
+  box-shadow: 0 10px 30px -12px rgb(20 10 15 / 0.35);
+  padding-top: 0;
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+.gov-view {
+  padding-top: calc(4.5rem + env(safe-area-inset-top));
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  scroll-padding-bottom: 8rem;
+}
+
+/* A hatched coverage-gap rectangle keeps its pattern fill from the SVG defs. */
+.gov-gap {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.leaflet-container {
+  font-family: inherit;
+  touch-action: pan-x pan-y;
+}
+
+@media (max-width: 767px) {
+  /* 16 px inputs stop iOS from zooming on focus. */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Interactive controls reach 44 px. */
+  .gov-tap {
+    min-height: 44px;
+  }
+
+  [role='tab'],
+  [role='radio'] {
+    min-height: 44px;
+  }
+
+  /* Small print is a little larger on a phone held at arm's length. */
+  .text-xs {
+    font-size: 0.8125rem;
+    line-height: 1.2rem;
+  }
+  .text-\[11px\] {
+    font-size: 0.75rem;
+  }
+  .text-\[10px\] {
+    font-size: 0.6875rem;
+  }
+
+  /* Map zoom buttons are finger-sized. */
+  .leaflet-container .leaflet-bar a.leaflet-control-zoom-in,
+  .leaflet-container .leaflet-bar a.leaflet-control-zoom-out {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+    font-size: 22px;
+  }
+  .leaflet-top.leaflet-right {
+    margin-top: 4px;
+  }
+  .leaflet-control-attribution {
+    font-size: 10px;
+  }
+
+  /* Wide content scrolls inside its own card, never the page. */
+  pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+/* Short screens (a phone turned sideways): tighter header and sheets. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .gov-header {
+    min-height: 40px;
+  }
+  .gov-view {
+    scroll-padding-bottom: 5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-ring,
+  .animate-sheet-up {
+    animation: none !important;
+  }
+}
+
+/* The map's zoom buttons sit below the floating top bar. */
+.leaflet-container .leaflet-top {
+  top: calc(4.5rem + env(safe-area-inset-top));
+}
