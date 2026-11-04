@@ -7,8 +7,8 @@ import type { Pollutant } from '../types';
 import { Select } from './Select';
 
 const env = import.meta.env as Record<string, string | undefined>;
-/** The logo and name lead back to the landing page. */
-export const LANDING_URL = env.VITE_LANDING_URL || 'http://localhost:3000/';
+/** The logo and name lead back to the landing page: the deployed one in a production build, the local one in development. */
+export const LANDING_URL = env.VITE_LANDING_URL || (import.meta.env.PROD ? 'https://aeromatrix-landing-omega.vercel.app/' : 'http://localhost:3000/');
 
 function GridLabel({ n }: { n: number }) {
   return (
